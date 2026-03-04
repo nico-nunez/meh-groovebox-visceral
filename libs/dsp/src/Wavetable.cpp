@@ -146,7 +146,6 @@ float processWavetableOsc(const WavetableBank* bank,
                           float fmPhaseOffset,
                           float pitchIncrement) {
   float sample = readWavetable(bank, phase, mipF, effectiveScanPos, fmPhaseOffset);
-
   phase += pitchIncrement;
   phase -= floorf(phase);
 

@@ -11,18 +11,18 @@
 #include <cstdint>
 
 namespace synth {
-using NoteEvent = synth_io::NoteEvent;
-using ParamEvent = synth_io::ParamEvent;
+using synth_io::NoteEvent;
+using synth_io::ParamEvent;
 
-using VoicePool = voices::VoicePool;
-using VoiceConfig = voices::VoicePoolConfig;
+using voices::VoicePool;
+using voices::VoicePoolConfig;
 
-using WaveformType = dsp::waveforms::WaveformType;
+using dsp::waveforms::WaveformType;
 
-using ParamBinding = param::bindings::ParamBinding;
-using ParamID = param::bindings::ParamID;
+using param::bindings::ParamBinding;
+using param::bindings::ParamID;
 
-struct EngineConfig : VoiceConfig {
+struct EngineConfig : VoicePoolConfig {
   float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
   uint32_t numFrames = synth_io::DEFAULT_FRAMES;
 };

@@ -5,7 +5,7 @@
 #include <cstdint>
 
 namespace synth::noise {
-using PinkNoiseState = dsp::noise::PinkNoiseState;
+using dsp::noise::PinkNoiseState;
 
 enum class NoiseType : uint8_t {
   White = 0,

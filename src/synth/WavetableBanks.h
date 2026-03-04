@@ -3,7 +3,7 @@
 #include "dsp/Wavetable.h"
 
 namespace synth::wavetable::banks {
-using WavetableBank = dsp::wavetable::WavetableBank;
+using dsp::wavetable::WavetableBank;
 
 enum BankID { Sine = 0, Saw, Square, Triangle, SineToSaw, COUNT };
 

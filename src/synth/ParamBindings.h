@@ -9,7 +9,7 @@ struct Engine;
 }
 
 namespace synth::param::bindings {
-using SVFMode = filters::SVFMode;
+using filters::SVFMode;
 
 enum ParamID {
   // Oscillator 1
@@ -60,17 +60,28 @@ enum ParamID {
   FILTER_ENV_SUSTAIN_LEVEL,
   FILTER_ENV_RELEASE,
 
+  // Modulation Envelope
+  MOD_ENV_ATTACK,
+  MOD_ENV_DECAY,
+  MOD_ENV_SUSTAIN_LEVEL,
+  MOD_ENV_RELEASE,
+
   // SVF Filter
-  SVF_ENABLED,
   SVF_MODE,
   SVF_CUTOFF,
   SVF_RESONANCE,
+  SVF_ENABLED,
 
   // Ladder Filter
-  LADDER_ENABLED,
   LADDER_CUTOFF,
   LADDER_RESONANCE,
   LADDER_DRIVE,
+  LADDER_ENABLED,
+
+  // Saturator
+  SATURATOR_DRIVE,
+  SATURATOR_MIX,
+  SATURATOR_ENABLED,
 
   // LFOs (global)
   LFO1_RATE,
@@ -153,6 +164,16 @@ constexpr ParamMapping PARAM_NAMES[] = {
     {AMP_ENV_SUSTAIN_LEVEL, "ampEnv.sustain", ParamValueType::FLOAT},
     {AMP_ENV_RELEASE, "ampEnv.release", ParamValueType::FLOAT},
 
+    {FILTER_ENV_ATTACK, "filterEnv.attack", ParamValueType::FLOAT},
+    {FILTER_ENV_DECAY, "filterEnv.decay", ParamValueType::FLOAT},
+    {FILTER_ENV_SUSTAIN_LEVEL, "filterEnv.sustain", ParamValueType::FLOAT},
+    {FILTER_ENV_RELEASE, "filterEnv.release", ParamValueType::FLOAT},
+
+    {MOD_ENV_ATTACK, "modEnv.attack", ParamValueType::FLOAT},
+    {MOD_ENV_DECAY, "modEnv.decay", ParamValueType::FLOAT},
+    {MOD_ENV_SUSTAIN_LEVEL, "modEnv.sustain", ParamValueType::FLOAT},
+    {MOD_ENV_RELEASE, "modEnv.release", ParamValueType::FLOAT},
+
     {SVF_MODE, "svf.mode", ParamValueType::FILTER_MODE},
     {SVF_CUTOFF, "svf.cutoff", ParamValueType::FLOAT},
     {SVF_RESONANCE, "svf.resonance", ParamValueType::FLOAT},
@@ -163,10 +184,9 @@ constexpr ParamMapping PARAM_NAMES[] = {
     {LADDER_DRIVE, "ladder.drive", ParamValueType::FLOAT},
     {LADDER_ENABLED, "ladder.enabled", ParamValueType::BOOL},
 
-    {FILTER_ENV_ATTACK, "filterEnv.attack", ParamValueType::FLOAT},
-    {FILTER_ENV_DECAY, "filterEnv.decay", ParamValueType::FLOAT},
-    {FILTER_ENV_SUSTAIN_LEVEL, "filterEnv.sustain", ParamValueType::FLOAT},
-    {FILTER_ENV_RELEASE, "filterEnv.release", ParamValueType::FLOAT},
+    {SATURATOR_DRIVE, "saturator.drive", ParamValueType::FLOAT},
+    {SATURATOR_MIX, "saturator.mix", ParamValueType::FLOAT},
+    {SATURATOR_ENABLED, "saturator.enabled", ParamValueType::BOOL},
 
     {LFO1_RATE, "lfo1.rate", ParamValueType::FLOAT},
     {LFO1_AMPLITUDE, "lfo1.amplitude", ParamValueType::FLOAT},

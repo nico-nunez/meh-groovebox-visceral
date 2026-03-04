@@ -4,6 +4,7 @@
 #include "synth/LFO.h"
 #include "synth/Noise.h"
 #include "synth/ParamRanges.h"
+#include "synth/SignalChain.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
@@ -14,10 +15,10 @@
 #include <cstdint>
 
 namespace synth::voices {
-using ModSrc = mod_matrix::ModSrc;
-using ModDest = mod_matrix::ModDest;
-using ModDest2D = mod_matrix::ModDest2D;
-using ModRoute = mod_matrix::ModRoute;
+using mod_matrix::ModDest;
+using mod_matrix::ModDest2D;
+using mod_matrix::ModRoute;
+using mod_matrix::ModSrc;
 
 namespace osc = wavetable::osc;
 
@@ -50,6 +51,13 @@ void updateVoicePoolConfig(VoicePool& pool, const VoicePoolConfig& config) {
 
 void initVoicePool(VoicePool& pool, const VoicePoolConfig& config) {
   using namespace wavetable::banks;
+  using signal_chain::SignalProcessor;
+
+  // TODO(nico): should this be part of VoicePoolConfig?
+  static constexpr uint8_t SIGNAL_CHAIN_LEN = 3;
+  static constexpr SignalProcessor SIGNAL_CHAIN[SIGNAL_CHAIN_LEN] = {SignalProcessor::SVF,
+                                                                     SignalProcessor::Ladder,
+                                                                     SignalProcessor::Saturator};
   initFactoryBanks();
 
   updateVoicePoolConfig(pool, config);
@@ -69,6 +77,8 @@ void initVoicePool(VoicePool& pool, const VoicePoolConfig& config) {
   pool.osc4.bank = getBankByID(BankID::Sine);
   pool.osc4.octaveOffset = -2;
   pool.osc4.mixLevel = 0.5f;
+
+  signal_chain::setChain(pool.signalChain, SIGNAL_CHAIN, SIGNAL_CHAIN_LEN);
 }
 
 // =========================
@@ -358,10 +368,10 @@ float interpolatePitchInc(const WavetableOsc& osc,
 // TODO(nico): refactor this!!!
 // Process Oscillators with interpolation and mix (sum) values
 float processAndMixOscillators(VoicePool& pool, uint32_t voiceIndex, uint32_t sampleIndex) {
-  using FMSource = wavetable::osc::FMSource;
   using dsp::wavetable::selectMipLevel;
   using param::ranges::osc::clampScanPos;
   using std::max;
+  using wavetable::osc::FMSource;
 
   const uint32_t v = voiceIndex;
   const uint32_t s = sampleIndex;
@@ -431,6 +441,53 @@ float processAndMixOscillators(VoicePool& pool, uint32_t voiceIndex, uint32_t sa
   return (out1 * mix1 + out2 * mix2 + out3 * mix3 + out4 * mix4 + noiseOut) * pool.oscMixGain;
 }
 
+// Signal Chain processing
+float processSignalChain(VoicePool& pool, float mixedOscs, uint32_t voiceIndex) {
+  auto& svf = pool.svf;
+  auto& ladder = pool.ladder;
+
+  auto& destValues = pool.modMatrix.destValues;
+  auto& lfoContribs = pool.lfoModState.contribs;
+
+  uint32_t v = voiceIndex;
+  float signal = mixedOscs;
+
+  for (uint8_t i = 0; i < pool.signalChain.length; i++) {
+    switch (pool.signalChain.slots[i]) {
+
+    case SignalProcessor::SVF: {
+      float cutoff = dsp::filters::modulateCutoff(svf.cutoff,
+                                                  destValues[ModDest::SVFCutoff][v] +
+                                                      lfoContribs[ModDest::SVFCutoff]);
+      float resonance =
+          svf.resonance + destValues[ModDest::SVFResonance][v] + lfoContribs[ModDest::SVFResonance];
+      signal = filters::processSVFilter(svf, signal, v, cutoff, resonance, pool.invSampleRate);
+      break;
+    }
+
+    case SignalProcessor::Ladder: {
+      float cutoff = dsp::filters::modulateCutoff(ladder.cutoff,
+                                                  destValues[ModDest::LadderCutoff][v] +
+                                                      lfoContribs[ModDest::LadderCutoff]);
+      float resonance = ladder.resonance + destValues[ModDest::LadderResonance][v] +
+                        lfoContribs[ModDest::LadderResonance];
+      signal =
+          filters::processLadderFilter(ladder, signal, v, cutoff, resonance, pool.invSampleRate);
+      break;
+    }
+
+    case SignalProcessor::Saturator:
+      signal = synth::saturator::processSaturator(pool.saturator, signal);
+      break;
+
+    case SignalProcessor::None:
+      break;
+    }
+  }
+
+  return signal;
+}
+
 /* ==== Post-block: Update prevDestValues with current value ====
  * Will be referenced at the Pre-pass of the next block
  * Active voices only
@@ -453,11 +510,6 @@ void postProcessBlock(VoicePool& pool) {
 } // namespace
 
 void processVoices(VoicePool& pool, float* output, size_t numSamples) {
-  auto& svf = pool.svf;
-  auto& ladder = pool.ladder;
-
-  auto& destValues = pool.modMatrix.destValues;
-
   auto& lfoContribs = pool.lfoModState.contribs;
 
   // ==== Set and process Mod Matrix values (block-rate) ====
@@ -502,36 +554,7 @@ void processVoices(VoicePool& pool, float* output, size_t numSamples) {
 
       float mixedOscs = processAndMixOscillators(pool, vIndex, sIndex);
 
-      float svfModCutoff = dsp::filters::modulateCutoff(svf.cutoff,
-                                                        destValues[ModDest::SVFCutoff][vIndex] +
-                                                            lfoContribs[ModDest::SVFCutoff]);
-
-      float svfModResonance = svf.resonance + destValues[ModDest::SVFResonance][vIndex] +
-                              lfoContribs[ModDest::SVFResonance];
-
-      float filtered = filters::processSVFilter(svf,
-                                                mixedOscs,
-                                                vIndex,
-                                                svfModCutoff,
-                                                svfModResonance,
-                                                pool.invSampleRate);
-      float ladderModCutoff =
-          dsp::filters::modulateCutoff(ladder.cutoff,
-                                       destValues[ModDest::LadderCutoff][vIndex] +
-                                           lfoContribs[ModDest::LadderCutoff]);
-      float ladderModResonance = ladder.resonance + destValues[ModDest::LadderResonance][vIndex] +
-                                 lfoContribs[ModDest::LadderResonance];
-
-      filtered = filters::processLadderFilter(ladder,
-                                              filtered,
-                                              vIndex,
-                                              ladderModCutoff,
-                                              ladderModResonance,
-                                              pool.invSampleRate);
-
-      // TODO(nico): Implement Saturator
-      // ==== Apply saturation ====
-      // filtered = processSaturator(pool.saturator, filtered);
+      float signal = processSignalChain(pool, mixedOscs, vIndex);
 
       float ampEnv = envelope::processEnvelope(pool.ampEnv, vIndex);
 
@@ -541,7 +564,7 @@ void processVoices(VoicePool& pool, float* output, size_t numSamples) {
         // No index adjustment needed - iterating backwards
       }
 
-      sample += filtered * ampEnv * pool.velocities[vIndex] * VOICE_GAIN;
+      sample += signal * ampEnv * pool.velocities[vIndex] * VOICE_GAIN;
     }
 
     // TODO(nico): Basic soft clip for now.

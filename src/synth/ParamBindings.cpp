@@ -5,6 +5,7 @@
 #include "synth/Filters.h"
 #include "synth/LFO.h"
 #include "synth/ParamRanges.h"
+#include "synth/Saturator.h"
 
 #include <cmath>
 #include <cstdio>
@@ -52,9 +53,7 @@ ParamBinding makeParamBinding(SVFMode* ptr, int min, int max) {
 }
 
 // Oscillator Bindings
-void bindOscillator(ParamBinding* bindings,
-                    ParamID baseId,
-                    wavetable::osc::WavetableOscillator& osc) {
+void bindOscillator(ParamBinding* bindings, ParamID baseId, wavetable::osc::WavetableOsc& osc) {
   bindings[baseId + 0] =
       makeParamBinding(&osc.mixLevel, ranges::osc::MIX_LEVEL_MIN, ranges::osc::MIX_LEVEL_MAX);
   bindings[baseId + 1] =
@@ -76,42 +75,46 @@ void bindNoise(ParamBinding* bindings, ParamID baseId, noise::Noise& noise) {
   bindings[baseId + 1] = makeParamBinding(&noise.enabled);
 }
 
+// Filter Bindings
+void bindSVFilter(ParamBinding* bindings, ParamID baseId, filters::SVFilter& filter) {
+  bindings[baseId + 0] = makeParamBinding(&filter.mode,
+                                          ranges::filter::FILTER_MODE_MIN,
+                                          ranges::filter::FILTER_MODE_MAX);
+  bindings[baseId + 1] =
+      makeParamBinding(&filter.cutoff, ranges::filter::CUTOFF_MIN, ranges::filter::CUTOFF_MAX);
+  bindings[baseId + 2] = makeParamBinding(&filter.resonance,
+                                          ranges::filter::RESONANCE_MIN,
+                                          ranges::filter::RESONANCE_MAX);
+  bindings[baseId + 3] = makeParamBinding(&filter.enabled);
+}
+
+void bindLadderFilter(ParamBinding* bindings, ParamID baseId, filters::LadderFilter& filter) {
+  bindings[baseId + 0] =
+      makeParamBinding(&filter.cutoff, ranges::filter::CUTOFF_MIN, ranges::filter::CUTOFF_MAX);
+  bindings[baseId + 1] = makeParamBinding(&filter.resonance,
+                                          ranges::filter::RESONANCE_MIN,
+                                          ranges::filter::RESONANCE_MAX);
+  bindings[baseId + 2] =
+      makeParamBinding(&filter.drive, ranges::filter::DRIVE_MIN, ranges::filter::DRIVE_MAX);
+  bindings[baseId + 3] = makeParamBinding(&filter.enabled);
+}
+
+// Saturator Bindings
+void bindSaturator(ParamBinding* bindings, ParamID baseId, saturator::Saturator& saturator) {
+  bindings[baseId + 0] = makeParamBinding(&saturator.drive,
+                                          ranges::saturator::DRIVE_MIN,
+                                          ranges::saturator::DRIVE_MAX);
+  bindings[baseId + 1] =
+      makeParamBinding(&saturator.mix, ranges::saturator::MIX_MIN, ranges::saturator::MIX_MAX);
+  bindings[baseId + 2] = makeParamBinding(&saturator.enabled);
+}
+
 // LFO Binding
 void bindLFO(ParamBinding* bindings, ParamID baseId, lfo::LFO& lfo) {
   bindings[baseId + 0] = makeParamBinding(&lfo.rate, ranges::lfo::RATE_MIN, ranges::lfo::RATE_MAX);
   bindings[baseId + 1] =
       makeParamBinding(&lfo.amplitude, ranges::lfo::AMPLITUDE_MIN, ranges::lfo::AMPLITUDE_MAX);
   bindings[baseId + 2] = makeParamBinding(&lfo.retrigger);
-}
-
-// Filter Bindings
-void bindSVFilter(ParamBinding* bindings, ParamID baseId, filters::SVFilter& filter) {
-  bindings[baseId + 0] = makeParamBinding(&filter.enabled);
-
-  bindings[baseId + 1] = makeParamBinding(&filter.mode,
-                                          ranges::filter::FILTER_MODE_MIN,
-                                          ranges::filter::FILTER_MODE_MAX);
-
-  bindings[baseId + 2] =
-      makeParamBinding(&filter.cutoff, ranges::filter::CUTOFF_MIN, ranges::filter::CUTOFF_MAX);
-
-  bindings[baseId + 3] = makeParamBinding(&filter.resonance,
-                                          ranges::filter::RESONANCE_MIN,
-                                          ranges::filter::RESONANCE_MAX);
-}
-
-void bindLadderFilter(ParamBinding* bindings, ParamID baseId, filters::LadderFilter& filter) {
-  bindings[baseId + 0] = makeParamBinding(&filter.enabled);
-
-  bindings[baseId + 1] =
-      makeParamBinding(&filter.cutoff, ranges::filter::CUTOFF_MIN, ranges::filter::CUTOFF_MAX);
-
-  bindings[baseId + 2] = makeParamBinding(&filter.resonance,
-                                          ranges::filter::RESONANCE_MIN,
-                                          ranges::filter::RESONANCE_MAX);
-
-  bindings[baseId + 3] =
-      makeParamBinding(&filter.drive, ranges::filter::DRIVE_MIN, ranges::filter::DRIVE_MAX);
 }
 
 // Envelope Bindings
@@ -157,6 +160,10 @@ void onParamUpdate(Engine& engine, ParamID id) {
     filters::updateLadderCoefficient(engine.voicePool.ladder, engine.voicePool.invSampleRate);
     break;
 
+  case SATURATOR_DRIVE:
+    engine.voicePool.saturator.invDrive = saturator::calcInvDrive(engine.voicePool.saturator.drive);
+    break;
+
     // No special handling needed for other params like
     // Oscillator pitch params - no active voice updates (avoid clicks)
   default:
@@ -168,7 +175,8 @@ void onParamUpdate(Engine& engine, ParamID id) {
 
 // ==== APIs ====
 void initParamBindings(Engine& engine) {
-  // Oscillators - 6 params each, enum layout must match!
+  // IMPORTANT: ParamID enum layouts must match!
+
   bindOscillator(engine.paramBindings, OSC1_MIX_LEVEL, engine.voicePool.osc1);
   bindOscillator(engine.paramBindings, OSC2_MIX_LEVEL, engine.voicePool.osc2);
   bindOscillator(engine.paramBindings, OSC3_MIX_LEVEL, engine.voicePool.osc3);
@@ -176,26 +184,27 @@ void initParamBindings(Engine& engine) {
 
   bindNoise(engine.paramBindings, NOISE_MIX_LEVEL, engine.voicePool.noise);
 
-  // Envelopes
   bindEnvelope(engine.paramBindings, AMP_ENV_ATTACK, engine.voicePool.ampEnv);
   bindEnvelope(engine.paramBindings, FILTER_ENV_ATTACK, engine.voicePool.filterEnv);
+  bindEnvelope(engine.paramBindings, MOD_ENV_ATTACK, engine.voicePool.modEnv);
 
-  // Filters
-  bindSVFilter(engine.paramBindings, SVF_ENABLED, engine.voicePool.svf);
-  bindLadderFilter(engine.paramBindings, LADDER_ENABLED, engine.voicePool.ladder);
+  bindSVFilter(engine.paramBindings, SVF_MODE, engine.voicePool.svf);
+  bindLadderFilter(engine.paramBindings, LADDER_CUTOFF, engine.voicePool.ladder);
 
-  // LFOs (global)
+  bindSaturator(engine.paramBindings, SATURATOR_DRIVE, engine.voicePool.saturator);
+
   bindLFO(engine.paramBindings, LFO1_RATE, engine.voicePool.lfo1);
   bindLFO(engine.paramBindings, LFO2_RATE, engine.voicePool.lfo2);
   bindLFO(engine.paramBindings, LFO3_RATE, engine.voicePool.lfo3);
 
-  // Voice Pool
   engine.paramBindings[MASTER_GAIN] = makeParamBinding(&engine.voicePool.masterGain,
                                                        ranges::global::MASTER_GAIN_MIN,
                                                        ranges::global::MASTER_GAIN_MAX);
 }
 
-// ==== Param Getter/Setter ====
+// ========================
+// Getters / Setters
+// ========================
 
 // Get param value by ID (normalized value)
 // Retreives current denormalized and returns normalized value

@@ -63,6 +63,13 @@ float clampResonance(float resonance);
 float clampDrive(float drive);
 } // namespace filter
 
+namespace saturator {
+inline constexpr float DRIVE_MIN = 1.0f;
+inline constexpr float DRIVE_MAX = 5.0f;
+inline constexpr float MIX_MIN = 0.0f;
+inline constexpr float MIX_MAX = 1.0f;
+} // namespace saturator
+
 namespace mod {
 // Cutoff modulation depth (octaves, bipolar)
 inline constexpr float CUTOFF_MOD_MIN = -4.0f;

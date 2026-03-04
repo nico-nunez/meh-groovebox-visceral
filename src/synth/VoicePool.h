@@ -7,24 +7,34 @@
 #include "Types.h"
 #include "WavetableOsc.h"
 #include "synth/LFO.h"
+#include "synth/Saturator.h"
+#include "synth/SignalChain.h"
 
 #include <cstddef>
 #include <cstdint>
 
 namespace synth::voices {
-using Envelope = envelope::Envelope;
+using envelope::Envelope;
 
-using LFO = lfo::LFO;
-using LFOModState = lfo::LFOModState;
+using lfo::LFO;
+using lfo::LFOModState;
 
-using WavetableOsc = wavetable::osc::WavetableOscillator;
-using WavetableOscConfig = wavetable::osc::WavetableOscConfig;
-using WavetableOscModState = wavetable::osc::WavetableOscModState;
+using wavetable::osc::WavetableOsc;
+using wavetable::osc::WavetableOscConfig;
+using wavetable::osc::WavetableOscModState;
 
-using Noise = noise::Noise;
-using NoiseConfig = noise::NoiseConfig;
+using noise::Noise;
+using noise::NoiseConfig;
 
-using ModMatrix = mod_matrix::ModMatrix;
+using filters::LadderFilter;
+using filters::SVFilter;
+
+using saturator::Saturator;
+
+using signal_chain::SignalChain;
+using signal_chain::SignalProcessor;
+
+using mod_matrix::ModMatrix;
 
 struct VoicePoolConfig {
   WavetableOscConfig osc1{};
@@ -58,29 +68,18 @@ struct VoicePool {
   // TODO(nico): this needs to be tide to number of active oscs
   float oscMixGain = 1.0f / 4.0;
 
-  // TODO(nico) ==== Noise Generator ====
-  // NoiseGenerator noise;
-
   ModMatrix modMatrix;
 
-  // ==== Envelopes ====
   Envelope ampEnv;    // Amplitude envelope
   Envelope filterEnv; // Filter modulation
   Envelope modEnv;    // General-purpose modulation
 
-  // ==== Filters ====
-  filters::SVFilter svf;
-  filters::LadderFilter ladder;
+  SVFilter svf;
+  LadderFilter ladder;
 
-  // TODO(nico)
-  // // ====  LFOs (3 for modulation) ====
-  // LFO lfo1;
-  // LFO lfo2;
-  // LFO lfo3;
+  Saturator saturator;
 
-  // TODO(nico)
-  // // ==== Effects ====
-  // Saturator saturator;
+  SignalChain signalChain;
 
   float masterGain = 1.0f; // range [0.0 - 2.0]
                            // range [-inf - +6DB]

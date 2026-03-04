@@ -10,6 +10,8 @@ float denormalizeDrive(float drive) {
   return 1 + drive * 4.0f;
 }
 
+} // namespace
+
 // Returns whatever drive is (Normalized or Denormalized)
 float calcInvDrive(float drive) {
   if (drive <= 0)
@@ -17,8 +19,6 @@ float calcInvDrive(float drive) {
 
   return 1.0f / dsp::math::fastTanh(drive);
 }
-} // namespace
-
 void updateDrive(Saturator& sat, float normalizedDrive) {
   sat.drive = denormalizeDrive(normalizedDrive);
   sat.invDrive = calcInvDrive(sat.drive);

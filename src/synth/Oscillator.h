@@ -7,7 +7,7 @@
 #include <cstdint>
 
 namespace synth::oscillator {
-using WaveformType = dsp::waveforms::WaveformType;
+using dsp::waveforms::WaveformType;
 
 struct OscConfig {
   WaveformType waveform = WaveformType::Sine;

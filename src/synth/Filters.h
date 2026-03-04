@@ -8,11 +8,11 @@
 namespace synth::filters {
 
 enum class SVFMode { LP, HP, BP, Notch, MODE_COUNT };
-using SVFState = dsp::filters::SVFState;
-using SVFCoeffs = dsp::filters::SVFCoeffs;
-using SVFOutputs = dsp::filters::SVFOutputs;
+using dsp::filters::SVFCoeffs;
+using dsp::filters::SVFOutputs;
+using dsp::filters::SVFState;
 
-using LadderState = dsp::filters::LadderState;
+using dsp::filters::LadderState;
 
 // ==== State Variable Filter (SVF) ====
 struct SVFilter {

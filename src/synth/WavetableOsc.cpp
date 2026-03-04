@@ -11,10 +11,7 @@ namespace dsp_wt = dsp::wavetable;
 // ================================
 // Initialization
 // ================================
-void initOscillator(WavetableOscillator& osc,
-                    uint32_t voiceIndex,
-                    uint8_t midiNote,
-                    float sampleRate) {
+void initOscillator(WavetableOsc& osc, uint32_t voiceIndex, uint8_t midiNote, float sampleRate) {
   float offsetExp = static_cast<float>(osc.octaveOffset) + (osc.detuneAmount / 1200.0f);
   float freq = utils::midiToFrequency(midiNote) * std::exp2f(offsetExp);
 
@@ -25,7 +22,7 @@ void initOscillator(WavetableOscillator& osc,
 // ================================
 // Configuration
 // ================================
-void updateConfig(WavetableOscillator& osc, const WavetableOscConfig& config) {
+void updateConfig(WavetableOsc& osc, const WavetableOscConfig& config) {
   osc.bank = config.bank;
   osc.scanPos = config.scanPos;
   osc.mixLevel = config.mixLevel;
@@ -94,7 +91,7 @@ float getFmInputValue(WavetableOscModState& modState,
   }
 }
 
-float readWavetable(const WavetableOscillator& osc,
+float readWavetable(const WavetableOsc& osc,
                     uint32_t voiceIndex,
                     float mipF,
                     float effectiveScanPos,
@@ -108,7 +105,7 @@ float readWavetable(const WavetableOscillator& osc,
                                fmPhaseOffset);
 }
 
-float processOscillator(WavetableOscillator& osc,
+float processOscillator(WavetableOsc& osc,
                         uint32_t voiceIndex,
                         float mipF,
                         float effectiveScanPos,

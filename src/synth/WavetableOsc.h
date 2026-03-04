@@ -9,7 +9,7 @@
 
 namespace synth::wavetable::osc {
 
-using WavetableBank = dsp::wavetable::WavetableBank;
+using dsp::wavetable::WavetableBank;
 
 enum class FMSource : uint8_t {
   None = 0,
@@ -30,7 +30,7 @@ struct WavetableOscConfig {
   bool enabled = true;
 };
 
-struct WavetableOscillator {
+struct WavetableOsc {
   // ==== Per-voice hot data (SoA) ====
   float phases[MAX_VOICES];          // normalized [0, 1.0)
   float phaseIncrements[MAX_VOICES]; // cycles per sample (freq / sampleRate)
@@ -46,12 +46,9 @@ struct WavetableOscillator {
   bool enabled = true;
 };
 
-void initOscillator(WavetableOscillator& osc,
-                    uint32_t voiceIndex,
-                    uint8_t midiNote,
-                    float sampleRate);
+void initOscillator(WavetableOsc& osc, uint32_t voiceIndex, uint8_t midiNote, float sampleRate);
 
-void updateConfig(WavetableOscillator& osc, const WavetableOscConfig& config);
+void updateConfig(WavetableOsc& osc, const WavetableOscConfig& config);
 
 /* Read one sample with dual-mip linear interpolation.
  * mipF: continuous mip level from selectMipLevel() — fractional part drives mip
@@ -62,14 +59,14 @@ void updateConfig(WavetableOscillator& osc, const WavetableOscConfig& config);
  * magnitude, any sign — wrapping is handled internally via floorf. This is why
  * phases are normalized.
  */
-float readWavetable(const WavetableOscillator& osc,
+float readWavetable(const WavetableOsc& osc,
                     uint32_t voiceIndex,
                     float mipF,
                     float effectiveScanPos,
                     float fmPhaseOffset);
 
 // Process oscillator (read table and increment phase)
-float processOscillator(WavetableOscillator& osc,
+float processOscillator(WavetableOsc& osc,
                         uint32_t voiceIndex,
                         float mipF,
                         float effectiveScanPos,

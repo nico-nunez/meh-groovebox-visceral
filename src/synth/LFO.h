@@ -4,8 +4,8 @@
 #include "synth/WavetableBanks.h"
 
 namespace synth::lfo {
-using WavetableBank = wavetable::banks::WavetableBank;
-using ModDest = mod_matrix::ModDest;
+using mod_matrix::ModDest;
+using wavetable::banks::WavetableBank;
 
 struct LFO {
   const WavetableBank* bank = nullptr; // null = S&H mode; set to getBankByID(BankID::Sine) at init

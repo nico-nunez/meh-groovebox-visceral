@@ -10,7 +10,6 @@
 #include <cstdio>
 
 namespace synth {
-using NoteEvent = synth_io::NoteEvent;
 using ParamEvent = synth_io::ParamEvent;
 
 Engine createEngine(const EngineConfig& config) {

@@ -49,10 +49,10 @@ static void getUserInput(synth::Engine& engine, synth_io::hSynthSession sessionP
 }
 
 int main() {
-  constexpr float SAMPLE_RATE = 48000.0f;
+  using synth::Engine;
+  using synth::EngineConfig;
 
-  using Engine = synth::Engine;
-  using EngineConfig = synth::EngineConfig;
+  constexpr float SAMPLE_RATE = 48000.0f;
 
   EngineConfig engineConfig{};
   engineConfig.sampleRate = SAMPLE_RATE;
