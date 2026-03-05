@@ -56,7 +56,8 @@ void Engine::processMIDIEvent(const synth_io::MIDIEvent& event) {
     break;
 
   case Type::PitchBend:
-    // TODO
+    // Normalize value [-8192, 8191] -> [-1.0, 1.0]
+    voicePool.pitchBend.value = event.data.pitchBend.value / 8192.0f;
     break;
 
   // TODO(nico)...at some point

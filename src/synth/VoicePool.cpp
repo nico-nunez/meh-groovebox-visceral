@@ -366,6 +366,7 @@ void processLFOs(VoicePool& pool) {
 float interpolatePitchInc(const WavetableOsc& osc,
                           const ModMatrix& matrix,
                           const float* lfoContribs,
+                          float semitoneBend,
                           ModDest dest,
                           uint32_t voiceIndex,
                           uint32_t sampleIndex) {
@@ -373,7 +374,8 @@ float interpolatePitchInc(const WavetableOsc& osc,
   const uint32_t s = sampleIndex;
 
   float pitchMod = matrix.prevDestValues[dest][v] +
-                   (matrix.destStepValues[dest][v] * static_cast<float>(s)) + lfoContribs[dest];
+                   (matrix.destStepValues[dest][v] * static_cast<float>(s)) + lfoContribs[dest] +
+                   semitoneBend;
 
   // Calculate and return modulated phase increment
   return osc.phaseIncrements[v] * dsp::math::semitonesToFreqRatio(pitchMod);
@@ -401,10 +403,16 @@ float processAndMixOscillators(VoicePool& pool, uint32_t voiceIndex, uint32_t sa
 
   auto& lfo = pool.lfoModState.contribs;
 
-  float pitchInc1 = interpolatePitchInc(osc1, modMatrix, lfo, ModDest::Osc1Pitch, v, s);
-  float pitchInc2 = interpolatePitchInc(osc2, modMatrix, lfo, ModDest::Osc2Pitch, v, s);
-  float pitchInc3 = interpolatePitchInc(osc3, modMatrix, lfo, ModDest::Osc3Pitch, v, s);
-  float pitchInc4 = interpolatePitchInc(osc4, modMatrix, lfo, ModDest::Osc4Pitch, v, s);
+  float semitoneBend = pool.pitchBend.value * pool.pitchBend.range;
+
+  float pitchInc1 =
+      interpolatePitchInc(osc1, modMatrix, lfo, semitoneBend, ModDest::Osc1Pitch, v, s);
+  float pitchInc2 =
+      interpolatePitchInc(osc2, modMatrix, lfo, semitoneBend, ModDest::Osc2Pitch, v, s);
+  float pitchInc3 =
+      interpolatePitchInc(osc3, modMatrix, lfo, semitoneBend, ModDest::Osc3Pitch, v, s);
+  float pitchInc4 =
+      interpolatePitchInc(osc4, modMatrix, lfo, semitoneBend, ModDest::Osc4Pitch, v, s);
 
   float mip1 = selectMipLevel(pitchInc1 * dsp_wt::TABLE_SIZE_F);
   float mip2 = selectMipLevel(pitchInc2 * dsp_wt::TABLE_SIZE_F);

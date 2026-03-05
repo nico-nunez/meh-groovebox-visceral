@@ -94,6 +94,8 @@ enum ParamID {
   LFO3_AMPLITUDE,
   LFO3_RETRIGGER,
 
+  PITCH_BEND_RANGE,
+
   MASTER_GAIN,
 
   UNKOWN,
@@ -198,6 +200,8 @@ constexpr ParamMapping PARAM_NAMES[] = {
     {LFO3_RATE, "lfo3.rate", ParamValueType::FLOAT},
     {LFO3_AMPLITUDE, "lfo3.amplitude", ParamValueType::FLOAT},
     {LFO3_RETRIGGER, "lfo3.retrigger", ParamValueType::BOOL},
+
+    {PITCH_BEND_RANGE, "pitchBend.range", ParamValueType::FLOAT},
 
     {MASTER_GAIN, "master.gain", ParamValueType::FLOAT},
 

@@ -210,6 +210,10 @@ void initParamRouter(ParamRouter& router, VoicePool& pool) {
   bindLFO(router.paramBindings, LFO2_RATE, pool.lfo2);
   bindLFO(router.paramBindings, LFO3_RATE, pool.lfo3);
 
+  router.paramBindings[PITCH_BEND_RANGE] = makeParamBinding(&pool.pitchBend.range,
+                                                            ranges::pitch::BEND_RANGE_MIN,
+                                                            ranges::pitch::BEND_RANGE_MAX);
+
   router.paramBindings[MASTER_GAIN] = makeParamBinding(&pool.masterGain,
                                                        ranges::global::MASTER_GAIN_MIN,
                                                        ranges::global::MASTER_GAIN_MAX);
@@ -217,7 +221,6 @@ void initParamRouter(ParamRouter& router, VoicePool& pool) {
 }
 
 void handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t value) {
-
   if (cc == 1) {
     // handleModWheel(value);
     return;

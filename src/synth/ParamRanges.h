@@ -94,6 +94,12 @@ float clampResonanceMod(float resonanceMod);
 
 } // namespace mod
 
+namespace pitch {
+inline constexpr float BEND_RANGE_MIN = 0.0f;
+inline constexpr float BEND_RANGE_MAX = 48.0f; // ±4 octaves
+inline constexpr float BEND_RANGE_DEFAULT = 2.0f;
+} // namespace pitch
+
 namespace global {
 inline constexpr float MASTER_GAIN_MIN = 0.0f;
 inline constexpr float MASTER_GAIN_MAX = 2.0f; // 2.0 ≈ +6 dB

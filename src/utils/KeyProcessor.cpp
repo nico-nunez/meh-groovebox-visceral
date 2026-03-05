@@ -107,13 +107,17 @@ hMidiSession initMidiSession(hSynthSession sessionPtr) {
   if (numMidiDevices) {
     // Display MIDI source options
     for (size_t i = 0; i < numMidiDevices; i++) {
-      printf("%ld. %s\n", i, midiSourceBuffer[i].displayName);
+      // Display options as 1 based indexing
+      printf("%ld. %s\n", i + 1, midiSourceBuffer[i].displayName);
     }
 
     uint32_t srcIndex;
     LogF("Enter midi device number: ");
     std::cin >> srcIndex;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    // Adjust for options starting at 1 (not 0)
+    --srcIndex;
 
     if (srcIndex < 0 || srcIndex >= numMidiDevices) {
       printf("Invalid option selected: %d", srcIndex);

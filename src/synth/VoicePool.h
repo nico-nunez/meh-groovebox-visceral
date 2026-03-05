@@ -7,6 +7,7 @@
 #include "Types.h"
 #include "WavetableOsc.h"
 #include "synth/LFO.h"
+#include "synth/ParamRanges.h"
 #include "synth/Saturator.h"
 #include "synth/SignalChain.h"
 
@@ -36,6 +37,11 @@ using signal_chain::SignalProcessor;
 
 using mod_matrix::ModMatrix;
 
+struct PitchBend {
+  float value = 0.0f; // [-1.0, 1.0]
+  float range = param::ranges::pitch::BEND_RANGE_DEFAULT;
+};
+
 struct VoicePoolConfig {
   WavetableOscConfig osc1{};
   WavetableOscConfig osc2{};
@@ -43,6 +49,8 @@ struct VoicePoolConfig {
   WavetableOscConfig osc4{};
 
   NoiseConfig noise{};
+
+  float pitchBendRange = 2.0f;
 
   float masterGain = 1.0f;
   float sampleRate = 48000.0f;
@@ -81,11 +89,13 @@ struct VoicePool {
 
   SignalChain signalChain;
 
-  float masterGain = 1.0f; // range [0.0 - 2.0]
-                           // range [-inf - +6DB]
+  PitchBend pitchBend;
 
   // TODO(nico) add/handle sustained notes
   bool sustainHeld = false;
+
+  float masterGain = 1.0f; // range [0.0 - 2.0]
+                           // range [-inf - +6DB]
 
   // ==== Voice metadata ====
   uint8_t midiNotes[MAX_VOICES];    // Which MIDI note (0-127)
