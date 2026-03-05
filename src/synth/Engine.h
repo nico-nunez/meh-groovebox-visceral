@@ -19,8 +19,8 @@ using voices::VoicePoolConfig;
 
 using dsp::waveforms::WaveformType;
 
-using param::bindings::ParamBinding;
 using param::bindings::ParamID;
+using param::bindings::ParamRouter;
 
 struct EngineConfig : VoicePoolConfig {
   float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
@@ -33,8 +33,7 @@ struct Engine {
 
   VoicePool voicePool;
 
-  ParamID ccTable[128];
-  ParamBinding paramBindings[ParamID::PARAM_COUNT];
+  ParamRouter paramRouter;
 
   // TODO(nico): this probably needs to live on heap
   // since the number of frames won't be known at compile time
@@ -45,10 +44,6 @@ struct Engine {
   void processMIDIEvent(const MIDIEvent& event);
   void processParamEvent(const ParamEvent& event);
   void processAudioBlock(float** outputBuffer, size_t numChannels, size_t numFrames);
-
-  // TODO(nico): this feels like it needs to be refactored along with paramBindings
-  void initMIDIBindings();
-  void handleCC(uint8_t cc, uint8_t value);
 };
 
 Engine createEngine(const EngineConfig& config);

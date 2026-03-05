@@ -263,7 +263,7 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
       return;
     }
 
-    float rawValue = pb::getParamValueByID(engine, param.id);
+    float rawValue = pb::getParamValueByID(engine.paramRouter, param.id);
 
     printf("%s = %.2f\n", paramName.c_str(), rawValue);
 

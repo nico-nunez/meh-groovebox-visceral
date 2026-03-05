@@ -14,55 +14,19 @@ using synth_io::MIDIEvent;
 using synth_io::ParamEvent;
 
 Engine createEngine(const EngineConfig& config) {
+  using param::bindings::initParamRouter;
+  using voices::initVoicePool;
+
   Engine engine{};
-
-  voices::initVoicePool(engine.voicePool, config);
-
-  param::bindings::initParamBindings(engine);
-
-  engine.initMIDIBindings();
+  initVoicePool(engine.voicePool, config);
+  initParamRouter(engine.paramRouter, engine.voicePool);
 
   return engine;
 }
 
 void Engine::processParamEvent(const ParamEvent& event) {
-  param::bindings::setParamValueByID(*this, static_cast<ParamID>(event.id), event.value);
-}
-
-// =============================
-// MIDI Event Handlers
-// =============================
-void Engine::initMIDIBindings() {
-  using param::bindings::ParamID;
-
-  for (auto& cc : ccTable)
-    cc = ParamID::UNKOWN;
-
-  ccTable[7] = ParamID::MASTER_GAIN;
-  ccTable[74] = ParamID::SVF_CUTOFF;
-  ccTable[71] = ParamID::SVF_RESONANCE;
-}
-
-void Engine::handleCC(uint8_t cc, uint8_t value) {
-  using namespace param::bindings;
-
-  if (cc == 1) {
-    // handleModWheel(value);
-    return;
-  }
-  if (cc == 64) {
-    // handleSustain(value);
-    return;
-  }
-
-  ParamID paramID = ccTable[cc];
-  if (paramID == ParamID::UNKOWN)
-    return;
-
-  auto& binding = paramBindings[paramID];
-  float denorm = binding.min + (value / 127.0f) * (binding.max - binding.min);
-
-  setParamValueByID(*this, paramID, denorm);
+  using param::bindings::setParamValueByID;
+  setParamValueByID(paramRouter, voicePool, static_cast<ParamID>(event.id), event.value);
 }
 
 void Engine::processMIDIEvent(const synth_io::MIDIEvent& event) {
@@ -85,7 +49,10 @@ void Engine::processMIDIEvent(const synth_io::MIDIEvent& event) {
     break;
 
   case Type::ControlChange:
-    handleCC(event.data.cc.number, event.data.cc.value);
+    param::bindings::handleMIDICC(paramRouter,
+                                  voicePool,
+                                  event.data.cc.number,
+                                  event.data.cc.value);
     break;
 
   case Type::PitchBend:

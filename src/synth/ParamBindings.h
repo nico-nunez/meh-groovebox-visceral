@@ -1,13 +1,10 @@
 #pragma once
 
 #include "synth/Filters.h"
+#include "synth/VoicePool.h"
 
 #include <cstddef>
 #include <cstdint>
-
-namespace synth {
-struct Engine;
-}
 
 namespace synth::param::bindings {
 using filters::SVFMode;
@@ -212,16 +209,26 @@ inline constexpr ParamMapping PARAM_MAPPING_NOT_FOUND{PARAM_COUNT,
 
 inline constexpr size_t PARAM_NAME_COUNT = sizeof(PARAM_NAMES) / sizeof(PARAM_NAMES[0]);
 
-// ==== API Methods ====
-void initParamBindings(synth::Engine& engine);
+struct ParamRouter {
+  ParamID midiBindings[128];
+  ParamBinding paramBindings[PARAM_COUNT];
+};
 
-float getParamValueByID(const Engine& engine,
+using voices::VoicePool;
+
+// ==== API Methods ====
+void initParamRouter(ParamRouter& router, VoicePool& pool);
+
+void handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t value);
+
+float getParamValueByID(const ParamRouter& router,
                         ParamID id,
                         ParamValueFormat valueFormat = ParamValueFormat::DENORMALIZED);
 
 void printParamList(const char* optionalParam);
 
-void setParamValueByID(Engine& engine,
+void setParamValueByID(ParamRouter& router,
+                       VoicePool& pool,
                        ParamID id,
                        float value,
                        ParamValueFormat valueFormat = ParamValueFormat::DENORMALIZED);

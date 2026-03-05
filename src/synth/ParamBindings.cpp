@@ -1,17 +1,20 @@
 #include "ParamBindings.h"
 
-#include "Engine.h"
 #include "Envelope.h"
 #include "synth/Filters.h"
 #include "synth/LFO.h"
+#include "synth/Noise.h"
 #include "synth/ParamRanges.h"
 #include "synth/Saturator.h"
+#include "synth/VoicePool.h"
+#include "synth/WavetableOsc.h"
 
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 
 namespace synth::param::bindings {
+using voices::VoicePool;
 
 // Anonymous Helpers
 namespace {
@@ -133,35 +136,35 @@ void bindEnvelope(ParamBinding* bindings, ParamID baseId, envelope::Envelope& en
 }
 
 // Handle updates to params with derived values
-void onParamUpdate(Engine& engine, ParamID id) {
+void onParamUpdate(VoicePool& pool, ParamID id) {
   switch (id) {
   // Update Amp Envelope on param changes
   case AMP_ENV_ATTACK:
   case AMP_ENV_DECAY:
   case AMP_ENV_RELEASE:
-    envelope::updateIncrements(engine.voicePool.ampEnv, engine.sampleRate);
+    envelope::updateIncrements(pool.ampEnv, pool.sampleRate);
     break;
 
   // Update Filter Envelope on param changes
   case FILTER_ENV_ATTACK:
   case FILTER_ENV_DECAY:
   case FILTER_ENV_RELEASE:
-    envelope::updateIncrements(engine.voicePool.filterEnv, engine.sampleRate);
+    envelope::updateIncrements(pool.filterEnv, pool.sampleRate);
     break;
 
   // Update Filter Coefficient(s) on param changes
   case SVF_CUTOFF:
   case SVF_RESONANCE:
-    filters::updateSVFCoefficients(engine.voicePool.svf, engine.voicePool.invSampleRate);
+    filters::updateSVFCoefficients(pool.svf, pool.invSampleRate);
     break;
 
   case LADDER_CUTOFF:
   case LADDER_RESONANCE:
-    filters::updateLadderCoefficient(engine.voicePool.ladder, engine.voicePool.invSampleRate);
+    filters::updateLadderCoefficient(pool.ladder, pool.invSampleRate);
     break;
 
   case SATURATOR_DRIVE:
-    engine.voicePool.saturator.invDrive = saturator::calcInvDrive(engine.voicePool.saturator.drive);
+    pool.saturator.invDrive = saturator::calcInvDrive(pool.saturator.drive);
     break;
 
     // No special handling needed for other params like
@@ -171,35 +174,67 @@ void onParamUpdate(Engine& engine, ParamID id) {
   }
 }
 
+void initMIDIBindings(ParamRouter& router) {
+  for (auto& cc : router.midiBindings)
+    cc = ParamID::UNKOWN;
+
+  router.midiBindings[7] = ParamID::MASTER_GAIN;
+  router.midiBindings[74] = ParamID::SVF_CUTOFF;
+  router.midiBindings[71] = ParamID::SVF_RESONANCE;
+}
+
 } // namespace
 
 // ==== APIs ====
-void initParamBindings(Engine& engine) {
+
+void initParamRouter(ParamRouter& router, VoicePool& pool) {
   // IMPORTANT: ParamID enum layouts must match!
 
-  bindOscillator(engine.paramBindings, OSC1_MIX_LEVEL, engine.voicePool.osc1);
-  bindOscillator(engine.paramBindings, OSC2_MIX_LEVEL, engine.voicePool.osc2);
-  bindOscillator(engine.paramBindings, OSC3_MIX_LEVEL, engine.voicePool.osc3);
-  bindOscillator(engine.paramBindings, OSC4_MIX_LEVEL, engine.voicePool.osc4);
+  bindOscillator(router.paramBindings, OSC1_MIX_LEVEL, pool.osc1);
+  bindOscillator(router.paramBindings, OSC2_MIX_LEVEL, pool.osc2);
+  bindOscillator(router.paramBindings, OSC3_MIX_LEVEL, pool.osc3);
+  bindOscillator(router.paramBindings, OSC4_MIX_LEVEL, pool.osc4);
 
-  bindNoise(engine.paramBindings, NOISE_MIX_LEVEL, engine.voicePool.noise);
+  bindNoise(router.paramBindings, NOISE_MIX_LEVEL, pool.noise);
 
-  bindEnvelope(engine.paramBindings, AMP_ENV_ATTACK, engine.voicePool.ampEnv);
-  bindEnvelope(engine.paramBindings, FILTER_ENV_ATTACK, engine.voicePool.filterEnv);
-  bindEnvelope(engine.paramBindings, MOD_ENV_ATTACK, engine.voicePool.modEnv);
+  bindEnvelope(router.paramBindings, AMP_ENV_ATTACK, pool.ampEnv);
+  bindEnvelope(router.paramBindings, FILTER_ENV_ATTACK, pool.filterEnv);
+  bindEnvelope(router.paramBindings, MOD_ENV_ATTACK, pool.modEnv);
 
-  bindSVFilter(engine.paramBindings, SVF_MODE, engine.voicePool.svf);
-  bindLadderFilter(engine.paramBindings, LADDER_CUTOFF, engine.voicePool.ladder);
+  bindSVFilter(router.paramBindings, SVF_MODE, pool.svf);
+  bindLadderFilter(router.paramBindings, LADDER_CUTOFF, pool.ladder);
 
-  bindSaturator(engine.paramBindings, SATURATOR_DRIVE, engine.voicePool.saturator);
+  bindSaturator(router.paramBindings, SATURATOR_DRIVE, pool.saturator);
 
-  bindLFO(engine.paramBindings, LFO1_RATE, engine.voicePool.lfo1);
-  bindLFO(engine.paramBindings, LFO2_RATE, engine.voicePool.lfo2);
-  bindLFO(engine.paramBindings, LFO3_RATE, engine.voicePool.lfo3);
+  bindLFO(router.paramBindings, LFO1_RATE, pool.lfo1);
+  bindLFO(router.paramBindings, LFO2_RATE, pool.lfo2);
+  bindLFO(router.paramBindings, LFO3_RATE, pool.lfo3);
 
-  engine.paramBindings[MASTER_GAIN] = makeParamBinding(&engine.voicePool.masterGain,
+  router.paramBindings[MASTER_GAIN] = makeParamBinding(&pool.masterGain,
                                                        ranges::global::MASTER_GAIN_MIN,
                                                        ranges::global::MASTER_GAIN_MAX);
+  initMIDIBindings(router);
+}
+
+void handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t value) {
+
+  if (cc == 1) {
+    // handleModWheel(value);
+    return;
+  }
+  if (cc == 64) {
+    // handleSustain(value);
+    return;
+  }
+
+  ParamID paramID = router.midiBindings[cc];
+  if (paramID == ParamID::UNKOWN)
+    return;
+
+  auto& binding = router.paramBindings[paramID];
+  float denorm = binding.min + (value / 127.0f) * (binding.max - binding.min);
+
+  setParamValueByID(router, pool, paramID, denorm);
 }
 
 // ========================
@@ -208,12 +243,12 @@ void initParamBindings(Engine& engine) {
 
 // Get param value by ID (normalized value)
 // Retreives current denormalized and returns normalized value
-float getParamValueByID(const Engine& engine, ParamID id, ParamValueFormat valueFormat) {
+float getParamValueByID(const ParamRouter& router, ParamID id, ParamValueFormat valueFormat) {
   if (id < 0 || id >= PARAM_COUNT) {
     return 0.0f;
   }
 
-  const ParamBinding& binding = engine.paramBindings[id];
+  const ParamBinding& binding = router.paramBindings[id];
   float value = 0.0f;
 
   // Read the current value based on type
@@ -248,12 +283,16 @@ float getParamValueByID(const Engine& engine, ParamID id, ParamValueFormat value
 
 // Set param value by ID
 // Expects normalized values, denormalizes, and updates value
-void setParamValueByID(Engine& engine, ParamID id, float value, ParamValueFormat valueFormat) {
+void setParamValueByID(ParamRouter& router,
+                       VoicePool& pool,
+                       ParamID id,
+                       float value,
+                       ParamValueFormat valueFormat) {
   if (id < 0 || id >= PARAM_COUNT) {
     return;
   }
 
-  ParamBinding& binding = engine.paramBindings[id];
+  ParamBinding& binding = router.paramBindings[id];
 
   // Denormalize
   if (valueFormat == ParamValueFormat::NORMALIZED) {
@@ -284,7 +323,7 @@ void setParamValueByID(Engine& engine, ParamID id, float value, ParamValueFormat
   }
 
   // Handle post-update logic for params with derived values (i.e. Envelopes)
-  onParamUpdate(engine, id);
+  onParamUpdate(pool, id);
 }
 
 // String → ParamID (for parsing 'set' commands)
@@ -341,5 +380,4 @@ SVFMode getSVFModeType(const char* inputValue) {
   // default to Sine
   return filters::SVFMode::LP;
 };
-
 } // namespace synth::param::bindings
