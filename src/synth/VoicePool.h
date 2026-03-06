@@ -42,6 +42,11 @@ struct PitchBend {
   float range = param::ranges::pitch::BEND_RANGE_DEFAULT;
 };
 
+struct Sustain {
+  bool held = false;
+  bool notes[MAX_VOICES]{};
+};
+
 struct VoicePoolConfig {
   WavetableOscConfig osc1{};
   WavetableOscConfig osc2{};
@@ -91,9 +96,9 @@ struct VoicePool {
 
   PitchBend pitchBend;
 
-  float modWheelValue = 0.0f; // [0.0, 1.0]
+  Sustain sustain;
 
-  bool sustainHeld = false;
+  float modWheelValue = 0.0f; // [0.0, 1.0]
 
   float masterGain = 1.0f; // range [0.0 - 2.0]
                            // range [-inf - +6DB]

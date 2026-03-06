@@ -62,6 +62,9 @@ void initVoicePool(VoicePool& pool, const VoicePoolConfig& config) {
 
   updateVoicePoolConfig(pool, config);
 
+  for (uint8_t i = 0; i < MAX_VOICES; i++)
+    pool.sustain.notes[i] = false;
+
   // TODO(nico-nunez): find a better way!!!
   pool.osc1.bank = getBankByID(BankID::Saw);
   pool.osc1.detuneAmount = 10.0f;
@@ -227,13 +230,11 @@ void handleNoteOn(VoicePool& pool,
 }
 
 void handleNoteOff(VoicePool& pool, uint8_t midiNote) {
-  // TODO(nico)--need to add sustain handling first
-  // always false for now
-  if (pool.sustainHeld) {
-    for (uint32_t i = 0; i < MAX_VOICES; i++) {
-      if (pool.isActive[i] && pool.midiNotes[i] == midiNote) {
-        // pool.sustainedNotes[i] = true;
-      }
+  if (pool.sustain.held) {
+    for (uint32_t i = 0; i < pool.activeCount; i++) {
+      uint32_t v = pool.activeIndices[i]; // voiceIndex
+      if (pool.midiNotes[v] == midiNote)
+        pool.sustain.notes[v] = true;
     }
   } else {
     releaseVoice(pool, midiNote);

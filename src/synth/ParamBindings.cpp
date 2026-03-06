@@ -226,7 +226,20 @@ void handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t valu
     return;
   }
   if (cc == 64) {
-    // handleSustain(value);
+    bool wasHeld = pool.sustain.held;
+    pool.sustain.held = (value >= 64);
+
+    if (wasHeld && !pool.sustain.held) {
+      // Pedal released — trigger release on all deferred voices
+      for (uint32_t i = 0; i < MAX_VOICES; ++i) {
+        if (pool.sustain.notes[i]) {
+          pool.sustain.notes[i] = false;
+          envelope::triggerRelease(pool.ampEnv, i);
+          envelope::triggerRelease(pool.filterEnv, i);
+          envelope::triggerRelease(pool.modEnv, i);
+        }
+      }
+    }
     return;
   }
 
