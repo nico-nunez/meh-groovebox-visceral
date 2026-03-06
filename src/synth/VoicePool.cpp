@@ -170,6 +170,7 @@ void initializeVoice(VoicePool& pool,
                      float sampleRate) {
 
   pool.isActive[voiceIndex] = 1;
+  pool.sustain.notes[voiceIndex] = false;
   pool.midiNotes[voiceIndex] = midiNote;
   pool.noteOnTimes[voiceIndex] = noteOnTime;
   pool.velocities[voiceIndex] = velocity / 127.0f;
