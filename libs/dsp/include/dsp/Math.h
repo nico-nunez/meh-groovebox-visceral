@@ -41,4 +41,6 @@ float randNoiseValue();
 float expCurve(float t, float k);
 float expCurve(float t, float k, float invK);
 
+float calcPortamento(float t, float sampleRate);
+
 } // namespace dsp::math

@@ -110,6 +110,10 @@ enum ParamID {
   MONO_ENABLED,
   MONO_LEGATO,
 
+  PORTA_TIME,
+  PORTA_LEGATO,
+  PORTA_ENABLED,
+
   UNKOWN,
   PARAM_COUNT,
 };
@@ -228,6 +232,10 @@ constexpr ParamMapping PARAM_NAMES[] = {
 
     {MONO_ENABLED, "mono.enabled", ParamValueType::BOOL},
     {MONO_LEGATO, "mono.legato", ParamValueType::BOOL},
+
+    {PORTA_TIME, "porta.time", ParamValueType::FLOAT},
+    {PORTA_LEGATO, "porta.legato", ParamValueType::BOOL},
+    {PORTA_ENABLED, "porta.enabled", ParamValueType::BOOL},
 
 };
 

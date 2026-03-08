@@ -1,6 +1,7 @@
 #include "dsp/Math.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 
@@ -83,6 +84,14 @@ float expCurve(float t, float k) {
 
 float expCurve(float t, float k, float invDenom) {
   return (std::exp(t * k) - 1.0f) * invDenom; // [0.0, 1.0]
+}
+
+float calcPortamento(float t, float sampleRate) {
+  if (t <= 0.0f || sampleRate == 0)
+    return 0.0f;
+
+  t = t / 1000.0f;
+  return expf(-1.0f / (t * sampleRate));
 }
 
 } // namespace dsp::math

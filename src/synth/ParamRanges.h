@@ -104,6 +104,11 @@ inline constexpr float BEND_RANGE_MAX = 48.0f; // ±4 octaves
 inline constexpr float BEND_RANGE_DEFAULT = 2.0f;
 } // namespace pitch
 
+namespace porta {
+inline constexpr float TIME_MIN = 0.0f;
+inline constexpr float TIME_MAX = 5000.0f; // ms
+} // namespace porta
+
 namespace global {
 inline constexpr float MASTER_GAIN_MIN = 0.0f;
 inline constexpr float MASTER_GAIN_MAX = 2.0f; // 2.0 ≈ +6 dB

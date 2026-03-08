@@ -45,6 +45,17 @@ struct PitchBend {
   float range = param::ranges::pitch::BEND_RANGE_DEFAULT;
 };
 
+struct Portamento {
+  float time = 50.0f;
+  float coeff = 0.0f;
+  bool legato = true;
+  uint8_t lastNote = 0; // MIDI note
+
+  float offsets[MAX_VOICES]{};
+
+  bool enabled = false;
+};
+
 struct Sustain {
   bool held = false;
   bool notes[MAX_VOICES]{};
@@ -101,6 +112,8 @@ struct VoicePool {
 
   PitchBend pitchBend;
 
+  Portamento porta; // portamento
+
   Sustain sustain;
 
   float modWheelValue = 0.0f; // [0.0, 1.0]
@@ -108,7 +121,6 @@ struct VoicePool {
   float masterGain = 1.0f; // range [0.0 - 2.0]
                            // range [-inf - +6DB]
 
-  float lastNoteFreq = 0; // mono & portamento
   MonoState mono;
 
   // ==== Voice metadata ====

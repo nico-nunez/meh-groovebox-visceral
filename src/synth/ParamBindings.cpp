@@ -1,6 +1,7 @@
 #include "ParamBindings.h"
 
 #include "Envelope.h"
+#include "dsp/Math.h"
 #include "synth/Filters.h"
 #include "synth/LFO.h"
 #include "synth/MonoMode.h"
@@ -145,6 +146,14 @@ void bindMono(ParamBinding* bindings, mono::MonoState& mono) {
   bindings[MONO_LEGATO] = makeParamBinding(&mono.legato);
 }
 
+// Portamento Bindings
+void bindPorta(ParamBinding* bindings, voices::Portamento& porta) {
+  bindings[PORTA_TIME] =
+      makeParamBinding(&porta.time, ranges::porta::TIME_MIN, ranges::porta::TIME_MAX);
+  bindings[PORTA_LEGATO] = makeParamBinding(&porta.legato);
+  bindings[PORTA_ENABLED] = makeParamBinding(&porta.enabled);
+}
+
 // Handle updates to params with derived values
 void onParamUpdate(VoicePool& pool, ParamID id) {
   switch (id) {
@@ -215,6 +224,11 @@ void onParamUpdate(VoicePool& pool, ParamID id) {
     }
     break;
 
+  case PORTA_TIME: {
+    pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, pool.sampleRate);
+    break;
+  }
+
     // No special handling needed for other params like
     // Oscillator pitch params - no active voice updates (avoid clicks)
   default:
@@ -266,6 +280,7 @@ void initParamRouter(ParamRouter& router, VoicePool& pool) {
                                                        ranges::global::MASTER_GAIN_MIN,
                                                        ranges::global::MASTER_GAIN_MAX);
   bindMono(router.paramBindings, pool.mono);
+  bindPorta(router.paramBindings, pool.porta);
 
   initMIDIBindings(router);
 }
@@ -282,18 +297,25 @@ void handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t valu
     if (wasHeld && !pool.sustain.held) {
       // Mono: handle the one voice directly
       if (pool.mono.enabled) {
-        uint32_t mv = pool.mono.voiceIndex;
+        uint32_t v = pool.mono.voiceIndex;
 
-        if (mv < MAX_VOICES && pool.sustain.notes[mv]) {
-          pool.sustain.notes[mv] = false;
+        if (v < MAX_VOICES && pool.sustain.notes[v]) {
+          pool.sustain.notes[v] = false;
 
           if (pool.mono.stackDepth > 0) {
             uint8_t prevNote = pool.mono.noteStack[pool.mono.stackDepth - 1];
-            voices::redirectVoicePitch(pool, mv, prevNote, pool.sampleRate);
+
+            if (pool.porta.enabled) {
+              pool.porta.offsets[v] =
+                  static_cast<float>(pool.midiNotes[v]) - static_cast<float>(prevNote);
+              pool.porta.lastNote = prevNote;
+            }
+
+            voices::redirectVoicePitch(pool, v, prevNote, pool.sampleRate);
           } else {
-            envelope::triggerRelease(pool.ampEnv, mv);
-            envelope::triggerRelease(pool.filterEnv, mv);
-            envelope::triggerRelease(pool.modEnv, mv);
+            envelope::triggerRelease(pool.ampEnv, v);
+            envelope::triggerRelease(pool.filterEnv, v);
+            envelope::triggerRelease(pool.modEnv, v);
           }
         }
         return;

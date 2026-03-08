@@ -9,8 +9,6 @@
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
-#include "utils/Utils.h"
-
 #include "dsp/Filters.h"
 #include "dsp/Math.h"
 #include "dsp/Wavetable.h"
@@ -77,6 +75,8 @@ void initVoicePool(VoicePool& pool, const VoicePoolConfig& config) {
   // Initialize sustaion
   for (uint8_t i = 0; i < MAX_VOICES; i++)
     pool.sustain.notes[i] = false;
+
+  pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, config.sampleRate);
 
   // TODO(nico-nunez): find a better way!!!
   pool.osc1.bank = getBankByID(BankID::Saw);
@@ -172,6 +172,18 @@ uint32_t findVoiceRelease(VoicePool& pool, uint8_t midiNote) {
   return MAX_VOICES;
 }
 
+// Compute portamento offset in semitones from lastNote to midiNote
+float calcPortaOffset(VoicePool& pool, uint8_t midiNote) {
+  bool legatoActive = pool.porta.legato && pool.activeCount > 0;
+  bool alwaysActive = !pool.porta.legato;
+  bool doPorta = pool.porta.enabled && (legatoActive || alwaysActive) && (pool.porta.lastNote > 0);
+
+  if (doPorta) {
+    return static_cast<float>(pool.porta.lastNote) - static_cast<float>(midiNote);
+  }
+  return 0.0f;
+}
+
 } // namespace
 // ==== </Initialization Helpers> ====
 
@@ -248,6 +260,12 @@ void releaseVoice(VoicePool& pool, uint8_t midiNote) {
   // Mono: revert to previous held note instead of releasing
   if (pool.mono.enabled && pool.mono.stackDepth > 0) {
     uint8_t prevNote = pool.mono.noteStack[pool.mono.stackDepth - 1];
+
+    if (pool.porta.enabled) {
+      pool.porta.offsets[voiceIndex] = static_cast<float>(midiNote) - static_cast<float>(prevNote);
+      pool.porta.lastNote = prevNote;
+    }
+
     redirectVoicePitch(pool, voiceIndex, prevNote, pool.sampleRate);
     return; // don't release envs below
   }
@@ -265,7 +283,8 @@ void handleNoteOn(VoicePool& pool,
                   uint8_t velocity,
                   uint32_t noteOnTime,
                   float sampleRate) {
-  float noteFreq = utils::midiToFrequency(midiNote);
+  // Handle portamento
+  float portaOffset = calcPortaOffset(pool, midiNote);
 
   // ==== Mono Path(s) ====
   if (pool.mono.enabled) {
@@ -275,6 +294,7 @@ void handleNoteOn(VoicePool& pool,
     // Handle existing note(s) being held/active
     if (pool.mono.voiceIndex < MAX_VOICES) {
       uint32_t current = pool.mono.voiceIndex;
+      pool.porta.offsets[current] = portaOffset;
 
       bool isPlaying = pool.ampEnv.states[current] != envelope::EnvelopeStatus::Release &&
                        pool.ampEnv.states[current] != envelope::EnvelopeStatus::Idle;
@@ -282,7 +302,7 @@ void handleNoteOn(VoicePool& pool,
       // Path 2: Legato (adjust pitch/redirect)
       if (pool.mono.legato && isPlaying) {
         redirectVoicePitch(pool, current, midiNote, sampleRate);
-        pool.lastNoteFreq = noteFreq;
+        pool.porta.lastNote = midiNote;
         return;
       }
       // Path 3: No legato or note is releasing/idle (full retrigger)
@@ -290,7 +310,7 @@ void handleNoteOn(VoicePool& pool,
         addActiveIndex(pool, current);
 
       initVoice(pool, current, midiNote, velocity, noteOnTime, true, sampleRate);
-      pool.lastNoteFreq = noteFreq;
+      pool.porta.lastNote = midiNote;
       return;
     }
     // Path 1: initial/no existing notes (proceed as normal)
@@ -301,12 +321,12 @@ void handleNoteOn(VoicePool& pool,
   uint32_t voiceIndex = allocateVoiceIndex(pool, isStolen);
 
   initVoice(pool, voiceIndex, midiNote, velocity, noteOnTime, isStolen, sampleRate);
+  pool.porta.offsets[voiceIndex] = portaOffset;
 
   if (pool.mono.enabled)
     pool.mono.voiceIndex = voiceIndex;
 
-  // TODO(nico): portamento
-  pool.lastNoteFreq = noteFreq;
+  pool.porta.lastNote = midiNote;
 
   if (pool.activeCount == 0) {
     if (pool.lfo1.retrigger)
@@ -466,6 +486,7 @@ void processLFOs(VoicePool& pool) {
 float interpolatePitchInc(const WavetableOsc& osc,
                           const ModMatrix& matrix,
                           const float* lfoContribs,
+                          const float* portaOffsets,
                           float semitoneBend,
                           ModDest dest,
                           uint32_t voiceIndex,
@@ -475,7 +496,7 @@ float interpolatePitchInc(const WavetableOsc& osc,
 
   float pitchMod = matrix.prevDestValues[dest][v] +
                    (matrix.destStepValues[dest][v] * static_cast<float>(s)) + lfoContribs[dest] +
-                   semitoneBend;
+                   semitoneBend + portaOffsets[v];
 
   // Calculate and return modulated phase increment
   return osc.phaseIncrements[v] * dsp::math::semitonesToFreqRatio(pitchMod);
@@ -503,16 +524,45 @@ float processAndMixOscillators(VoicePool& pool, uint32_t voiceIndex, uint32_t sa
 
   auto& lfo = pool.lfoModState.contribs;
 
+  auto& portaOffsets = pool.porta.offsets;
+
   float semitoneBend = pool.pitchBend.value * pool.pitchBend.range;
 
-  float pitchInc1 =
-      interpolatePitchInc(osc1, modMatrix, lfo, semitoneBend, ModDest::Osc1Pitch, v, s);
-  float pitchInc2 =
-      interpolatePitchInc(osc2, modMatrix, lfo, semitoneBend, ModDest::Osc2Pitch, v, s);
-  float pitchInc3 =
-      interpolatePitchInc(osc3, modMatrix, lfo, semitoneBend, ModDest::Osc3Pitch, v, s);
-  float pitchInc4 =
-      interpolatePitchInc(osc4, modMatrix, lfo, semitoneBend, ModDest::Osc4Pitch, v, s);
+  float pitchInc1 = interpolatePitchInc(osc1,
+                                        modMatrix,
+                                        lfo,
+                                        portaOffsets,
+                                        semitoneBend,
+                                        ModDest::Osc1Pitch,
+                                        v,
+                                        s);
+
+  float pitchInc2 = interpolatePitchInc(osc2,
+                                        modMatrix,
+                                        lfo,
+                                        portaOffsets,
+                                        semitoneBend,
+                                        ModDest::Osc2Pitch,
+                                        v,
+                                        s);
+
+  float pitchInc3 = interpolatePitchInc(osc3,
+                                        modMatrix,
+                                        lfo,
+                                        portaOffsets,
+                                        semitoneBend,
+                                        ModDest::Osc3Pitch,
+                                        v,
+                                        s);
+
+  float pitchInc4 = interpolatePitchInc(osc4,
+                                        modMatrix,
+                                        lfo,
+                                        portaOffsets,
+                                        semitoneBend,
+                                        ModDest::Osc4Pitch,
+                                        v,
+                                        s);
 
   float mip1 = selectMipLevel(pitchInc1 * dsp_wt::TABLE_SIZE_F);
   float mip2 = selectMipLevel(pitchInc2 * dsp_wt::TABLE_SIZE_F);
@@ -673,6 +723,12 @@ void processVoices(VoicePool& pool, float* output, size_t numSamples) {
     // that have/will become Idle/inactive after processing
     for (uint32_t i = pool.activeCount; i > 0; i--) {
       uint32_t vIndex = pool.activeIndices[i - 1];
+
+      if (pool.porta.coeff > 0.0f && pool.porta.offsets[vIndex] != 0.0f) {
+        pool.porta.offsets[vIndex] *= pool.porta.coeff;
+        if (fabsf(pool.porta.offsets[vIndex]) < 0.01f)
+          pool.porta.offsets[vIndex] = 0.0f;
+      }
 
       float mixedOscs = processAndMixOscillators(pool, vIndex, sIndex);
 
