@@ -16,6 +16,7 @@ enum ParamID {
   OSC1_OCTAVE_OFFSET,
   OSC1_SCAN_POS,
   OSC1_FM_DEPTH,
+  OSC1_FM_RATIO,
   OSC1_ENABLED,
 
   // Oscillator 2
@@ -24,6 +25,7 @@ enum ParamID {
   OSC2_OCTAVE_OFFSET,
   OSC2_SCAN_POS,
   OSC2_FM_DEPTH,
+  OSC2_FM_RATIO,
   OSC2_ENABLED,
 
   // Oscillator 3
@@ -32,6 +34,7 @@ enum ParamID {
   OSC3_OCTAVE_OFFSET,
   OSC3_SCAN_POS,
   OSC3_FM_DEPTH,
+  OSC3_FM_RATIO,
   OSC3_ENABLED,
 
   // Oscillator 4
@@ -40,6 +43,7 @@ enum ParamID {
   OSC4_OCTAVE_OFFSET,
   OSC4_SCAN_POS,
   OSC4_FM_DEPTH,
+  OSC4_FM_RATIO,
   OSC4_ENABLED,
 
   // Noise Oscillator
@@ -150,6 +154,7 @@ constexpr ParamMapping PARAM_NAMES[] = {
     {OSC1_OCTAVE_OFFSET, "osc1.octave", ParamValueType::INT8},
     {OSC1_SCAN_POS, "osc1.scanPos", ParamValueType::FLOAT},
     {OSC1_FM_DEPTH, "osc1.fmDepth", ParamValueType::FLOAT},
+    {OSC1_FM_RATIO, "osc1.fmRatio", ParamValueType::FLOAT},
     {OSC1_ENABLED, "osc1.enabled", ParamValueType::BOOL},
 
     {OSC2_MIX_LEVEL, "osc2.mixLevel", ParamValueType::FLOAT},
@@ -157,6 +162,7 @@ constexpr ParamMapping PARAM_NAMES[] = {
     {OSC2_OCTAVE_OFFSET, "osc2.octave", ParamValueType::INT8},
     {OSC2_SCAN_POS, "osc2.scanPos", ParamValueType::FLOAT},
     {OSC2_FM_DEPTH, "osc2.fmDepth", ParamValueType::FLOAT},
+    {OSC2_FM_RATIO, "osc2.fmRatio", ParamValueType::FLOAT},
     {OSC2_ENABLED, "osc2.enabled", ParamValueType::BOOL},
 
     {OSC3_MIX_LEVEL, "osc3.mixLevel", ParamValueType::FLOAT},
@@ -164,6 +170,7 @@ constexpr ParamMapping PARAM_NAMES[] = {
     {OSC3_OCTAVE_OFFSET, "osc3.octave", ParamValueType::INT8},
     {OSC3_SCAN_POS, "osc3.scanPos", ParamValueType::FLOAT},
     {OSC3_FM_DEPTH, "osc3.fmDepth", ParamValueType::FLOAT},
+    {OSC3_FM_RATIO, "osc3.fmRatio", ParamValueType::FLOAT},
     {OSC3_ENABLED, "osc3.enabled", ParamValueType::BOOL},
 
     {OSC4_MIX_LEVEL, "osc4.mixLevel", ParamValueType::FLOAT},
@@ -171,6 +178,7 @@ constexpr ParamMapping PARAM_NAMES[] = {
     {OSC4_OCTAVE_OFFSET, "osc4.octave", ParamValueType::INT8},
     {OSC4_SCAN_POS, "osc4.scanPos", ParamValueType::FLOAT},
     {OSC4_FM_DEPTH, "osc4.fmDepth", ParamValueType::FLOAT},
+    {OSC4_FM_RATIO, "osc4.fmRatio", ParamValueType::FLOAT},
     {OSC4_ENABLED, "osc4.enabled", ParamValueType::BOOL},
 
     {NOISE_MIX_LEVEL, "noise.mixLevel", ParamValueType::FLOAT},

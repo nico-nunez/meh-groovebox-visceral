@@ -24,6 +24,7 @@ struct WavetableOscConfig {
   float scanPos = 0.0f;
   float mixLevel = 1.0f;
   float fmDepth = 0.0f;
+  float fmRatio = 1.0f;
   FMSource fmSource = FMSource::None;
   int8_t octaveOffset = 0;
   float detuneAmount = 0.0f;
@@ -40,6 +41,7 @@ struct WavetableOsc {
   float scanPos = 0.0f;
   float mixLevel = 1.0f;
   float fmDepth = 0.0f;
+  float fmRatio = 1.0f;
   FMSource fmSource = FMSource::None;
   int8_t octaveOffset = 0;
   float detuneAmount = 0.0f;

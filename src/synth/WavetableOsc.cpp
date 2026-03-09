@@ -35,6 +35,7 @@ void updateConfig(WavetableOsc& osc, const WavetableOscConfig& config) {
   osc.scanPos = config.scanPos;
   osc.mixLevel = config.mixLevel;
   osc.fmDepth = config.fmDepth;
+  osc.fmRatio = config.fmRatio;
   osc.fmSource = config.fmSource;
   osc.octaveOffset = config.octaveOffset;
   osc.detuneAmount = config.detuneAmount;

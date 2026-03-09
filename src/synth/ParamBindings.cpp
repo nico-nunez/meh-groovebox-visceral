@@ -69,7 +69,9 @@ void bindOscillator(ParamBinding* bindings, ParamID baseId, wavetable::osc::Wave
       makeParamBinding(&osc.scanPos, ranges::osc::SCAN_POS_MIN, ranges::osc::SCAN_POS_MAX);
   bindings[baseId + 4] =
       makeParamBinding(&osc.fmDepth, ranges::osc::FM_DEPTH_MIN, ranges::osc::FM_DEPTH_MAX);
-  bindings[baseId + 5] = makeParamBinding(&osc.enabled);
+  bindings[baseId + 5] =
+      makeParamBinding(&osc.fmRatio, ranges::osc::FM_RATIO_MIN, ranges::osc::FM_RATIO_MAX);
+  bindings[baseId + 6] = makeParamBinding(&osc.enabled);
 }
 
 // Noise Oscillator Binding
@@ -157,6 +159,17 @@ void bindPorta(ParamBinding* bindings, voices::Portamento& porta) {
 // Handle updates to params with derived values
 void onParamUpdate(VoicePool& pool, ParamID id) {
   switch (id) {
+  case OSC1_ENABLED:
+  case OSC2_ENABLED:
+  case OSC3_ENABLED:
+  case OSC4_ENABLED:
+  case NOISE_ENABLED: {
+    int enabledCount = pool.osc1.enabled + pool.osc2.enabled + pool.osc3.enabled +
+                       pool.osc4.enabled + pool.noise.enabled;
+    pool.oscMixGain = (enabledCount > 0) ? 1.0f / static_cast<float>(enabledCount) : 1.0f;
+    break;
+  }
+
   case AMP_ENV_ATTACK:
   case AMP_ENV_DECAY:
   case AMP_ENV_RELEASE:

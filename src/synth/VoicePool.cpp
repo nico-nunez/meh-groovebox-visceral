@@ -512,7 +512,7 @@ float interpolatePitchInc(const WavetableOsc& osc,
                    semitoneBend + portaOffsets[v];
 
   // Calculate and return modulated phase increment
-  return osc.phaseIncrements[v] * dsp::math::semitonesToFreqRatio(pitchMod);
+  return osc.phaseIncrements[v] * dsp::math::semitonesToFreqRatio(pitchMod) * osc.fmRatio;
 }
 
 // TODO(nico): refactor this!!!

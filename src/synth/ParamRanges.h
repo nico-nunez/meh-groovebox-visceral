@@ -14,13 +14,17 @@ inline constexpr int8_t OCTAVE_MIN = -2;
 inline constexpr int8_t OCTAVE_MAX = 2;
 inline constexpr float FM_DEPTH_MIN = 0.0f;
 inline constexpr float FM_DEPTH_MAX = 5.0f;
+inline constexpr float FM_RATIO_MIN = 0.5f;
+inline constexpr float FM_RATIO_MAX = 16.0f;
 inline constexpr float SCAN_POS_MIN = 0.0f;
 inline constexpr float SCAN_POS_MAX = 1.0f;
 
-float clampScanPos(float scanPos);
 float clampMixLevel(float mixLevel);
 float clampDetune(float detuneAmount);
 float clampOctave(int8_t octaveOffset);
+float clampFMDepth(float fmDepth);
+float clampFMRatio(float fmRatio);
+float clampScanPos(float scanPos);
 
 namespace noise {
 inline constexpr float MIX_LEVEL_MIN = 0.0f;

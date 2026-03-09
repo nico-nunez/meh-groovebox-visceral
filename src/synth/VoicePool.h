@@ -89,6 +89,10 @@ struct VoicePool {
   WavetableOsc osc3;
   WavetableOsc osc4;
 
+  // TODO(nico): this needs to be tide to number of active oscs
+  // Reduce gain for multiple oscillators
+  float oscMixGain = 1.0f / 4.0;
+
   Noise noise;
 
   // Stereo
@@ -100,10 +104,6 @@ struct VoicePool {
   LFO lfo3;
 
   LFOModState lfoModState;
-
-  // Reduce gain for multiple oscillators
-  // TODO(nico): this needs to be tide to number of active oscs
-  float oscMixGain = 1.0f / 4.0;
 
   ModMatrix modMatrix;
 

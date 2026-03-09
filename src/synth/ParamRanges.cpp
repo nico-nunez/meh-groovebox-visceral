@@ -19,6 +19,13 @@ float clampOctave(int8_t octaveOffset) {
   return std::clamp(octaveOffset, OCTAVE_MIN, OCTAVE_MAX);
 }
 
+float clampFMDepth(float fmDepth) {
+  return std::clamp(fmDepth, FM_DEPTH_MIN, FM_DEPTH_MAX);
+}
+float clampFMRatio(float fmRatio) {
+  return std::clamp(fmRatio, FM_RATIO_MIN, FM_RATIO_MAX);
+}
+
 namespace noise {
 float clampMixLevel(float mixLevel) {
   return std::clamp(mixLevel, MIX_LEVEL_MIN, MIX_LEVEL_MAX);
