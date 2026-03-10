@@ -283,7 +283,6 @@ void releaseVoice(VoicePool& pool, uint8_t midiNote) {
     uint8_t prevNote = pool.mono.noteStack[pool.mono.stackDepth - 1];
 
     if (pool.porta.enabled) {
-      pool.porta.offsets[voiceIndex] = static_cast<float>(midiNote) - static_cast<float>(prevNote);
       pool.porta.lastNote = prevNote;
     }
 
