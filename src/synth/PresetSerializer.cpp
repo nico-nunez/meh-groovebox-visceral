@@ -612,6 +612,13 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
         r.source = route["source"].asString();
         r.destination = route["destination"].asString();
         r.amount = route["amount"].asFloat();
+        // Conservative global clamp — tightest per-dest clamping happens in PresetApply
+        constexpr float MOD_AMOUNT_ABS_MAX = 24.0f; // pitch mod is the widest range
+        r.amount = clampWarn(r.amount,
+                             -MOD_AMOUNT_ABS_MAX,
+                             MOD_AMOUNT_ABS_MAX,
+                             ("modMatrix[" + std::to_string(i) + "].amount").c_str(),
+                             result.warnings);
 
         // Validate source — use the mapping tables from ModMatrix.h
         bool validSrc = false;

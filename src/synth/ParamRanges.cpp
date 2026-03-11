@@ -35,6 +35,15 @@ float clampMixLevel(float mixLevel) {
 
 } // namespace osc
 
+namespace lfo {
+float clampRate(float rate) {
+  return std::clamp(rate, RATE_MIN, RATE_MAX);
+}
+float clampAmplitude(float amplitude) {
+  return std::clamp(amplitude, AMPLITUDE_MIN, AMPLITUDE_MAX);
+}
+} // namespace lfo
+
 // Envelope Param Helpers
 namespace env {
 float clampTime(float timeAmount) {
@@ -61,6 +70,16 @@ float clampDrive(float drive) {
 }
 } // namespace filter
 
+// Saturator Param Helpers
+namespace saturator {
+float clampDrive(float drive) {
+  return std::clamp(drive, DRIVE_MIN, DRIVE_MAX);
+}
+float clampMix(float mix) {
+  return std::clamp(mix, MIX_MIN, MIX_MAX);
+}
+} // namespace saturator
+
 // Mod Matrix Param Helpers
 namespace mod {
 float clampCutoffMod(float cutoffMod) {
@@ -75,7 +94,31 @@ float clampMixLevelMod(float mixLevel) {
 float clampResonanceMod(float resonanceMod) {
   return std::clamp(resonanceMod, RESONANCE_MOD_MIN, RESONANCE_MOD_MAX);
 }
+float clampScanPosMod(float scanPosMod) {
+  return std::clamp(scanPosMod, SCAN_POS_MOD_MIN, SCAN_POS_MOD_MAX);
+}
+float clampFMDepthMod(float fmDepthMod) {
+  return std::clamp(fmDepthMod, FM_DEPTH_MOD_MIN, FM_DEPTH_MOD_MAX);
+}
+float clampLFORateMod(float lfoRateMod) {
+  return std::clamp(lfoRateMod, LFO_RATE_MOD_MIN, LFO_RATE_MOD_MAX);
+}
+float clampLFOAmplitudeMod(float lfoAmplitudeMod) {
+  return std::clamp(lfoAmplitudeMod, LFO_AMPLITUDE_MOD_MIN, LFO_AMPLITUDE_MOD_MAX);
+}
 } // namespace mod
+
+namespace pitch {
+float clampBendRange(float bendRange) {
+  return std::clamp(bendRange, BEND_RANGE_MIN, BEND_RANGE_MAX);
+}
+} // namespace pitch
+
+namespace porta {
+float clampTime(float time) {
+  return std::clamp(time, TIME_MIN, TIME_MAX);
+}
+} // namespace porta
 
 namespace unison {
 int8_t clampVoices(int8_t voices) {

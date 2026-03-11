@@ -40,6 +40,9 @@ inline constexpr float RATE_MIN = 0.0f;
 inline constexpr float RATE_MAX = 20.0f; // can be audio-rate
 inline constexpr float AMPLITUDE_MIN = 0.0f;
 inline constexpr float AMPLITUDE_MAX = 1.0f;
+
+float clampRate(float rate);
+float clampAmplitude(float amplitude);
 } // namespace lfo
 
 namespace env {
@@ -76,6 +79,9 @@ inline constexpr float DRIVE_MIN = 1.0f;
 inline constexpr float DRIVE_MAX = 5.0f;
 inline constexpr float MIX_MIN = 0.0f;
 inline constexpr float MIX_MAX = 1.0f;
+
+float clampDrive(float drive);
+float clampMix(float mix);
 } // namespace saturator
 
 namespace mod {
@@ -95,22 +101,45 @@ inline constexpr float MIX_LEVEL_MOD_MAX = 1.0f;
 inline constexpr float RESONANCE_MOD_MIN = -1.0f;
 inline constexpr float RESONANCE_MOD_MAX = 1.0f;
 
+// Scan position modulation depth (bipolar offset to 0–1 base)
+inline constexpr float SCAN_POS_MOD_MIN = -1.0f;
+inline constexpr float SCAN_POS_MOD_MAX = 1.0f;
+
+// FM depth modulation (bipolar, added to base fmDepth)
+inline constexpr float FM_DEPTH_MOD_MIN = -5.0f;
+inline constexpr float FM_DEPTH_MOD_MAX = 5.0f;
+
+// LFO rate modulation (Hz offset, bipolar)
+inline constexpr float LFO_RATE_MOD_MIN = -20.0f;
+inline constexpr float LFO_RATE_MOD_MAX = 20.0f;
+
+// LFO amplitude modulation (bipolar)
+inline constexpr float LFO_AMPLITUDE_MOD_MIN = -1.0f;
+inline constexpr float LFO_AMPLITUDE_MOD_MAX = 1.0f;
+
 float clampCutoffMod(float cutoffMod);
 float clampPitchMod(float pitchMod);
 float clampMixLevelMod(float mixLevel);
 float clampResonanceMod(float resonanceMod);
-
+float clampScanPosMod(float scanPosMod);
+float clampFMDepthMod(float fmDepthMod);
+float clampLFORateMod(float lfoRateMod);
+float clampLFOAmplitudeMod(float lfoAmplitudeMod);
 } // namespace mod
 
 namespace pitch {
 inline constexpr float BEND_RANGE_MIN = 0.0f;
 inline constexpr float BEND_RANGE_MAX = 48.0f; // ±4 octaves
 inline constexpr float BEND_RANGE_DEFAULT = 2.0f;
+
+float clampBendRange(float bendRange);
 } // namespace pitch
 
 namespace porta {
 inline constexpr float TIME_MIN = 0.0f;
 inline constexpr float TIME_MAX = 5000.0f; // ms
+
+float clampTime(float time);
 } // namespace porta
 
 namespace unison {

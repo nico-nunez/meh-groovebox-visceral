@@ -4,7 +4,7 @@
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
 #include "synth/ParamBindings.h"
-#include "synth/PresetApply.h"
+#include "synth/PresetCmd.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 

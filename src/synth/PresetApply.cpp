@@ -4,7 +4,7 @@
 #include "synth/ModMatrix.h"
 #include "synth/ParamBindings.h"
 #include "synth/ParamNames.h"
-#include "synth/PresetIO.h"
+#include "synth/ParamRanges.h"
 #include "synth/SignalChain.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
@@ -12,14 +12,59 @@
 namespace synth::preset {
 
 namespace pb = param::bindings;
+namespace pr = param::ranges;
+
 using pb::ParamID;
 using wavetable::banks::getBankByName;
 
 // ============================================================
-// Helpers
+// Helpers (anonymous)
 // ============================================================
-
 namespace {
+
+// Clamp mod route amount based on destination type.
+float clampModAmount(mod_matrix::ModDest dest, float amount) {
+  using namespace mod_matrix;
+  using namespace param::ranges::mod;
+  switch (dest) {
+  case SVFCutoff:
+  case LadderCutoff:
+    return clampCutoffMod(amount);
+  case SVFResonance:
+  case LadderResonance:
+    return clampResonanceMod(amount);
+  case Osc1Pitch:
+  case Osc2Pitch:
+  case Osc3Pitch:
+  case Osc4Pitch:
+    return clampPitchMod(amount);
+  case Osc1Mix:
+  case Osc2Mix:
+  case Osc3Mix:
+  case Osc4Mix:
+    return clampMixLevelMod(amount);
+  case Osc1ScanPos:
+  case Osc2ScanPos:
+  case Osc3ScanPos:
+  case Osc4ScanPos:
+    return clampScanPosMod(amount);
+  case Osc1FMDepth:
+  case Osc2FMDepth:
+  case Osc3FMDepth:
+  case Osc4FMDepth:
+    return clampFMDepthMod(amount);
+  case LFO1Rate:
+  case LFO2Rate:
+  case LFO3Rate:
+    return clampLFORateMod(amount);
+  case LFO1Amplitude:
+  case LFO2Amplitude:
+  case LFO3Amplitude:
+    return clampLFOAmplitudeMod(amount);
+  default:
+    return amount; // unknown dest — pass through
+  }
+}
 
 // Apply a single oscillator's direct-write fields (bank, fmSource).
 // Returns warning string if bank not found, empty otherwise.
@@ -51,12 +96,15 @@ void applyOscBound(const OscPreset& src,
                    ParamID fmDepth,
                    ParamID fmRatio,
                    ParamID enabled) {
-  pb::setParamValueByID(router, pool, mixLevel, src.mixLevel);
-  pb::setParamValueByID(router, pool, detune, src.detuneAmount);
-  pb::setParamValueByID(router, pool, octave, static_cast<float>(src.octaveOffset));
-  pb::setParamValueByID(router, pool, scanPos, src.scanPos);
-  pb::setParamValueByID(router, pool, fmDepth, src.fmDepth);
-  pb::setParamValueByID(router, pool, fmRatio, src.fmRatio);
+  pb::setParamValueByID(router, pool, mixLevel, pr::osc::clampMixLevel(src.mixLevel));
+  pb::setParamValueByID(router, pool, detune, pr::osc::clampDetune(src.detuneAmount));
+  pb::setParamValueByID(router,
+                        pool,
+                        octave,
+                        static_cast<float>(pr::osc::clampOctave(src.octaveOffset)));
+  pb::setParamValueByID(router, pool, scanPos, pr::osc::clampScanPos(src.scanPos));
+  pb::setParamValueByID(router, pool, fmDepth, pr::osc::clampFMDepth(src.fmDepth));
+  pb::setParamValueByID(router, pool, fmRatio, pr::osc::clampFMRatio(src.fmRatio));
   pb::setParamValueByID(router, pool, enabled, src.enabled ? 1.0f : 0.0f);
 }
 
@@ -71,13 +119,13 @@ void applyEnvBound(const EnvelopePreset& src,
                    ParamID attackCurve,
                    ParamID decayCurve,
                    ParamID releaseCurve) {
-  pb::setParamValueByID(router, pool, attack, src.attackMs);
-  pb::setParamValueByID(router, pool, decay, src.decayMs);
-  pb::setParamValueByID(router, pool, sustain, src.sustainLevel);
-  pb::setParamValueByID(router, pool, release, src.releaseMs);
-  pb::setParamValueByID(router, pool, attackCurve, src.attackCurve);
-  pb::setParamValueByID(router, pool, decayCurve, src.decayCurve);
-  pb::setParamValueByID(router, pool, releaseCurve, src.releaseCurve);
+  pb::setParamValueByID(router, pool, attack, pr::env::clampTime(src.attackMs));
+  pb::setParamValueByID(router, pool, decay, pr::env::clampTime(src.decayMs));
+  pb::setParamValueByID(router, pool, sustain, pr::env::clampSustain(src.sustainLevel));
+  pb::setParamValueByID(router, pool, release, pr::env::clampTime(src.releaseMs));
+  pb::setParamValueByID(router, pool, attackCurve, pr::env::clampCurve(src.attackCurve));
+  pb::setParamValueByID(router, pool, decayCurve, pr::env::clampCurve(src.decayCurve));
+  pb::setParamValueByID(router, pool, releaseCurve, pr::env::clampCurve(src.releaseCurve));
 }
 
 // Apply a single LFO's direct-write fields (bank).
@@ -105,29 +153,28 @@ void applyLFOBound(const LFOPreset& src,
                    ParamID rate,
                    ParamID amplitude,
                    ParamID retrigger) {
-  pb::setParamValueByID(router, pool, rate, src.rate);
-  pb::setParamValueByID(router, pool, amplitude, src.amplitude);
+  pb::setParamValueByID(router, pool, rate, pr::lfo::clampRate(src.rate));
+  pb::setParamValueByID(router, pool, amplitude, pr::lfo::clampAmplitude(src.amplitude));
   pb::setParamValueByID(router, pool, retrigger, src.retrigger ? 1.0f : 0.0f);
 }
 
 } // namespace
 
 // ============================================================
-// applyPreset
+// Apply Preset
 // ============================================================
-
 ApplyResult applyPreset(const Preset& preset, Engine& engine) {
   ApplyResult result;
   auto& pool = engine.voicePool;
   auto& router = engine.paramRouter;
 
-  // ---- Oscillators: direct-write fields ----
+  // ==== Oscillators: direct-write fields ====
   applyOscDirect(preset.osc1, pool.osc1, "osc1", result.warnings);
   applyOscDirect(preset.osc2, pool.osc2, "osc2", result.warnings);
   applyOscDirect(preset.osc3, pool.osc3, "osc3", result.warnings);
   applyOscDirect(preset.osc4, pool.osc4, "osc4", result.warnings);
 
-  // ---- Oscillators: bound params ----
+  // ==== Oscillators: bound params ====
   applyOscBound(preset.osc1,
                 router,
                 pool,
@@ -169,12 +216,15 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 ParamID::OSC4_FM_RATIO,
                 ParamID::OSC4_ENABLED);
 
-  // ---- Noise: direct-write + bound ----
+  // ==== Noise: direct-write + bound ====
   pool.noise.type = param::names::parseNoiseType(preset.noise.type.c_str());
-  pb::setParamValueByID(router, pool, ParamID::NOISE_MIX_LEVEL, preset.noise.mixLevel);
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::NOISE_MIX_LEVEL,
+                        pr::osc::noise::clampMixLevel(preset.noise.mixLevel));
   pb::setParamValueByID(router, pool, ParamID::NOISE_ENABLED, preset.noise.enabled ? 1.0f : 0.0f);
 
-  // ---- Envelopes ----
+  // ==== Envelopes ====
   applyEnvBound(preset.ampEnv,
                 router,
                 pool,
@@ -206,30 +256,51 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 ParamID::MOD_ENV_DECAY_CURVE,
                 ParamID::MOD_ENV_RELEASE_CURVE);
 
-  // ---- SVF ----
+  // ==== SVF ====
   pb::setParamValueByID(router,
                         pool,
                         ParamID::SVF_MODE,
                         static_cast<float>(param::names::parseSVFMode(preset.svf.mode.c_str())));
-  pb::setParamValueByID(router, pool, ParamID::SVF_CUTOFF, preset.svf.cutoff);
-  pb::setParamValueByID(router, pool, ParamID::SVF_RESONANCE, preset.svf.resonance);
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::SVF_CUTOFF,
+                        pr::filter::clampCutoff(preset.svf.cutoff));
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::SVF_RESONANCE,
+                        pr::filter::clampResonance(preset.svf.resonance));
   pb::setParamValueByID(router, pool, ParamID::SVF_ENABLED, preset.svf.enabled ? 1.0f : 0.0f);
 
-  // ---- Ladder ----
-  pb::setParamValueByID(router, pool, ParamID::LADDER_CUTOFF, preset.ladder.cutoff);
-  pb::setParamValueByID(router, pool, ParamID::LADDER_RESONANCE, preset.ladder.resonance);
-  pb::setParamValueByID(router, pool, ParamID::LADDER_DRIVE, preset.ladder.drive);
+  // ==== Ladder ====
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::LADDER_CUTOFF,
+                        pr::filter::clampCutoff(preset.ladder.cutoff));
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::LADDER_RESONANCE,
+                        pr::filter::clampResonance(preset.ladder.resonance));
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::LADDER_DRIVE,
+                        pr::filter::clampDrive(preset.ladder.drive));
   pb::setParamValueByID(router, pool, ParamID::LADDER_ENABLED, preset.ladder.enabled ? 1.0f : 0.0f);
 
-  // ---- Saturator ----
-  pb::setParamValueByID(router, pool, ParamID::SATURATOR_DRIVE, preset.saturator.drive);
-  pb::setParamValueByID(router, pool, ParamID::SATURATOR_MIX, preset.saturator.mix);
+  // ==== Saturator ====
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::SATURATOR_DRIVE,
+                        pr::saturator::clampDrive(preset.saturator.drive));
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::SATURATOR_MIX,
+                        pr::saturator::clampMix(preset.saturator.mix));
   pb::setParamValueByID(router,
                         pool,
                         ParamID::SATURATOR_ENABLED,
                         preset.saturator.enabled ? 1.0f : 0.0f);
 
-  // ---- LFOs: direct-write + bound ----
+  // ==== LFOs: direct-write + bound ====
   applyLFODirect(preset.lfo1, pool.lfo1, "lfo1", result.warnings);
   applyLFODirect(preset.lfo2, pool.lfo2, "lfo2", result.warnings);
   applyLFODirect(preset.lfo3, pool.lfo3, "lfo3", result.warnings);
@@ -253,27 +324,36 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 ParamID::LFO3_AMPLITUDE,
                 ParamID::LFO3_RETRIGGER);
 
-  // ---- Global ----
-  pb::setParamValueByID(router, pool, ParamID::PITCH_BEND_RANGE, preset.global.pitchBendRange);
+  // ==== Global ====
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::PITCH_BEND_RANGE,
+                        pr::pitch::clampBendRange(preset.global.pitchBendRange));
 
-  // ---- Voice modes ----
+  // ==== Voice modes ====
   // Apply mono BEFORE porta — mono.enabled triggers voice release in onParamUpdate
   pb::setParamValueByID(router, pool, ParamID::MONO_ENABLED, preset.mono.enabled ? 1.0f : 0.0f);
   pb::setParamValueByID(router, pool, ParamID::MONO_LEGATO, preset.mono.legato ? 1.0f : 0.0f);
 
-  pb::setParamValueByID(router, pool, ParamID::PORTA_TIME, preset.porta.time);
+  pb::setParamValueByID(router, pool, ParamID::PORTA_TIME, pr::porta::clampTime(preset.porta.time));
   pb::setParamValueByID(router, pool, ParamID::PORTA_LEGATO, preset.porta.legato ? 1.0f : 0.0f);
   pb::setParamValueByID(router, pool, ParamID::PORTA_ENABLED, preset.porta.enabled ? 1.0f : 0.0f);
 
   pb::setParamValueByID(router,
                         pool,
                         ParamID::UNISON_VOICES,
-                        static_cast<float>(preset.unison.voices));
-  pb::setParamValueByID(router, pool, ParamID::UNISON_DETUNE, preset.unison.detune);
-  pb::setParamValueByID(router, pool, ParamID::UNISON_SPREAD, preset.unison.spread);
+                        static_cast<float>(pr::unison::clampVoices(preset.unison.voices)));
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::UNISON_DETUNE,
+                        pr::unison::clampDetune(preset.unison.detune));
+  pb::setParamValueByID(router,
+                        pool,
+                        ParamID::UNISON_SPREAD,
+                        pr::unison::clampSpread(preset.unison.spread));
   pb::setParamValueByID(router, pool, ParamID::UNISON_ENABLED, preset.unison.enabled ? 1.0f : 0.0f);
 
-  // ---- Mod matrix: rebuild from scratch ----
+  // ==== Mod matrix: rebuild from scratch ====
   mod_matrix::clearRoutes(pool.modMatrix);
 
   for (const auto& route : preset.modMatrix) {
@@ -290,7 +370,8 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
       continue;
     }
 
-    if (!mod_matrix::addRoute(pool.modMatrix, src, dest, route.amount)) {
+    float clampedAmount = clampModAmount(dest, route.amount);
+    if (!mod_matrix::addRoute(pool.modMatrix, src, dest, clampedAmount)) {
       result.warnings.push_back("mod route: matrix full, skipping " + route.source + " → " +
                                 route.destination);
       break;
@@ -300,7 +381,7 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
   // Zero interpolation state so first block doesn't lerp from stale values
   mod_matrix::clearPrevModDests(pool.modMatrix);
 
-  // ---- Signal chain: rebuild ----
+  // ==== Signal chain: rebuild ====
   signal_chain::SignalProcessor procs[signal_chain::MAX_CHAIN_SLOTS];
   uint8_t procCount = 0;
 
@@ -448,169 +529,4 @@ Preset capturePreset(const Engine& engine) {
 
   return p;
 }
-
-// ============================================================
-// Process Preset Input Command (terminal) Helper
-// ============================================================
-void processPresetCmd(std::istringstream& iss, Engine& engine) {
-  std::string subCmd;
-  iss >> subCmd;
-
-  if (subCmd.empty()) {
-    printf("Usage: preset <save|load|init|list|info|help>\n");
-    return;
-  }
-
-  // ---- preset save <name> ----
-  if (subCmd == "save") {
-    std::string name;
-    iss >> name;
-
-    if (name.empty()) {
-      printf("Usage: preset save <name>\n");
-      return;
-    }
-
-    // Capture current engine state
-    auto captured = preset::capturePreset(engine);
-    captured.metadata.name = name;
-
-    // Save to user presets dir
-    std::string path = preset::getUserPresetsDir() + "/" + name + ".json";
-    std::string err = preset::savePreset(captured, path);
-
-    if (!err.empty()) {
-      printf("Error: %s\n", err.c_str());
-      return;
-    }
-
-    printf("Saved: %s\n", path.c_str());
-
-    // ---- preset load <name|path> ----
-  } else if (subCmd == "load") {
-    std::string name;
-    iss >> name;
-
-    if (name.empty()) {
-      printf("Usage: preset load <name|path>\n");
-      return;
-    }
-
-    auto loadResult = preset::loadPresetByName(name);
-    if (!loadResult.ok()) {
-      printf("Error: %s\n", loadResult.error.c_str());
-      return;
-    }
-
-    auto applyResult = preset::applyPreset(loadResult.preset, engine);
-
-    printf("Loaded: %s", loadResult.preset.metadata.name.c_str());
-    if (!loadResult.preset.metadata.category.empty())
-      printf(" [%s]", loadResult.preset.metadata.category.c_str());
-    printf("\n");
-
-    // Print all warnings (load + apply)
-    for (const auto& w : loadResult.warnings)
-      printf("  warning: %s\n", w.c_str());
-    for (const auto& w : applyResult.warnings)
-      printf("  warning: %s\n", w.c_str());
-
-    // ---- preset init ----
-  } else if (subCmd == "init") {
-    auto initPreset = preset::createInitPreset();
-    auto applyResult = preset::applyPreset(initPreset, engine);
-
-    printf("Init preset applied\n");
-    for (const auto& w : applyResult.warnings)
-      printf("  warning: %s\n", w.c_str());
-
-    // ---- preset list ----
-  } else if (subCmd == "list") {
-    auto entries = preset::listPresets();
-
-    if (entries.empty()) {
-      printf("No presets found\n");
-      return;
-    }
-
-    printf("Presets:\n");
-    for (const auto& entry : entries) {
-      printf("  %-20s [%s]\n", entry.name.c_str(), entry.isFactory ? "factory" : "user");
-    }
-
-    // ---- preset info <name|path> ----
-  } else if (subCmd == "info") {
-    std::string name;
-    iss >> name;
-
-    if (name.empty()) {
-      printf("Usage: preset info <name|path>\n");
-      return;
-    }
-
-    auto loadResult = preset::loadPresetByName(name);
-    if (!loadResult.ok()) {
-      printf("Error: %s\n", loadResult.error.c_str());
-      return;
-    }
-
-    const auto& p = loadResult.preset;
-    printf("Name:     %s\n", p.metadata.name.c_str());
-    if (!p.metadata.author.empty())
-      printf("Author:   %s\n", p.metadata.author.c_str());
-    if (!p.metadata.category.empty())
-      printf("Category: %s\n", p.metadata.category.c_str());
-    if (!p.metadata.description.empty())
-      printf("Desc:     %s\n", p.metadata.description.c_str());
-    printf("Version:  %u\n", p.version);
-    printf("Path:     %s\n", loadResult.filePath.c_str());
-
-    // Quick summary of what's enabled
-    int oscCount = p.osc1.enabled + p.osc2.enabled + p.osc3.enabled + p.osc4.enabled;
-    printf("Oscs:     %d enabled", oscCount);
-    if (p.osc1.enabled)
-      printf(" (1:%s", p.osc1.bank.c_str());
-    if (p.osc2.enabled)
-      printf(" 2:%s", p.osc2.bank.c_str());
-    if (p.osc3.enabled)
-      printf(" 3:%s", p.osc3.bank.c_str());
-    if (p.osc4.enabled)
-      printf(" 4:%s", p.osc4.bank.c_str());
-    if (oscCount > 0)
-      printf(")");
-    printf("\n");
-
-    if (p.svf.enabled)
-      printf("SVF:      %s %.0fHz\n", p.svf.mode.c_str(), p.svf.cutoff);
-    if (p.ladder.enabled)
-      printf("Ladder:   %.0fHz\n", p.ladder.cutoff);
-    if (p.saturator.enabled)
-      printf("Sat:      drive=%.1f\n", p.saturator.drive);
-    if (!p.modMatrix.empty())
-      printf("Mod:      %zu routes\n", p.modMatrix.size());
-    if (p.mono.enabled)
-      printf("Mono:     on%s\n", p.mono.legato ? " (legato)" : "");
-    if (p.unison.enabled)
-      printf("Unison:   %d voices\n", p.unison.voices);
-
-    for (const auto& w : loadResult.warnings)
-      printf("  warning: %s\n", w.c_str());
-
-    // ---- preset help ----
-  } else if (subCmd == "help") {
-    printf("Preset commands:\n");
-    printf("  preset save <name>       - Save current state as user preset\n");
-    printf("  preset load <name|path>  - Load preset by name or file path\n");
-    printf("  preset init              - Reset to init preset\n");
-    printf("  preset list              - List available presets\n");
-    printf("  preset info <name|path>  - Show preset metadata\n");
-    printf("  preset help              - Show this help\n");
-    printf("\nSearch order for load/info: user/ → factory/\n");
-
-  } else {
-    printf("Unknown preset command: %s\n", subCmd.c_str());
-    printf("Type 'preset help' for usage\n");
-  }
-}
-
 } // namespace synth::preset

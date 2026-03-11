@@ -2,7 +2,6 @@
 
 #include "synth/Preset.h"
 
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -27,10 +26,5 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine);
 // ============================================================
 
 Preset capturePreset(const Engine& engine);
-
-// ============================================================
-// Process Preset Input Command (terminal) Helper
-// ============================================================
-void processPresetCmd(std::istringstream& iss, Engine& engine);
 
 } // namespace synth::preset
