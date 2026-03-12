@@ -21,7 +21,7 @@ using voices::VoicePoolConfig;
 using dsp::buffers::StereoBuffer;
 using dsp::waveforms::WaveformType;
 
-using param::bindings::ParamID;
+using param::ParamID;
 using param::bindings::ParamRouter;
 
 struct EngineConfig : VoicePoolConfig {

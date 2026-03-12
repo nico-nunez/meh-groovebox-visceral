@@ -4,6 +4,7 @@
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
 #include "synth/ParamBindings.h"
+#include "synth/ParamDefs.h"
 #include "synth/PresetCmd.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
@@ -34,16 +35,17 @@ int setInputParam(const std::string& paramName,
                   s_io::hSynthSession session) {
   float paramValue;
 
-  pb::ParamMapping param = pb::findParamByName(paramName.c_str());
-  if (param.id == param::bindings::PARAM_COUNT) {
+  auto paramID = pb::getParamIDByName(paramName.c_str());
+  if (paramID == param::PARAM_COUNT) {
     printf("Error: Unknown parameter '%s'\n", paramName.c_str());
     return 1;
   }
 
-  switch (param.type) {
+  auto& paramDef = param::getParamDef(paramID);
+  switch (paramDef.type) {
 
   // Enable/Disable Item
-  case pb::ParamValueType::BOOL: {
+  case param::ParamType::Bool: {
     std::string value;
     iss >> value;
 
@@ -52,7 +54,7 @@ int setInputParam(const std::string& paramName,
   } break;
 
   // Set SVF Mode
-  case pb::ParamValueType::FILTER_MODE: {
+  case param::ParamType::FilterMode: {
     std::string value;
     iss >> value;
 
@@ -71,7 +73,7 @@ int setInputParam(const std::string& paramName,
    * denormalized.  May consider normalizing in the future, but seems
    * pointless at this time.
    */
-  if (!s_io::setParam(session, static_cast<uint8_t>(param.id), paramValue)) {
+  if (!s_io::setParam(session, static_cast<uint8_t>(paramID), paramValue)) {
     printf("Warning: Param queue full, event dropped\n");
     return 2;
   }
@@ -289,13 +291,13 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
       return;
     }
 
-    pb::ParamMapping param = pb::findParamByName(paramName.c_str());
-    if (param.id == param::bindings::PARAM_COUNT) {
+    auto paramID = pb::getParamIDByName(paramName.c_str());
+    if (paramID == param::PARAM_COUNT) {
       printf("Error: Unknown parameter '%s'\n", paramName.c_str());
       return;
     }
 
-    float rawValue = pb::getParamValueByID(engine.paramRouter, param.id);
+    float rawValue = pb::getParamValueByID(engine.paramRouter, paramID);
 
     printf("%s = %.2f\n", paramName.c_str(), rawValue);
 

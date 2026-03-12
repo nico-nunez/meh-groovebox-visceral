@@ -6,235 +6,170 @@
 #include "synth/LFO.h"
 #include "synth/MonoMode.h"
 #include "synth/Noise.h"
-#include "synth/ParamRanges.h"
+#include "synth/ParamDefs.h"
 #include "synth/Saturator.h"
 #include "synth/Unison.h"
 #include "synth/VoicePool.h"
 #include "synth/WavetableOsc.h"
 
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 
 namespace synth::param::bindings {
 using voices::VoicePool;
+using wavetable::osc::WavetableOsc;
 
 // Anonymous Helpers
 namespace {
 
-ParamBinding makeParamBinding(bool* ptr) {
-  ParamBinding binding;
-  binding.boolPtr = ptr;
-  binding.type = BOOL;
-  binding.min = 0.0f;
-  binding.max = 1.0f;
-  return binding;
+ParamBinding makeFloatBinding(float* ptr) {
+  ParamBinding b;
+  b.floatPtr = ptr;
+  return b;
+}
+ParamBinding makeInt8Binding(int8_t* ptr) {
+  ParamBinding b;
+  b.int8Ptr = ptr;
+  return b;
+}
+ParamBinding makeBoolBinding(bool* ptr) {
+  ParamBinding b;
+  b.boolPtr = ptr;
+  return b;
 }
 
-ParamBinding makeParamBinding(int8_t* ptr, int min, int max) {
-  ParamBinding binding;
-  binding.int8Ptr = ptr;
-  binding.type = INT8;
-  binding.min = static_cast<float>(min);
-  binding.max = static_cast<float>(max);
-  return binding;
+/* FilterMode is the only enum with a binding — it has a small fixed range (0–3)
+ * suitable for MIDI CC and potential mod destination use. Other enums (bank,
+ * fmSource, noise type) resolve to pointers or string lookups and are direct-write. */
+ParamBinding makeFilterModeBinding(SVFMode* ptr) {
+  ParamBinding b;
+  b.svfModePtr = ptr;
+  return b;
 }
 
-ParamBinding makeParamBinding(float* ptr, float min, float max) {
-  ParamBinding binding;
-  binding.floatPtr = ptr;
-  binding.type = FLOAT;
-  binding.min = min;
-  binding.max = max;
-  return binding;
-}
-
-ParamBinding makeParamBinding(SVFMode* ptr, int min, int max) {
-  ParamBinding binding;
-  binding.svfModePtr = ptr;
-  binding.type = FILTER_MODE;
-  binding.min = static_cast<float>(min);
-  binding.max = static_cast<float>(max);
-  return binding;
-}
-
-// Oscillator Bindings
-void bindOscillator(ParamBinding* bindings, ParamID baseId, wavetable::osc::WavetableOsc& osc) {
-  bindings[baseId + 0] =
-      makeParamBinding(&osc.mixLevel, ranges::osc::MIX_LEVEL_MIN, ranges::osc::MIX_LEVEL_MAX);
-  bindings[baseId + 1] =
-      makeParamBinding(&osc.detuneAmount, ranges::osc::DETUNE_MIN, ranges::osc::DETUNE_MAX);
-  bindings[baseId + 2] =
-      makeParamBinding(&osc.octaveOffset, ranges::osc::OCTAVE_MIN, ranges::osc::OCTAVE_MAX);
-  bindings[baseId + 3] =
-      makeParamBinding(&osc.scanPos, ranges::osc::SCAN_POS_MIN, ranges::osc::SCAN_POS_MAX);
-  bindings[baseId + 4] =
-      makeParamBinding(&osc.fmDepth, ranges::osc::FM_DEPTH_MIN, ranges::osc::FM_DEPTH_MAX);
-  bindings[baseId + 5] =
-      makeParamBinding(&osc.fmRatio, ranges::osc::FM_RATIO_MIN, ranges::osc::FM_RATIO_MAX);
-  bindings[baseId + 6] = makeParamBinding(&osc.enabled);
+void bindOscillator(ParamBinding* bindings, const OscParamIDs& ids, WavetableOsc& osc) {
+  bindings[ids.mixLevel] = makeFloatBinding(&osc.mixLevel);
+  bindings[ids.detune] = makeFloatBinding(&osc.detuneAmount);
+  bindings[ids.octave] = makeInt8Binding(&osc.octaveOffset);
+  bindings[ids.scanPos] = makeFloatBinding(&osc.scanPos);
+  bindings[ids.fmDepth] = makeFloatBinding(&osc.fmDepth);
+  bindings[ids.fmRatio] = makeFloatBinding(&osc.fmRatio);
+  bindings[ids.enabled] = makeBoolBinding(&osc.enabled);
 }
 
 // Noise Oscillator Binding
-void bindNoise(ParamBinding* bindings, ParamID baseId, noise::Noise& noise) {
-  bindings[baseId + 0] = makeParamBinding(&noise.mixLevel,
-                                          ranges::osc::noise::MIX_LEVEL_MIN,
-                                          ranges::osc::noise::MIX_LEVEL_MAX);
-  bindings[baseId + 1] = makeParamBinding(&noise.enabled);
+void bindNoise(ParamBinding* bindings, noise::Noise& noise) {
+  bindings[NOISE_MIX_LEVEL] = makeFloatBinding(&noise.mixLevel);
+  bindings[NOISE_ENABLED] = makeBoolBinding(&noise.enabled);
 }
 
 // Filter Bindings
-void bindSVFilter(ParamBinding* bindings, ParamID baseId, filters::SVFilter& filter) {
-  bindings[baseId + 0] = makeParamBinding(&filter.mode,
-                                          ranges::filter::FILTER_MODE_MIN,
-                                          ranges::filter::FILTER_MODE_MAX);
-  bindings[baseId + 1] =
-      makeParamBinding(&filter.cutoff, ranges::filter::CUTOFF_MIN, ranges::filter::CUTOFF_MAX);
-  bindings[baseId + 2] = makeParamBinding(&filter.resonance,
-                                          ranges::filter::RESONANCE_MIN,
-                                          ranges::filter::RESONANCE_MAX);
-  bindings[baseId + 3] = makeParamBinding(&filter.enabled);
+void bindSVFilter(ParamBinding* bindings, filters::SVFilter& filter) {
+  bindings[SVF_MODE] = makeFilterModeBinding(&filter.mode);
+  bindings[SVF_CUTOFF] = makeFloatBinding(&filter.cutoff);
+  bindings[SVF_RESONANCE] = makeFloatBinding(&filter.resonance);
+  bindings[SVF_ENABLED] = makeBoolBinding(&filter.enabled);
 }
 
-void bindLadderFilter(ParamBinding* bindings, ParamID baseId, filters::LadderFilter& filter) {
-  bindings[baseId + 0] =
-      makeParamBinding(&filter.cutoff, ranges::filter::CUTOFF_MIN, ranges::filter::CUTOFF_MAX);
-  bindings[baseId + 1] = makeParamBinding(&filter.resonance,
-                                          ranges::filter::RESONANCE_MIN,
-                                          ranges::filter::RESONANCE_MAX);
-  bindings[baseId + 2] =
-      makeParamBinding(&filter.drive, ranges::filter::DRIVE_MIN, ranges::filter::DRIVE_MAX);
-  bindings[baseId + 3] = makeParamBinding(&filter.enabled);
+void bindLadderFilter(ParamBinding* bindings, filters::LadderFilter& filter) {
+  bindings[LADDER_CUTOFF] = makeFloatBinding(&filter.cutoff);
+  bindings[LADDER_RESONANCE] = makeFloatBinding(&filter.resonance);
+  bindings[LADDER_DRIVE] = makeFloatBinding(&filter.drive);
+  bindings[LADDER_ENABLED] = makeBoolBinding(&filter.enabled);
 }
 
 // Saturator Bindings
-void bindSaturator(ParamBinding* bindings, ParamID baseId, saturator::Saturator& saturator) {
-  bindings[baseId + 0] = makeParamBinding(&saturator.drive,
-                                          ranges::saturator::DRIVE_MIN,
-                                          ranges::saturator::DRIVE_MAX);
-  bindings[baseId + 1] =
-      makeParamBinding(&saturator.mix, ranges::saturator::MIX_MIN, ranges::saturator::MIX_MAX);
-  bindings[baseId + 2] = makeParamBinding(&saturator.enabled);
+void bindSaturator(ParamBinding* bindings, saturator::Saturator& saturator) {
+  bindings[SATURATOR_DRIVE] = makeFloatBinding(&saturator.drive);
+  bindings[SATURATOR_MIX] = makeFloatBinding(&saturator.mix);
+  bindings[SATURATOR_ENABLED] = makeBoolBinding(&saturator.enabled);
 }
 
 // LFO Binding
-void bindLFO(ParamBinding* bindings, ParamID baseId, lfo::LFO& lfo) {
-  bindings[baseId + 0] = makeParamBinding(&lfo.rate, ranges::lfo::RATE_MIN, ranges::lfo::RATE_MAX);
-  bindings[baseId + 1] =
-      makeParamBinding(&lfo.amplitude, ranges::lfo::AMPLITUDE_MIN, ranges::lfo::AMPLITUDE_MAX);
-  bindings[baseId + 2] = makeParamBinding(&lfo.retrigger);
+void bindLFO(ParamBinding* bindings, LFOParamIDs ids, lfo::LFO& lfo) {
+  bindings[ids.rate] = makeFloatBinding(&lfo.rate);
+  bindings[ids.amplitude] = makeFloatBinding(&lfo.amplitude);
+  bindings[ids.retrigger] = makeBoolBinding(&lfo.retrigger);
 }
 
 // Envelope Bindings
-void bindEnvelope(ParamBinding* bindings, ParamID baseId, envelope::Envelope& env) {
-  bindings[baseId + 0] =
-      makeParamBinding(&env.attackMs, ranges::env::TIME_MIN, ranges::env::TIME_MAX);
-  bindings[baseId + 1] =
-      makeParamBinding(&env.decayMs, ranges::env::TIME_MIN, ranges::env::TIME_MAX);
-  bindings[baseId + 2] =
-      makeParamBinding(&env.sustainLevel, ranges::env::SUSTAIN_MIN, ranges::env::SUSTAIN_MAX);
-  bindings[baseId + 3] =
-      makeParamBinding(&env.releaseMs, ranges::env::TIME_MIN, ranges::env::TIME_MAX);
-  bindings[baseId + 4] =
-      makeParamBinding(&env.attackCurveParam, ranges::env::CURVE_MIN, ranges::env::CURVE_MAX);
-  bindings[baseId + 5] =
-      makeParamBinding(&env.decayCurveParam, ranges::env::CURVE_MIN, ranges::env::CURVE_MAX);
-  bindings[baseId + 6] =
-      makeParamBinding(&env.releaseCurveParam, ranges::env::CURVE_MIN, ranges::env::CURVE_MAX);
+void bindEnvelope(ParamBinding* bindings, EnvParamIDs ids, envelope::Envelope& env) {
+  bindings[ids.attack] = makeFloatBinding(&env.attackMs);
+  bindings[ids.decay] = makeFloatBinding(&env.decayMs);
+  bindings[ids.sustain] = makeFloatBinding(&env.sustainLevel);
+  bindings[ids.release] = makeFloatBinding(&env.releaseMs);
+  bindings[ids.attackCurve] = makeFloatBinding(&env.attackCurveParam);
+  bindings[ids.decayCurve] = makeFloatBinding(&env.decayCurveParam);
+  bindings[ids.releaseCurve] = makeFloatBinding(&env.releaseCurveParam);
 }
 
 // Mono Bindings
 void bindMono(ParamBinding* bindings, mono::MonoState& mono) {
-  bindings[MONO_ENABLED] = makeParamBinding(&mono.enabled);
-  bindings[MONO_LEGATO] = makeParamBinding(&mono.legato);
+  bindings[MONO_ENABLED] = makeBoolBinding(&mono.enabled);
+  bindings[MONO_LEGATO] = makeBoolBinding(&mono.legato);
 }
 
 // Portamento Bindings
 void bindPorta(ParamBinding* bindings, voices::Portamento& porta) {
-  bindings[PORTA_TIME] =
-      makeParamBinding(&porta.time, ranges::porta::TIME_MIN, ranges::porta::TIME_MAX);
-  bindings[PORTA_LEGATO] = makeParamBinding(&porta.legato);
-  bindings[PORTA_ENABLED] = makeParamBinding(&porta.enabled);
+  bindings[PORTA_TIME] = makeFloatBinding(&porta.time);
+  bindings[PORTA_LEGATO] = makeBoolBinding(&porta.legato);
+  bindings[PORTA_ENABLED] = makeBoolBinding(&porta.enabled);
 }
 
 void bindUnison(ParamBinding* bindings, unison::UnisonState& uni) {
-  bindings[UNISON_VOICES] =
-      makeParamBinding(&uni.voices, ranges::unison::VOICES_MIN, ranges::unison::VOICES_MAX);
-  bindings[UNISON_DETUNE] =
-      makeParamBinding(&uni.detune, ranges::unison::DETUNE_MIN, ranges::unison::DETUNE_MAX);
-  bindings[UNISON_SPREAD] =
-      makeParamBinding(&uni.spread, ranges::unison::SPREAD_MIN, ranges::unison::SPREAD_MAX);
-  bindings[UNISON_ENABLED] = makeParamBinding(&uni.enabled);
+  bindings[UNISON_VOICES] = makeInt8Binding(&uni.voices);
+  bindings[UNISON_DETUNE] = makeFloatBinding(&uni.detune);
+  bindings[UNISON_SPREAD] = makeFloatBinding(&uni.spread);
+  bindings[UNISON_ENABLED] = makeBoolBinding(&uni.enabled);
 }
 
 // Handle updates to params with derived values
 void onParamUpdate(VoicePool& pool, ParamID id) {
-  switch (id) {
-  case OSC1_ENABLED:
-  case OSC2_ENABLED:
-  case OSC3_ENABLED:
-  case OSC4_ENABLED:
-  case NOISE_ENABLED: {
-    int enabledCount = pool.osc1.enabled + pool.osc2.enabled + pool.osc3.enabled +
-                       pool.osc4.enabled + pool.noise.enabled;
-    pool.oscMixGain = (enabledCount > 0) ? 1.0f / static_cast<float>(enabledCount) : 1.0f;
+  switch (getParamDef(id).updateGroup) {
+  case UpdateGroup::OscEnable: {
+    int count = pool.osc1.enabled + pool.osc2.enabled + pool.osc3.enabled + pool.osc4.enabled +
+                pool.noise.enabled;
+    pool.oscMixGain = (count > 0) ? 1.0f / static_cast<float>(count) : 1.0f;
     break;
   }
 
-  case AMP_ENV_ATTACK:
-  case AMP_ENV_DECAY:
-  case AMP_ENV_RELEASE:
-    envelope::updateIncrements(pool.ampEnv, pool.sampleRate);
-    break;
+  case UpdateGroup::EnvTime:
+  case UpdateGroup::EnvCurve: {
+    const auto& ampIds = ENV_PARAM_IDS[0];
+    const auto& filterIds = ENV_PARAM_IDS[1];
 
-  case AMP_ENV_ATTACK_CURVE:
-  case AMP_ENV_DECAY_CURVE:
-  case AMP_ENV_RELEASE_CURVE:
-    envelope::updateCurveTables(pool.ampEnv);
-    break;
+    envelope::Envelope* env;
 
-  case FILTER_ENV_ATTACK:
-  case FILTER_ENV_DECAY:
-  case FILTER_ENV_RELEASE:
-    envelope::updateIncrements(pool.filterEnv, pool.sampleRate);
-    break;
+    if (id >= ampIds.attack && id <= ampIds.releaseCurve)
+      env = &pool.ampEnv;
+    else if (id >= filterIds.attack && id <= filterIds.releaseCurve)
+      env = &pool.filterEnv;
+    else
+      env = &pool.modEnv;
 
-  case FILTER_ENV_ATTACK_CURVE:
-  case FILTER_ENV_DECAY_CURVE:
-  case FILTER_ENV_RELEASE_CURVE:
-    envelope::updateCurveTables(pool.filterEnv);
+    if (getParamDef(id).updateGroup == UpdateGroup::EnvTime)
+      envelope::updateIncrements(*env, pool.sampleRate);
+    else
+      envelope::updateCurveTables(*env);
     break;
+  }
 
-  case MOD_ENV_ATTACK:
-  case MOD_ENV_DECAY:
-  case MOD_ENV_RELEASE:
-    envelope::updateIncrements(pool.modEnv, pool.sampleRate);
-    break;
-
-  case MOD_ENV_ATTACK_CURVE:
-  case MOD_ENV_DECAY_CURVE:
-  case MOD_ENV_RELEASE_CURVE:
-    envelope::updateCurveTables(pool.modEnv);
-    break;
-
-    // Update Filter Coefficient(s) on param changes
-  case SVF_CUTOFF:
-  case SVF_RESONANCE:
+  case UpdateGroup::SVFCoeff:
     filters::updateSVFCoefficients(pool.svf, pool.invSampleRate);
     break;
 
-  case LADDER_CUTOFF:
-  case LADDER_RESONANCE:
+  case UpdateGroup::LadderCoeff:
     filters::updateLadderCoefficient(pool.ladder, pool.invSampleRate);
     break;
 
-  case SATURATOR_DRIVE:
+  case UpdateGroup::SaturatorDerived:
     pool.saturator.invDrive = saturator::calcInvDrive(pool.saturator.drive);
     break;
 
-  case MONO_ENABLED:
+  case UpdateGroup::MonoEnable:
     if (pool.mono.enabled) {
-      // Kill any active poly voices
       for (uint32_t i = 0; i < pool.activeCount; i++) {
         uint32_t v = pool.activeIndices[i];
         envelope::triggerRelease(pool.ampEnv, v);
@@ -248,12 +183,11 @@ void onParamUpdate(VoicePool& pool, ParamID id) {
     }
     break;
 
-  case PORTA_TIME: {
+  case UpdateGroup::PortaCoeff:
     pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, pool.sampleRate);
     break;
-  }
 
-  case UNISON_ENABLED:
+  case UpdateGroup::UnisonDerived:
     if (pool.unison.enabled) {
       unison::updateDetuneOffsets(pool.unison);
       unison::updatePanPositions(pool.unison);
@@ -261,25 +195,18 @@ void onParamUpdate(VoicePool& pool, ParamID id) {
     }
     break;
 
-  case UNISON_VOICES:
-  case UNISON_DETUNE:
-    unison::updateDetuneOffsets(pool.unison);
-    unison::updateGainComp(pool.unison);
-    [[fallthrough]];
-  case UNISON_SPREAD:
+  case UpdateGroup::UnisonSpread:
     unison::updatePanPositions(pool.unison);
     break;
 
-    // No special handling needed for other params like
-    // Oscillator pitch params - no active voice updates (avoid clicks)
-  default:
+  case UpdateGroup::None:
     break;
   }
 }
 
 void initMIDIBindings(ParamRouter& router) {
   for (auto& cc : router.midiBindings)
-    cc = ParamID::UNKOWN;
+    cc = ParamID::UNKNOWN;
 
   router.midiBindings[7] = ParamID::MASTER_GAIN;
   router.midiBindings[74] = ParamID::SVF_CUTOFF;
@@ -293,36 +220,29 @@ void initMIDIBindings(ParamRouter& router) {
 void initParamRouter(ParamRouter& router, VoicePool& pool) {
   // IMPORTANT: ParamID enum layouts must match!
 
-  bindOscillator(router.paramBindings, OSC1_MIX_LEVEL, pool.osc1);
-  bindOscillator(router.paramBindings, OSC2_MIX_LEVEL, pool.osc2);
-  bindOscillator(router.paramBindings, OSC3_MIX_LEVEL, pool.osc3);
-  bindOscillator(router.paramBindings, OSC4_MIX_LEVEL, pool.osc4);
+  bindOscillator(router.paramBindings, OSC_PARAM_IDS[0], pool.osc1);
+  bindOscillator(router.paramBindings, OSC_PARAM_IDS[1], pool.osc2);
+  bindOscillator(router.paramBindings, OSC_PARAM_IDS[2], pool.osc3);
+  bindOscillator(router.paramBindings, OSC_PARAM_IDS[3], pool.osc4);
 
-  bindNoise(router.paramBindings, NOISE_MIX_LEVEL, pool.noise);
+  bindEnvelope(router.paramBindings, ENV_PARAM_IDS[0], pool.ampEnv);
+  bindEnvelope(router.paramBindings, ENV_PARAM_IDS[1], pool.filterEnv);
+  bindEnvelope(router.paramBindings, ENV_PARAM_IDS[2], pool.modEnv);
 
-  bindEnvelope(router.paramBindings, AMP_ENV_ATTACK, pool.ampEnv);
-  bindEnvelope(router.paramBindings, FILTER_ENV_ATTACK, pool.filterEnv);
-  bindEnvelope(router.paramBindings, MOD_ENV_ATTACK, pool.modEnv);
+  bindLFO(router.paramBindings, LFO_PARAM_IDS[0], pool.lfo1);
+  bindLFO(router.paramBindings, LFO_PARAM_IDS[1], pool.lfo2);
+  bindLFO(router.paramBindings, LFO_PARAM_IDS[2], pool.lfo3);
 
-  bindSVFilter(router.paramBindings, SVF_MODE, pool.svf);
-  bindLadderFilter(router.paramBindings, LADDER_CUTOFF, pool.ladder);
-
-  bindSaturator(router.paramBindings, SATURATOR_DRIVE, pool.saturator);
-
-  bindLFO(router.paramBindings, LFO1_RATE, pool.lfo1);
-  bindLFO(router.paramBindings, LFO2_RATE, pool.lfo2);
-  bindLFO(router.paramBindings, LFO3_RATE, pool.lfo3);
-
-  router.paramBindings[PITCH_BEND_RANGE] = makeParamBinding(&pool.pitchBend.range,
-                                                            ranges::pitch::BEND_RANGE_MIN,
-                                                            ranges::pitch::BEND_RANGE_MAX);
-
-  router.paramBindings[MASTER_GAIN] = makeParamBinding(&pool.masterGain,
-                                                       ranges::global::MASTER_GAIN_MIN,
-                                                       ranges::global::MASTER_GAIN_MAX);
+  bindNoise(router.paramBindings, pool.noise);
+  bindSVFilter(router.paramBindings, pool.svf);
+  bindLadderFilter(router.paramBindings, pool.ladder);
+  bindSaturator(router.paramBindings, pool.saturator);
   bindMono(router.paramBindings, pool.mono);
   bindPorta(router.paramBindings, pool.porta);
   bindUnison(router.paramBindings, pool.unison);
+
+  router.paramBindings[PITCH_BEND_RANGE] = makeFloatBinding(&pool.pitchBend.range);
+  router.paramBindings[MASTER_GAIN] = makeFloatBinding(&pool.masterGain);
 
   initMIDIBindings(router);
 }
@@ -377,11 +297,11 @@ void handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t valu
   }
 
   ParamID paramID = router.midiBindings[cc];
-  if (paramID == ParamID::UNKOWN)
+  if (paramID == ParamID::UNKNOWN)
     return;
 
-  auto& binding = router.paramBindings[paramID];
-  float denorm = binding.min + (value / 127.0f) * (binding.max - binding.min);
+  const auto& def = getParamDef(paramID);
+  float denorm = def.min + (value / 127.0f) * (def.max - def.min);
 
   setParamValueByID(router, pool, paramID, denorm);
 }
@@ -392,106 +312,68 @@ void handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t valu
 
 // Get param value by ID (normalized value)
 // Retreives current denormalized and returns normalized value
-float getParamValueByID(const ParamRouter& router, ParamID id, ParamValueFormat valueFormat) {
-  if (id < 0 || id >= PARAM_COUNT) {
+float getParamValueByID(const ParamRouter& router, ParamID id) {
+  if (id < 0 || id >= PARAM_COUNT)
     return 0.0f;
-  }
 
+  const auto& def = param::getParamDef(id);
   const ParamBinding& binding = router.paramBindings[id];
-  float value = 0.0f;
 
-  // Read the current value based on type
-  switch (binding.type) {
-  case FLOAT:
-    value = *binding.floatPtr;
-    break;
-
-  case INT8:
-    value = static_cast<float>(*binding.int8Ptr);
-    break;
-
-  case BOOL:
-    value = *binding.boolPtr ? 1.0f : 0.0f;
-    break;
-
-  case FILTER_MODE:
-    value = static_cast<float>(static_cast<int>(*binding.svfModePtr));
-    break;
+  switch (def.type) {
+  case ParamType::Float:
+    return *binding.floatPtr;
+  case ParamType::Int8:
+    return static_cast<float>(*binding.int8Ptr);
+  case ParamType::Bool:
+    return *binding.boolPtr ? 1.0f : 0.0f;
+  case ParamType::FilterMode:
+    return static_cast<float>(*binding.svfModePtr);
   }
-
-  if (valueFormat == ParamValueFormat::DENORMALIZED)
-    return value;
-
-  // Noramlize
-  float range = binding.max - binding.min;
-  if (range > 0.0f)
-    return (value - binding.min) / range;
-
   return 0.0f;
 }
 
 // Set param value by ID
 // Expects normalized values, denormalizes, and updates value
-void setParamValueByID(ParamRouter& router,
-                       VoicePool& pool,
-                       ParamID id,
-                       float value,
-                       ParamValueFormat valueFormat) {
-  if (id < 0 || id >= PARAM_COUNT) {
+void setParamValueByID(ParamRouter& router, VoicePool& pool, ParamID id, float value) {
+  if (id < 0 || id >= PARAM_COUNT)
     return;
-  }
 
+  const auto& def = param::getParamDef(id);
   ParamBinding& binding = router.paramBindings[id];
 
-  // Denormalize
-  if (valueFormat == ParamValueFormat::NORMALIZED) {
-    if (value < 0.0f)
-      value = 0.0f;
-    if (value > 1.0f)
-      value = 1.0f;
+  value = std::clamp(value, def.min, def.max);
 
-    value = binding.min + (value * (binding.max - binding.min));
-  }
-
-  switch (binding.type) {
-  case FLOAT:
+  switch (def.type) {
+  case ParamType::Float:
     *binding.floatPtr = value;
     break;
-
-  case INT8:
+  case ParamType::Int8:
     *binding.int8Ptr = static_cast<int8_t>(std::round(value));
     break;
-
-  case BOOL:
+  case ParamType::Bool:
     *binding.boolPtr = value >= 0.5f;
     break;
-
-  case FILTER_MODE:
-    *binding.svfModePtr = static_cast<filters::SVFMode>(static_cast<int>(std::round(value)));
+  case ParamType::FilterMode:
+    *binding.svfModePtr = static_cast<SVFMode>(static_cast<int>(std::round(value)));
     break;
   }
 
-  // Handle post-update logic for params with derived values (i.e. Envelopes)
   onParamUpdate(pool, id);
 }
 
-// String → ParamID (for parsing 'set' commands)
-ParamMapping findParamByName(const char* name) {
-  for (const auto& mapping : PARAM_NAMES) {
-    if (strcmp(mapping.name, name) == 0) {
-      return mapping;
+ParamID getParamIDByName(const char* name) {
+  for (size_t i = 0; i < PARAM_DEF_COUNT; i++) {
+    if (strcmp(PARAM_DEFS[i].name, name) == 0) {
+      return static_cast<ParamID>(i);
     }
   }
-  return PARAM_MAPPING_NOT_FOUND;
+  return UNKNOWN;
 }
 
 // ParamID → String (for 'get' commands, help text, errors)
 const char* getParamName(ParamID id) {
-  for (const auto& mapping : PARAM_NAMES) {
-    if (mapping.id == id) {
-      return mapping.name;
-    }
-  }
+  if (id >= 0 && id < PARAM_COUNT - 1)
+    return param::PARAM_DEFS[id].name;
   return nullptr;
 }
 
@@ -499,16 +381,14 @@ const char* getParamName(ParamID id) {
 void printParamList(const char* optionalParam) {
   if (optionalParam != nullptr) {
     printf("Available parameters for: %s\n", optionalParam);
-    for (const auto& mapping : PARAM_NAMES) {
-      if (strstr(mapping.name, optionalParam) != NULL)
-        printf("  %s\n", mapping.name);
+    for (const auto& def : PARAM_DEFS) {
+      if (strstr(def.name, optionalParam) != NULL)
+        printf("  %s\n", def.name);
     }
-
   } else {
-
     printf("Available parameters:\n");
-    for (const auto& mapping : PARAM_NAMES) {
-      printf("  %s\n", mapping.name);
+    for (const auto& def : PARAM_DEFS) {
+      printf("  %s\n", def.name);
     }
   }
 }

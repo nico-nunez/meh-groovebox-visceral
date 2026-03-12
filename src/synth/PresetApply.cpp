@@ -14,7 +14,7 @@ namespace synth::preset {
 namespace pb = param::bindings;
 namespace pr = param::ranges;
 
-using pb::ParamID;
+using param::ParamID;
 using wavetable::banks::getBankByName;
 
 // ============================================================
@@ -179,8 +179,8 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 router,
                 pool,
                 ParamID::OSC1_MIX_LEVEL,
-                ParamID::OSC1_DETUNE_AMOUNT,
-                ParamID::OSC1_OCTAVE_OFFSET,
+                ParamID::OSC1_DETUNE,
+                ParamID::OSC1_OCTAVE,
                 ParamID::OSC1_SCAN_POS,
                 ParamID::OSC1_FM_DEPTH,
                 ParamID::OSC1_FM_RATIO,
@@ -189,8 +189,8 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 router,
                 pool,
                 ParamID::OSC2_MIX_LEVEL,
-                ParamID::OSC2_DETUNE_AMOUNT,
-                ParamID::OSC2_OCTAVE_OFFSET,
+                ParamID::OSC2_DETUNE,
+                ParamID::OSC2_OCTAVE,
                 ParamID::OSC2_SCAN_POS,
                 ParamID::OSC2_FM_DEPTH,
                 ParamID::OSC2_FM_RATIO,
@@ -199,8 +199,8 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 router,
                 pool,
                 ParamID::OSC3_MIX_LEVEL,
-                ParamID::OSC3_DETUNE_AMOUNT,
-                ParamID::OSC3_OCTAVE_OFFSET,
+                ParamID::OSC3_DETUNE,
+                ParamID::OSC3_OCTAVE,
                 ParamID::OSC3_SCAN_POS,
                 ParamID::OSC3_FM_DEPTH,
                 ParamID::OSC3_FM_RATIO,
@@ -209,8 +209,8 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 router,
                 pool,
                 ParamID::OSC4_MIX_LEVEL,
-                ParamID::OSC4_DETUNE_AMOUNT,
-                ParamID::OSC4_OCTAVE_OFFSET,
+                ParamID::OSC4_DETUNE,
+                ParamID::OSC4_OCTAVE,
                 ParamID::OSC4_SCAN_POS,
                 ParamID::OSC4_FM_DEPTH,
                 ParamID::OSC4_FM_RATIO,
@@ -230,7 +230,7 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 pool,
                 ParamID::AMP_ENV_ATTACK,
                 ParamID::AMP_ENV_DECAY,
-                ParamID::AMP_ENV_SUSTAIN_LEVEL,
+                ParamID::AMP_ENV_SUSTAIN,
                 ParamID::AMP_ENV_RELEASE,
                 ParamID::AMP_ENV_ATTACK_CURVE,
                 ParamID::AMP_ENV_DECAY_CURVE,
@@ -240,7 +240,7 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 pool,
                 ParamID::FILTER_ENV_ATTACK,
                 ParamID::FILTER_ENV_DECAY,
-                ParamID::FILTER_ENV_SUSTAIN_LEVEL,
+                ParamID::FILTER_ENV_SUSTAIN,
                 ParamID::FILTER_ENV_RELEASE,
                 ParamID::FILTER_ENV_ATTACK_CURVE,
                 ParamID::FILTER_ENV_DECAY_CURVE,
@@ -250,7 +250,7 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
                 pool,
                 ParamID::MOD_ENV_ATTACK,
                 ParamID::MOD_ENV_DECAY,
-                ParamID::MOD_ENV_SUSTAIN_LEVEL,
+                ParamID::MOD_ENV_SUSTAIN,
                 ParamID::MOD_ENV_RELEASE,
                 ParamID::MOD_ENV_ATTACK_CURVE,
                 ParamID::MOD_ENV_DECAY_CURVE,
