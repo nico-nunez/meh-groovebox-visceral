@@ -1,16 +1,15 @@
 #include "VoicePool.h"
 
-#include "dsp/Buffers.h"
-#include "synth/Envelope.h"
-#include "synth/LFO.h"
-#include "synth/MonoMode.h"
-#include "synth/Noise.h"
-#include "synth/ParamRanges.h"
-#include "synth/SignalChain.h"
-#include "synth/Unison.h"
-#include "synth/WavetableBanks.h"
-#include "synth/WavetableOsc.h"
+#include "Envelope.h"
+#include "LFO.h"
+#include "MonoMode.h"
+#include "Noise.h"
+#include "ParamRanges.h"
+#include "Unison.h"
+#include "WavetableBanks.h"
+#include "WavetableOsc.h"
 
+#include "dsp/Buffers.h"
 #include "dsp/Filters.h"
 #include "dsp/Math.h"
 #include "dsp/Wavetable.h"
@@ -29,57 +28,11 @@ namespace env = envelope;
 
 using dsp::buffers::StereoBuffer;
 
-// =========================
-// VoicePool Configuration
-// =========================
-void updateVoicePoolConfig(VoicePool& pool, const VoicePoolConfig& config) {
-  pool.sampleRate = config.sampleRate;
-  pool.invSampleRate = 1.0f / config.sampleRate;
+void initVoicePool(VoicePool& pool, float sampleRate) {
+  wavetable::banks::initFactoryBanks();
 
-  pool.mono.enabled = config.mono;
-
-  pool.masterGain = config.masterGain;
-
-  osc::updateConfig(pool.osc1, config.osc1);
-  osc::updateConfig(pool.osc2, config.osc2);
-  osc::updateConfig(pool.osc3, config.osc3);
-  osc::updateConfig(pool.osc4, config.osc4);
-
-  noise::updateConfig(pool.noise, config.noise);
-
-  int enabledCount = pool.osc1.enabled + pool.osc2.enabled + pool.osc3.enabled + pool.osc4.enabled +
-                     pool.noise.enabled;
-  pool.oscMixGain = (enabledCount > 0) ? 1.0f / static_cast<float>(enabledCount) : 1.0f;
-
-  filters::updateSVFCoefficients(pool.svf, pool.invSampleRate);
-  filters::updateLadderCoefficient(pool.ladder, pool.invSampleRate);
-
-  mod_matrix::addRoute(pool.modMatrix, ModSrc::FilterEnv, ModDest::SVFCutoff, 0.0f);
-  mod_matrix::addRoute(pool.modMatrix, ModSrc::FilterEnv, ModDest::LadderCutoff, 0.0f);
-
-  // Initialize unison tables
-  unison::updateDetuneOffsets(pool.unison);
-  unison::updatePanPositions(pool.unison);
-  unison::updateGainComp(pool.unison);
-}
-
-void initVoicePool(VoicePool& pool, const VoicePoolConfig& config) {
-  using namespace wavetable::banks;
-  using signal_chain::SignalProcessor;
-
-  // TODO(nico): should this be part of VoicePoolConfig?
-  static constexpr uint8_t SIGNAL_CHAIN_LEN = 3;
-  static constexpr SignalProcessor SIGNAL_CHAIN[SIGNAL_CHAIN_LEN] = {SignalProcessor::SVF,
-                                                                     SignalProcessor::Ladder,
-                                                                     SignalProcessor::Saturator};
-  initFactoryBanks();
-
-  updateVoicePoolConfig(pool, config);
-
-  // Initialize curve tables (empty to start)
-  env::updateCurveTables(pool.ampEnv);
-  env::updateCurveTables(pool.filterEnv);
-  env::updateCurveTables(pool.modEnv);
+  pool.sampleRate = sampleRate;
+  pool.invSampleRate = 1.0f / sampleRate;
 
   // Initialization Stereo (balanced)
   for (uint8_t i = 0; i < MAX_VOICES; i++) {
@@ -91,25 +44,10 @@ void initVoicePool(VoicePool& pool, const VoicePoolConfig& config) {
   for (uint8_t i = 0; i < MAX_VOICES; i++)
     pool.sustain.notes[i] = false;
 
-  pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, config.sampleRate);
-
-  // TODO(nico-nunez): find a better way!!!
-  pool.osc1.bank = getBankByID(BankID::Saw);
-  pool.osc1.detuneAmount = 10.0f;
-
-  pool.osc2.bank = getBankByID(BankID::Saw);
-  pool.osc2.mixLevel = 0.7f;
-  pool.osc2.octaveOffset = -1;
-  pool.osc2.detuneAmount = -10.0f;
-
-  pool.osc3.bank = getBankByID(BankID::Sine);
-  pool.osc3.mixLevel = 0.5f;
-
-  pool.osc4.bank = getBankByID(BankID::Sine);
-  pool.osc4.octaveOffset = -2;
-  pool.osc4.mixLevel = 0.5f;
-
-  signal_chain::setChain(pool.signalChain, SIGNAL_CHAIN, SIGNAL_CHAIN_LEN);
+  // Initialize curve tables (empty to start)
+  env::updateCurveTables(pool.ampEnv);
+  env::updateCurveTables(pool.filterEnv);
+  env::updateCurveTables(pool.modEnv);
 }
 
 // =========================

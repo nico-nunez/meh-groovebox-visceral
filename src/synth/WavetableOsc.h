@@ -19,18 +19,6 @@ enum class FMSource : uint8_t {
   Osc4,
 };
 
-struct WavetableOscConfig {
-  const WavetableBank* bank = nullptr;
-  float scanPos = 0.0f;
-  float mixLevel = 1.0f;
-  float fmDepth = 0.0f;
-  float fmRatio = 1.0f;
-  FMSource fmSource = FMSource::None;
-  int8_t octaveOffset = 0;
-  float detuneAmount = 0.0f;
-  bool enabled = true;
-};
-
 struct WavetableOsc {
   // ==== Per-voice hot data (SoA) ====
   float phases[MAX_VOICES];          // normalized [0, 1.0)
@@ -52,8 +40,6 @@ void initOsc(WavetableOsc& osc, uint32_t voiceIndex, uint8_t midiNote, float sam
 
 // Mono (no retrigger/legato)
 void updateOscPitch(WavetableOsc& osc, uint32_t voiceIndex, uint8_t midiNote, float sampleRate);
-
-void updateConfig(WavetableOsc& osc, const WavetableOscConfig& config);
 
 /* Read one sample with dual-mip linear interpolation.
  * mipF: continuous mip level from selectMipLevel() — fractional part drives mip
@@ -81,7 +67,6 @@ float processOsc(WavetableOsc& osc,
 // =====================
 // FM (phase modulation)
 // =====================
-
 struct WavetableOscModState {
   float osc1[MAX_VOICES] = {};
   float osc2[MAX_VOICES] = {};

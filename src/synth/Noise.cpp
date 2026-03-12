@@ -4,13 +4,6 @@
 #include "dsp/Noise.h"
 
 namespace synth::noise {
-
-void updateConfig(Noise& noise, const NoiseConfig& config) {
-  noise.type = config.type;
-  noise.mixLevel = config.mixLevel;
-  noise.enabled = config.enabled;
-}
-
 float processNoise(Noise& noise) {
   if (!noise.enabled)
     return 0.0f;

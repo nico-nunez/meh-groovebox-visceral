@@ -16,7 +16,6 @@ using synth_io::MIDIEvent;
 using synth_io::ParamEvent;
 
 using voices::VoicePool;
-using voices::VoicePoolConfig;
 
 using dsp::buffers::StereoBuffer;
 using dsp::waveforms::WaveformType;
@@ -24,8 +23,9 @@ using dsp::waveforms::WaveformType;
 using param::ParamID;
 using param::bindings::ParamRouter;
 
-struct EngineConfig : VoicePoolConfig {
+struct EngineConfig {
   uint32_t numFrames = synth_io::DEFAULT_FRAMES;
+  float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
 };
 
 struct Engine {

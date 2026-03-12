@@ -2,18 +2,18 @@
 
 #include "Envelope.h"
 #include "Filters.h"
+#include "LFO.h"
 #include "ModMatrix.h"
+#include "MonoMode.h"
 #include "Noise.h"
+#include "ParamRanges.h"
+#include "Saturator.h"
+#include "SignalChain.h"
 #include "Types.h"
+#include "Unison.h"
 #include "WavetableOsc.h"
+
 #include "dsp/Buffers.h"
-#include "synth/LFO.h"
-#include "synth/MonoMode.h"
-#include "synth/ParamRanges.h"
-#include "synth/Saturator.h"
-#include "synth/SignalChain.h"
-#include "synth/Unison.h"
-#include "synth_io/SynthIO.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -25,11 +25,9 @@ using lfo::LFO;
 using lfo::LFOModState;
 
 using wavetable::osc::WavetableOsc;
-using wavetable::osc::WavetableOscConfig;
 using wavetable::osc::WavetableOscModState;
 
 using noise::Noise;
-using noise::NoiseConfig;
 
 using filters::LadderFilter;
 using filters::SVFilter;
@@ -66,22 +64,6 @@ struct Portamento {
 struct Sustain {
   bool held = false;
   bool notes[MAX_VOICES]{};
-};
-
-struct VoicePoolConfig {
-  WavetableOscConfig osc1{};
-  WavetableOscConfig osc2{};
-  WavetableOscConfig osc3{};
-  WavetableOscConfig osc4{};
-
-  NoiseConfig noise{};
-
-  float pitchBendRange = 2.0f;
-
-  bool mono = false; // default poly
-
-  float masterGain = 1.0f;
-  float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
 };
 
 // VoicePool - top-level container (universal synth)
@@ -157,10 +139,7 @@ struct VoicePool {
 // Voice Pool Management
 // ===========================
 // Initialize VoicePool (once upon engin creation)
-void initVoicePool(VoicePool& pool, const VoicePoolConfig& config);
-
-// updating existing Engine member
-void updateVoicePoolConfig(VoicePool& pool, const VoicePoolConfig& config);
+void initVoicePool(VoicePool& pool, float sampleRate);
 
 // ===========================
 // MIDI Event Handlers

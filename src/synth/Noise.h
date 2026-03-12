@@ -12,12 +12,6 @@ enum class NoiseType : uint8_t {
   Pink,
 };
 
-struct NoiseConfig {
-  float mixLevel = 0.0f;
-  NoiseType type = NoiseType::White;
-  bool enabled = false;
-};
-
 struct Noise {
   PinkNoiseState pinkNoiseState;
   float mixLevel = 0.0f;
@@ -25,10 +19,8 @@ struct Noise {
   bool enabled = false;
 };
 
-void updateConfig(Noise& noise, const NoiseConfig& config);
-
-float processNoise(Noise& noise);
 // Returns noise in [-1, 1] scaled by mixLevel.
 // White: flat spectrum. Pink: -3dB/octave via Kellet approximation.
+float processNoise(Noise& noise);
 
 } // namespace synth::noise

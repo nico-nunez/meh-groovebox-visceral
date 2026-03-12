@@ -27,25 +27,9 @@ void updateOscPitch(WavetableOsc& osc, uint32_t voiceIndex, uint8_t midiNote, fl
   osc.phaseIncrements[voiceIndex] = freq / sampleRate;
 }
 
-// ================================
-// Configuration
-// ================================
-void updateConfig(WavetableOsc& osc, const WavetableOscConfig& config) {
-  osc.bank = config.bank;
-  osc.scanPos = config.scanPos;
-  osc.mixLevel = config.mixLevel;
-  osc.fmDepth = config.fmDepth;
-  osc.fmRatio = config.fmRatio;
-  osc.fmSource = config.fmSource;
-  osc.octaveOffset = config.octaveOffset;
-  osc.detuneAmount = config.detuneAmount;
-  osc.enabled = config.enabled;
-}
-
 // =========================
 // FM Modulation
 // =========================
-
 void resetOscModState(WavetableOscModState& modState, uint32_t voiceIndex) {
   modState.osc1[voiceIndex] = 0.0f;
   modState.osc2[voiceIndex] = 0.0f;

@@ -1,5 +1,7 @@
 #include "Engine.h"
 #include "ParamBindings.h"
+#include "Preset.h"
+#include "PresetApply.h"
 #include "VoicePool.h"
 
 #include "dsp/Buffers.h"
@@ -15,16 +17,17 @@ using synth_io::MIDIEvent;
 using synth_io::ParamEvent;
 
 Engine createEngine(const EngineConfig& config) {
-  using dsp::buffers::initStereoBuffer;
-  using param::bindings::initParamRouter;
-  using voices::initVoicePool;
-
   Engine engine{};
   engine.numFrames = config.numFrames;
 
-  initStereoBuffer(engine.poolBuffer, config.numFrames);
-  initVoicePool(engine.voicePool, config);
-  initParamRouter(engine.paramRouter, engine.voicePool);
+  dsp::buffers::initStereoBuffer(engine.poolBuffer, config.numFrames);
+
+  voices::initVoicePool(engine.voicePool, config.sampleRate);
+
+  param::bindings::initParamRouter(engine.paramRouter, engine.voicePool);
+
+  auto initPreset = preset::createInitPreset();
+  preset::applyPreset(initPreset, engine);
 
   return engine;
 }
