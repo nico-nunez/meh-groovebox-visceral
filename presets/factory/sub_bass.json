@@ -44,7 +44,7 @@
     }
   },
   "filters": {
-    "svf": { "mode": "lp", "cutoff": 500.0, "resonance": 0.1, "enabled": true },
+    "svf": { "mode": "lp", "cutoff": 500.0, "resonance": 0.1, "enabled": false },
     "ladder": { "cutoff": 1000.0, "resonance": 0.3, "drive": 1.0, "enabled": false }
   },
   "fx": {

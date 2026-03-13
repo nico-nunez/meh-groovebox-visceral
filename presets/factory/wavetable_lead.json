@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "Wavetable Lead",
+    "author": "",
+    "category": "Lead",
+    "description": "Morphing wavetable lead — sine_to_saw scans bright on attack via modEnv, slow LFO drift, SVF with key and velocity tracking"
+  },
+  "oscillators": {
+    "osc1": {
+      "bank": "sine_to_saw", "scanPos": 0.2, "mixLevel": 1.0,
+      "fmDepth": 0.0, "fmRatio": 1.0, "fmSource": "none",
+      "octaveOffset": 0, "detuneAmount": 5.0, "enabled": true
+    },
+    "osc2": {
+      "bank": "sine_to_saw", "scanPos": 0.2, "mixLevel": 0.8,
+      "fmDepth": 0.0, "fmRatio": 1.0, "fmSource": "none",
+      "octaveOffset": 0, "detuneAmount": -5.0, "enabled": true
+    },
+    "osc3": {
+      "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
+      "fmDepth": 0.0, "fmRatio": 1.0, "fmSource": "none",
+      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
+    },
+    "osc4": {
+      "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
+      "fmDepth": 0.0, "fmRatio": 1.0, "fmSource": "none",
+      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
+    },
+    "noise": { "mixLevel": 0.0, "type": "white", "enabled": false }
+  },
+  "envelopes": {
+    "ampEnv": {
+      "attackMs": 5.0, "decayMs": 200.0, "sustainLevel": 0.75,
+      "releaseMs": 300.0, "attackCurve": -3.0, "decayCurve": -4.0, "releaseCurve": -5.0
+    },
+    "filterEnv": {
+      "attackMs": 3.0, "decayMs": 300.0, "sustainLevel": 0.2,
+      "releaseMs": 200.0, "attackCurve": -2.0, "decayCurve": -6.0, "releaseCurve": -5.0
+    },
+    "modEnv": {
+      "attackMs": 3.0, "decayMs": 400.0, "sustainLevel": 0.0,
+      "releaseMs": 200.0, "attackCurve": -2.0, "decayCurve": -5.0, "releaseCurve": -5.0
+    }
+  },
+  "filters": {
+    "svf": { "mode": "lp", "cutoff": 1200.0, "resonance": 0.35, "enabled": true },
+    "ladder": { "cutoff": 1000.0, "resonance": 0.3, "drive": 1.0, "enabled": false }
+  },
+  "fx": {
+    "saturator": { "drive": 1.0, "mix": 1.0, "enabled": false }
+  },
+  "lfos": {
+    "lfo1": { "bank": "sine", "rate": 0.8, "amplitude": 1.0, "retrigger": true },
+    "lfo2": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false },
+    "lfo3": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false }
+  },
+  "modMatrix": [
+    { "source": "filterEnv", "destination": "svf.cutoff",   "amount": 2.0 },
+    { "source": "keyTrack",  "destination": "svf.cutoff",   "amount": 1.0 },
+    { "source": "velocity",  "destination": "svf.cutoff",   "amount": 0.8 },
+    { "source": "modEnv",    "destination": "osc1.scanPos", "amount": 0.8 },
+    { "source": "modEnv",    "destination": "osc2.scanPos", "amount": 0.8 },
+    { "source": "lfo1",      "destination": "osc1.scanPos", "amount": 0.12 },
+    { "source": "lfo1",      "destination": "osc2.scanPos", "amount": 0.12 }
+  ],
+  "signalChain": ["svf", "ladder", "saturator"],
+  "voice": {
+    "pitchBend":  { "range": 2.0 },
+    "mono":       { "enabled": true, "legato": true },
+    "portamento": { "time": 30.0, "legato": true, "enabled": true },
+    "unison":     { "voices": 4, "detune": 20.0, "spread": 0.5, "enabled": false }
+  }
+}

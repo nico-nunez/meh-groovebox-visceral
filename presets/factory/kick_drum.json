@@ -1,16 +1,16 @@
 {
   "version": 1,
   "metadata": {
-    "name": "303 Acid Bass",
+    "name": "Kick Drum",
     "author": "",
-    "category": "Bass",
-    "description": "Classic acid squelch — SVF lowpass with high resonance, fast filter envelope, mono legato"
+    "category": "Drums",
+    "description": "Dark techno kick — deep sine pitch sweep, long tail, heavy saturation. Play at C2 for standard kick tuning."
   },
   "oscillators": {
     "osc1": {
-      "bank": "saw", "scanPos": 0.0, "mixLevel": 1.0,
+      "bank": "sine", "scanPos": 0.0, "mixLevel": 1.0,
       "fmDepth": 0.0, "fmRatio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": true
+      "octaveOffset": -1, "detuneAmount": 0.0, "enabled": true
     },
     "osc2": {
       "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
@@ -31,24 +31,24 @@
   },
   "envelopes": {
     "ampEnv": {
-      "attackMs": 1.0, "decayMs": 250.0, "sustainLevel": 0.5,
-      "releaseMs": 30.0, "attackCurve": -1.0, "decayCurve": -5.0, "releaseCurve": -4.0
+      "attackMs": 1.0, "decayMs": 650.0, "sustainLevel": 0.0,
+      "releaseMs": 80.0, "attackCurve": -1.0, "decayCurve": -4.0, "releaseCurve": -4.0
     },
     "filterEnv": {
-      "attackMs": 1.0, "decayMs": 200.0, "sustainLevel": 0.05,
-      "releaseMs": 50.0, "attackCurve": -1.0, "decayCurve": -8.0, "releaseCurve": -5.0
-    },
-    "modEnv": {
       "attackMs": 10.0, "decayMs": 100.0, "sustainLevel": 0.7,
       "releaseMs": 200.0, "attackCurve": -5.0, "decayCurve": -5.0, "releaseCurve": -5.0
+    },
+    "modEnv": {
+      "attackMs": 1.0, "decayMs": 100.0, "sustainLevel": 0.0,
+      "releaseMs": 30.0, "attackCurve": -1.0, "decayCurve": -5.0, "releaseCurve": -5.0
     }
   },
   "filters": {
-    "svf": { "mode": "lp", "cutoff": 300.0, "resonance": 0.8, "enabled": true },
+    "svf": { "mode": "lp", "cutoff": 1000.0, "resonance": 0.5, "enabled": false },
     "ladder": { "cutoff": 1000.0, "resonance": 0.3, "drive": 1.0, "enabled": false }
   },
   "fx": {
-    "saturator": { "drive": 1.8, "mix": 0.6, "enabled": true }
+    "saturator": { "drive": 2.8, "mix": 0.7, "enabled": true }
   },
   "lfos": {
     "lfo1": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false },
@@ -56,14 +56,13 @@
     "lfo3": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false }
   },
   "modMatrix": [
-    { "source": "filterEnv", "destination": "svf.cutoff", "amount": 3.5 },
-    { "source": "keyTrack",  "destination": "svf.cutoff", "amount": 1.0 }
+    { "source": "modEnv", "destination": "osc1.pitch", "amount": 24.0 }
   ],
   "signalChain": ["svf", "ladder", "saturator"],
   "voice": {
-    "mono": { "enabled": true, "legato": true },
-    "portamento": { "time": 25.0, "legato": true, "enabled": true },
-    "unison": { "voices": 4, "detune": 20.0, "spread": 0.5, "enabled": false },
-    "pitchBend": { "range": 2.0}
+    "pitchBend":  { "range": 2.0 },
+    "mono":       { "enabled": true, "legato": false },
+    "portamento": { "time": 50.0, "legato": true, "enabled": false },
+    "unison":     { "voices": 4, "detune": 20.0, "spread": 0.5, "enabled": false }
   }
 }

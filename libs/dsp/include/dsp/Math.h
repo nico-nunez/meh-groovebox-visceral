@@ -68,4 +68,8 @@ void computeDetuneOffsets(float* out, int count, float detuneCents);
 // count=1 writes 0 (center). width=1 spans full stereo field.
 void computePanPositions(float* out, int count, float width);
 
+inline float midiKeyTrackAmount(int midiNote, int rootNote = 69) { // default A4
+  return static_cast<float>(midiNote - rootNote) * SEMITONE_PER_OCTAVE;
+}
+
 } // namespace dsp::math

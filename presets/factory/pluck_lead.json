@@ -56,9 +56,11 @@
     "lfo3": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false }
   },
   "modMatrix": [
-    { "source": "filterEnv", "destination": "svf.cutoff", "amount": 2.0 },
-    { "source": "velocity", "destination": "svf.cutoff", "amount": 1.5 },
-    { "source": "lfo1", "destination": "osc1.pitch", "amount": 0.15 }
+    { "source": "filterEnv", "destination": "svf.cutoff",  "amount": 2.0 },
+    { "source": "velocity",  "destination": "svf.cutoff",  "amount": 1.5 },
+    { "source": "keyTrack",  "destination": "svf.cutoff",  "amount": 1.0 },
+    { "source": "lfo1",      "destination": "osc1.pitch",  "amount": 1.0 },
+    { "source": "lfo1",      "destination": "osc2.pitch",  "amount": 1.0 }
   ],
   "signalChain": ["svf", "ladder", "saturator"],
   "voice": {

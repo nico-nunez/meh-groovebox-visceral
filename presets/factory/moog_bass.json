@@ -56,7 +56,8 @@
     "lfo3": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false }
   },
   "modMatrix": [
-    { "source": "filterEnv", "destination": "ladder.cutoff", "amount": 2.0 }
+    { "source": "filterEnv", "destination": "ladder.cutoff", "amount": 2.0 },
+    { "source": "keyTrack",  "destination": "ladder.cutoff", "amount": 1.0 }
   ],
   "signalChain": ["svf", "ladder", "saturator"],
   "voice": {

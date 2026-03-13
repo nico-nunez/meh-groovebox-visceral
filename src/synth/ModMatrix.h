@@ -24,6 +24,7 @@ enum ModSrc {
   Noise,
 
   ModWheel,
+  KeyTrack, // MIDI Note offset from A4 (69 - 440hz)
 
   SRC_COUNT // used to size arrays, not a valid source
 };
@@ -135,6 +136,7 @@ inline constexpr ModSrcMapping modSrcMappings[ModSrc::SRC_COUNT - 1] = // Not in
         {"noise", ModSrc::Noise},
 
         {"modWheel", ModSrc::ModWheel},
+        {"keyTrack", ModSrc::KeyTrack},
 };
 
 struct ModDestMapping {

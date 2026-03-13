@@ -15,10 +15,7 @@ A complete reference for crafting presets for the meh-synth-wave synthesizer. Th
   - [LFOs](#lfos)
   - [Modulation Matrix](#modulation-matrix)
   - [Signal Chain](#signal-chain)
-  - [Mono Mode](#mono-mode)
-  - [Portamento](#portamento)
-  - [Unison](#unison)
-  - [Global](#global)
+  - [Voice](#voice)
 - [String Value Reference](#string-value-reference)
 - [Annotated Example Preset](#annotated-example-preset)
 - [Init Preset](#init-preset)
@@ -41,7 +38,7 @@ A complete reference for crafting presets for the meh-synth-wave synthesizer. Th
 - **3 envelopes**: amplitude, filter, and general-purpose mod envelope
 - **Envelope curve shaping**: per-stage curve parameter (concave/linear/convex) via precomputed lookup tables
 - **Mod matrix**: up to 16 routes, any source → any destination with bipolar amount
-- **Mod sources**: ampEnv, filterEnv, modEnv, lfo1–lfo3, velocity, noise, modWheel
+- **Mod sources**: ampEnv, filterEnv, modEnv, lfo1–lfo3, velocity, noise, modWheel, keyTrack
 - **Mod destinations**: filter cutoff/resonance (both filters), oscillator pitch/mix/scanPos/fmDepth (all 4 oscs), LFO rate/amplitude (all 3 LFOs)
 
 ### Filtering & Effects
@@ -70,7 +67,6 @@ Things the synth **cannot** do — useful context for realistic preset design:
 
 - **No effects beyond saturation** — no reverb, delay, chorus, or phaser (planned for step 10)
 - **No tempo sync** — LFO rates are in Hz only, no BPM-synced subdivisions
-- **No key tracking** on filters — cutoff does not follow pitch
 - **No ring modulation** — oscillators can FM each other but not multiply signals
 - **No hard sync** — oscillator phase reset from another oscillator is not implemented
 - **No sample playback** — wavetable-only; no .wav file loading
@@ -96,20 +92,32 @@ Presets are JSON files with the `.json` extension. Every field must be present (
 {
   "version": 1,
   "metadata": { ... },
-  "oscillators": { "osc1": { ... }, "osc2": { ... }, "osc3": { ... }, "osc4": { ... } },
-  "noise": { ... },
+  "oscillators": {
+    "osc1": { ... },
+    "osc2": { ... },
+    "osc3": { ... },
+    "osc4": { ... },
+    "noise": { ... }
+  },
   "envelopes": { "ampEnv": { ... }, "filterEnv": { ... }, "modEnv": { ... } },
   "filters": { "svf": { ... }, "ladder": { ... } },
-  "saturator": { ... },
+  "fx": { "saturator": { ... } },
   "lfos": { "lfo1": { ... }, "lfo2": { ... }, "lfo3": { ... } },
   "modMatrix": [ ... ],
   "signalChain": [ ... ],
-  "mono": { ... },
-  "portamento": { ... },
-  "unison": { ... },
-  "global": { ... }
+  "voice": {
+    "pitchBend": { ... },
+    "mono": { ... },
+    "portamento": { ... },
+    "unison": { ... }
+  }
 }
 ```
+
+**Key structural notes:**
+- `noise` is nested inside `oscillators`, not at the root
+- `saturator` is nested inside `fx`, not at the root
+- `mono`, `portamento`, `unison`, and `pitchBend` are all nested inside `voice`
 
 ---
 
@@ -139,6 +147,8 @@ Each oscillator (osc1–osc4) has the same fields:
 - Per-voice gain is fixed at `1/8` (0.125) — this is a system constant, not a preset parameter.
 
 ### Noise
+
+Noise is serialized inside the `oscillators` JSON object (alongside osc1–osc4).
 
 | Field | Type | Range | Default | Description |
 |-------|------|-------|---------|-------------|
@@ -199,6 +209,8 @@ Three envelopes share the same field structure: `ampEnv` (amplitude), `filterEnv
 - Filter resonance modulation is **linear ±1.0**.
 
 ### Saturator
+
+Saturator is serialized inside the `fx` JSON object.
 
 | Field | Type | Range | Default | Description |
 |-------|------|-------|---------|-------------|
@@ -271,14 +283,26 @@ Valid processor names: `"svf"`, `"ladder"`, `"saturator"`
 - A processor in the chain but with `enabled: false` is skipped
 - Duplicate entries are allowed (e.g., two saturator stages)
 
-### Mono Mode
+### Voice
+
+All voice behavior fields are grouped under the `"voice"` key in JSON.
+
+#### Pitch Bend
+
+| Field | Type | Range | Default | Description |
+|-------|------|-------|---------|-------------|
+| `range` | float | 0.0 – 48.0 | 2.0 | Pitch bend range in semitones (applied symmetrically up/down) |
+
+**Note:** Master gain is intentionally excluded from presets — it's a session-level control.
+
+#### Mono Mode
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | false | Single-voice mode (last-note priority) |
 | `legato` | bool | true | When true: overlapping notes redirect pitch without retriggering envelopes |
 
-### Portamento
+#### Portamento
 
 | Field | Type | Range | Default | Description |
 |-------|------|-------|---------|-------------|
@@ -288,7 +312,7 @@ Valid processor names: `"svf"`, `"ladder"`, `"saturator"`
 
 **Note:** Portamento uses exponential decay — the pitch approaches the target asymptotically. Short times (10–50ms) give a subtle slide; long times (500ms+) give dramatic pitch sweeps.
 
-### Unison
+#### Unison
 
 | Field | Type | Range | Default | Description |
 |-------|------|-------|---------|-------------|
@@ -302,14 +326,6 @@ Valid processor names: `"svf"`, `"ladder"`, `"saturator"`
 - Gain compensation is `1/sqrt(N)` — so 4 unison voices are at ~0.5x gain each, not 0.25x. This preserves perceived loudness.
 - Unison applies to **all** oscillators uniformly — you can't have osc1 with 4 voices and osc2 with 2.
 - Setting `voices: 1` effectively disables unison even if `enabled: true`.
-
-### Global
-
-| Field | Type | Range | Default | Description |
-|-------|------|-------|---------|-------------|
-| `pitchBendRange` | float | 0.0 – 48.0 | 2.0 | Pitch bend range in semitones (applied symmetrically up/down) |
-
-**Note:** `masterGain` is intentionally excluded from presets — it's a session-level control.
 
 ---
 
@@ -356,17 +372,25 @@ Same as [wavetable banks](#wavetable-banks), plus:
 
 ### Modulation Sources
 
-| String | Output Range | Description |
-|--------|-------------|-------------|
-| `"ampEnv"` | 0.0 – 1.0 | Amplitude envelope (per-voice) |
-| `"filterEnv"` | 0.0 – 1.0 | Filter envelope (per-voice) |
-| `"modEnv"` | 0.0 – 1.0 | Mod envelope (per-voice) |
-| `"lfo1"` | -amp – +amp | LFO 1 (global) |
-| `"lfo2"` | -amp – +amp | LFO 2 (global) |
-| `"lfo3"` | -amp – +amp | LFO 3 (global) |
-| `"velocity"` | 0.0 – 1.0 | MIDI note-on velocity (per-voice) |
-| `"noise"` | -1.0 – 1.0 | White noise (global) |
-| `"modWheel"` | 0.0 – 1.0 | MIDI CC1 mod wheel (global) |
+| String | Output Range | Per-voice? | Description |
+|--------|-------------|------------|-------------|
+| `"ampEnv"` | 0.0 – 1.0 | yes | Amplitude envelope |
+| `"filterEnv"` | 0.0 – 1.0 | yes | Filter envelope |
+| `"modEnv"` | 0.0 – 1.0 | yes | Mod envelope (general purpose) |
+| `"lfo1"` | -amp – +amp | no | LFO 1 (global) |
+| `"lfo2"` | -amp – +amp | no | LFO 2 (global) |
+| `"lfo3"` | -amp – +amp | no | LFO 3 (global) |
+| `"velocity"` | 0.0 – 1.0 | yes | MIDI note-on velocity |
+| `"noise"` | -1.0 – 1.0 | no | White noise (global) |
+| `"modWheel"` | 0.0 – 1.0 | no | MIDI CC1 mod wheel (global) |
+| `"keyTrack"` | octaves from A4 | yes | MIDI note position: A4=0, A3=-1, A5=+1 |
+
+**Key tracking amounts:**
+- `amount = 1.0` → full 1:1 tracking (filter cutoff rises/falls at the same rate as pitch)
+- `amount = 0.5` → 50% tracking (common for pads — brightens toward high notes but not fully)
+- `amount = 0.0` → no tracking (same as not having the route)
+
+Key tracking is most impactful on presets with low filter cutoffs — without it, high notes sound progressively duller because the fixed cutoff sits below the note's upper harmonics.
 
 ### Modulation Destinations
 
@@ -459,13 +483,8 @@ A dub techno chord stab with filter envelope sweep and LFO wobble:
       "octaveOffset": 0,
       "detuneAmount": 0.0,
       "enabled": false
-    }
-  },
-
-  "noise": {
-    "mixLevel": 0.0,
-    "type": "white",
-    "enabled": false
+    },
+    "noise": { "mixLevel": 0.0, "type": "white", "enabled": false }
   },
 
   "envelopes": {
@@ -499,74 +518,32 @@ A dub techno chord stab with filter envelope sweep and LFO wobble:
   },
 
   "filters": {
-    "svf": {
-      "mode": "lp",
-      "cutoff": 600.0,
-      "resonance": 0.55,
-      "enabled": true
-    },
-    "ladder": {
-      "cutoff": 1000.0,
-      "resonance": 0.3,
-      "drive": 1.0,
-      "enabled": false
-    }
+    "svf": { "mode": "lp", "cutoff": 600.0, "resonance": 0.55, "enabled": true },
+    "ladder": { "cutoff": 1000.0, "resonance": 0.3, "drive": 1.0, "enabled": false }
   },
 
-  "saturator": {
-    "drive": 1.5,
-    "mix": 0.4,
-    "enabled": true
+  "fx": {
+    "saturator": { "drive": 1.5, "mix": 0.4, "enabled": true }
   },
 
   "lfos": {
-    "lfo1": {
-      "bank": "sine",
-      "rate": 0.3,
-      "amplitude": 1.0,
-      "retrigger": false
-    },
-    "lfo2": {
-      "bank": "sine",
-      "rate": 1.0,
-      "amplitude": 1.0,
-      "retrigger": false
-    },
-    "lfo3": {
-      "bank": "sine",
-      "rate": 1.0,
-      "amplitude": 1.0,
-      "retrigger": false
-    }
+    "lfo1": { "bank": "sine", "rate": 0.3, "amplitude": 1.0, "retrigger": false },
+    "lfo2": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false },
+    "lfo3": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false }
   },
 
   "modMatrix": [
     { "source": "filterEnv", "destination": "svf.cutoff", "amount": 2.5 },
-    { "source": "lfo1", "destination": "svf.cutoff", "amount": 0.4 }
+    { "source": "lfo1",      "destination": "svf.cutoff", "amount": 0.4 }
   ],
 
   "signalChain": ["svf", "ladder", "saturator"],
 
-  "mono": {
-    "enabled": false,
-    "legato": true
-  },
-
-  "portamento": {
-    "time": 50.0,
-    "legato": true,
-    "enabled": false
-  },
-
-  "unison": {
-    "voices": 4,
-    "detune": 20.0,
-    "spread": 0.5,
-    "enabled": false
-  },
-
-  "global": {
-    "pitchBendRange": 2.0
+  "voice": {
+    "pitchBend":  { "range": 2.0 },
+    "mono":       { "enabled": false, "legato": true },
+    "portamento": { "time": 50.0, "legato": true, "enabled": false },
+    "unison":     { "voices": 4, "detune": 20.0, "spread": 0.5, "enabled": false }
   }
 }
 ```
@@ -613,9 +590,9 @@ The init preset is a clean starting point — one sine oscillator, no filters, n
       "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
       "fmDepth": 0.0, "fmRatio": 1.0, "fmSource": "none",
       "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
-    }
+    },
+    "noise": { "mixLevel": 0.0, "type": "white", "enabled": false }
   },
-  "noise": { "mixLevel": 0.0, "type": "white", "enabled": false },
   "envelopes": {
     "ampEnv": {
       "attackMs": 10.0, "decayMs": 100.0, "sustainLevel": 0.7,
@@ -634,7 +611,9 @@ The init preset is a clean starting point — one sine oscillator, no filters, n
     "svf": { "mode": "lp", "cutoff": 1000.0, "resonance": 0.5, "enabled": false },
     "ladder": { "cutoff": 1000.0, "resonance": 0.3, "drive": 1.0, "enabled": false }
   },
-  "saturator": { "drive": 1.0, "mix": 1.0, "enabled": false },
+  "fx": {
+    "saturator": { "drive": 1.0, "mix": 1.0, "enabled": false }
+  },
   "lfos": {
     "lfo1": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false },
     "lfo2": { "bank": "sine", "rate": 1.0, "amplitude": 1.0, "retrigger": false },
@@ -642,9 +621,11 @@ The init preset is a clean starting point — one sine oscillator, no filters, n
   },
   "modMatrix": [],
   "signalChain": ["svf", "ladder", "saturator"],
-  "mono": { "enabled": false, "legato": true },
-  "portamento": { "time": 50.0, "legato": true, "enabled": false },
-  "unison": { "voices": 4, "detune": 20.0, "spread": 0.5, "enabled": false },
-  "global": { "pitchBendRange": 2.0 }
+  "voice": {
+    "pitchBend":  { "range": 2.0 },
+    "mono":       { "enabled": false, "legato": true },
+    "portamento": { "time": 50.0, "legato": true, "enabled": false },
+    "unison":     { "voices": 4, "detune": 20.0, "spread": 0.5, "enabled": false }
+  }
 }
 ```
