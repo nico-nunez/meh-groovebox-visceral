@@ -4,6 +4,7 @@
 #include "synth/Preset.h"
 #include "synth/PresetApply.h"
 #include "synth/PresetIO.h"
+#include "synth/PresetSerializer.h"
 #include "synth/WavetableBanks.h"
 #include <cstdint>
 
@@ -77,7 +78,7 @@ void processPresetCmd(std::istringstream& iss, Engine& engine) {
 
     // ---- preset init ----
   } else if (subCmd == "init") {
-    auto initPreset = createDefaultPreset();
+    auto initPreset = createInitPreset();
     auto applyResult = applyPreset(initPreset, engine);
 
     printf("Init preset applied\n");
@@ -179,6 +180,35 @@ void processPresetCmd(std::istringstream& iss, Engine& engine) {
     for (const auto& w : loadResult.warnings)
       printf("  warning: %s\n", w.c_str());
 
+  } else if (subCmd == "dump") {
+    std::string arg1, arg2;
+    iss >> arg1 >> arg2;
+
+    bool wantJson = (arg1 == "json");
+    std::string name = wantJson ? arg2 : arg1;
+
+    if (name.empty()) {
+      // No name: operate on current engine state
+      auto p = capturePreset(engine);
+      if (wantJson)
+        printf("%s\n", serializePreset(p).c_str());
+      else
+        printPreset(p);
+    } else {
+      // Name given: load from file
+      auto loadResult = loadPresetByName(name);
+      if (!loadResult.ok()) {
+        printf("Error: %s\n", loadResult.error.c_str());
+        return;
+      }
+      for (const auto& w : loadResult.warnings)
+        printf("  warning: %s\n", w.c_str());
+      if (wantJson)
+        printf("%s\n", serializePreset(loadResult.preset).c_str());
+      else
+        printPreset(loadResult.preset);
+    }
+
     // ---- preset help ----
   } else if (subCmd == "help") {
     printf("Preset commands:\n");
@@ -189,7 +219,6 @@ void processPresetCmd(std::istringstream& iss, Engine& engine) {
     printf("  preset info <name|path>  - Show preset metadata\n");
     printf("  preset help              - Show this help\n");
     printf("\nSearch order for load/info: user/ → factory/\n");
-
   } else {
     printf("Unknown preset command: %s\n", subCmd.c_str());
     printf("Type 'preset help' for usage\n");

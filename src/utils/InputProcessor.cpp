@@ -1,6 +1,7 @@
 #include "InputProcessor.h"
 
 #include "synth/Engine.h"
+#include "synth/Filters.h"
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
 #include "synth/ParamBindings.h"
@@ -59,7 +60,7 @@ int setInputParam(const std::string& paramName,
     std::string value;
     iss >> value;
 
-    auto filterMode = pb::getSVFModeType(value.c_str());
+    auto filterMode = filters::parseSVFMode(value.c_str());
     paramValue = static_cast<float>(filterMode);
 
   } break;

@@ -55,7 +55,7 @@ const char* bankIDToString(BankID id) {
 
 BankID parseBankID(const char* name) {
   for (int i = 0; i < s_registryCount; i++)
-    if (std::strcmp(s_registry[i]->name, name))
+    if (std::strcmp(s_registry[i]->name, name) == 0)
       return static_cast<BankID>(i);
 
   return BankID::Unknown;

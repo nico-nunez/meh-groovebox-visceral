@@ -66,7 +66,7 @@
   "voice": {
     "mono": { "enabled": false, "legato": true },
     "portamento": { "time": 50.0, "legato": true, "enabled": false },
-    "unison": { "voices": 3, "detune": 30.0, "spread": 0.8, "enabled": true }
-  },
-  "global": { "pitchBendRange": 2.0 }
+    "unison": { "voices": 3, "detune": 30.0, "spread": 0.8, "enabled": true },
+    "pitchBend": { "range": 2.0}
+  }
 }

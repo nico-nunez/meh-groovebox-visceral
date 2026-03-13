@@ -48,7 +48,8 @@ void processSVFilter(SVFilter& filter, float& inOutL, float& inOutR, uint32_t vo
   SVFOutputs outR = dsp::filters::processSVF(inOutR, filter.coeffs, filter.statesR[voiceIndex]);
 
   switch (filter.mode) {
-  case SVFMode::MODE_COUNT:
+  case SVFMode::COUNT:
+  case SVFMode::Unknown:
   case SVFMode::LP:
     inOutL = outL.lp;
     inOutR = outR.lp;
@@ -91,7 +92,8 @@ void processSVFilter(SVFilter& filter,
   SVFOutputs outR = dsp::filters::processSVF(inOutR, coeffs, filter.statesR[voiceIndex]);
 
   switch (filter.mode) {
-  case SVFMode::MODE_COUNT:
+  case SVFMode::COUNT:
+  case SVFMode::Unknown:
   case SVFMode::LP:
     inOutL = outL.lp;
     inOutR = outR.lp;

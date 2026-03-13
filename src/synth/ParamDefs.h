@@ -9,32 +9,32 @@ namespace synth::param {
 #define PARAM_LIST                                                                                 \
   /* ==== Oscillators ==== */                                                                      \
   X(OSC1_MIX_LEVEL, "osc1.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC1_DETUNE, "osc1.detune", Float, -100.0f, 100.0f, 0.0f, None)                                \
-  X(OSC1_OCTAVE, "osc1.octave", Int8, -2.0f, 2.0f, 0.0f, None)                                     \
+  X(OSC1_DETUNE, "osc1.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
+  X(OSC1_OCTAVE, "osc1.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC1_SCAN_POS, "osc1.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
   X(OSC1_FM_DEPTH, "osc1.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC1_FM_RATIO, "osc1.fmRatio", Float, 0.5f, 16.0f, 1.0f, None)                                 \
   X(OSC1_ENABLED, "osc1.enabled", Bool, 0.0f, 1.0f, 1.0f, OscEnable)                               \
                                                                                                    \
   X(OSC2_MIX_LEVEL, "osc2.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC2_DETUNE, "osc2.detune", Float, -100.0f, 100.0f, 0.0f, None)                                \
-  X(OSC2_OCTAVE, "osc2.octave", Int8, -2.0f, 2.0f, 0.0f, None)                                     \
+  X(OSC2_DETUNE, "osc2.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
+  X(OSC2_OCTAVE, "osc2.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC2_SCAN_POS, "osc2.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
   X(OSC2_FM_DEPTH, "osc2.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC2_FM_RATIO, "osc2.fmRatio", Float, 0.5f, 16.0f, 1.0f, None)                                 \
   X(OSC2_ENABLED, "osc2.enabled", Bool, 0.0f, 1.0f, 0.0f, OscEnable)                               \
                                                                                                    \
   X(OSC3_MIX_LEVEL, "osc3.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC3_DETUNE, "osc3.detune", Float, -100.0f, 100.0f, 0.0f, None)                                \
-  X(OSC3_OCTAVE, "osc3.octave", Int8, -2.0f, 2.0f, 0.0f, None)                                     \
+  X(OSC3_DETUNE, "osc3.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
+  X(OSC3_OCTAVE, "osc3.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC3_SCAN_POS, "osc3.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
   X(OSC3_FM_DEPTH, "osc3.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC3_FM_RATIO, "osc3.fmRatio", Float, 0.5f, 16.0f, 1.0f, None)                                 \
   X(OSC3_ENABLED, "osc3.enabled", Bool, 0.0f, 1.0f, 0.0f, OscEnable)                               \
                                                                                                    \
   X(OSC4_MIX_LEVEL, "osc4.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC4_DETUNE, "osc4.detune", Float, -100.0f, 100.0f, 0.0f, None)                                \
-  X(OSC4_OCTAVE, "osc4.octave", Int8, -2.0f, 2.0f, 0.0f, None)                                     \
+  X(OSC4_DETUNE, "osc4.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
+  X(OSC4_OCTAVE, "osc4.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC4_SCAN_POS, "osc4.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
   X(OSC4_FM_DEPTH, "osc4.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC4_FM_RATIO, "osc4.fmRatio", Float, 0.5f, 16.0f, 1.0f, None)                                 \
@@ -45,26 +45,26 @@ namespace synth::param {
   X(NOISE_ENABLED, "noise.enabled", Bool, 0.0f, 1.0f, 0.0f, OscEnable)                             \
                                                                                                    \
   /* ==== Envelopes ==== */                                                                        \
-  X(AMP_ENV_ATTACK, "ampEnv.attack", Float, 0.0f, 10000.0f, 10.0f, EnvTime)                        \
-  X(AMP_ENV_DECAY, "ampEnv.decay", Float, 0.0f, 10000.0f, 100.0f, EnvTime)                         \
-  X(AMP_ENV_SUSTAIN, "ampEnv.sustain", Float, 0.0f, 1.0f, 0.7f, None)                              \
-  X(AMP_ENV_RELEASE, "ampEnv.release", Float, 0.0f, 10000.0f, 200.0f, EnvTime)                     \
+  X(AMP_ENV_ATTACK, "ampEnv.attackMs", Float, 0.0f, 10000.0f, 10.0f, EnvTime)                      \
+  X(AMP_ENV_DECAY, "ampEnv.decayMs", Float, 0.0f, 10000.0f, 100.0f, EnvTime)                       \
+  X(AMP_ENV_SUSTAIN, "ampEnv.sustainLevel", Float, 0.0f, 1.0f, 0.7f, None)                         \
+  X(AMP_ENV_RELEASE, "ampEnv.releaseMs", Float, 0.0f, 10000.0f, 200.0f, EnvTime)                   \
   X(AMP_ENV_ATTACK_CURVE, "ampEnv.attackCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)             \
   X(AMP_ENV_DECAY_CURVE, "ampEnv.decayCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)               \
   X(AMP_ENV_RELEASE_CURVE, "ampEnv.releaseCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)           \
                                                                                                    \
-  X(FILTER_ENV_ATTACK, "filterEnv.attack", Float, 0.0f, 10000.0f, 10.0f, EnvTime)                  \
-  X(FILTER_ENV_DECAY, "filterEnv.decay", Float, 0.0f, 10000.0f, 100.0f, EnvTime)                   \
-  X(FILTER_ENV_SUSTAIN, "filterEnv.sustain", Float, 0.0f, 1.0f, 0.7f, None)                        \
-  X(FILTER_ENV_RELEASE, "filterEnv.release", Float, 0.0f, 10000.0f, 200.0f, EnvTime)               \
+  X(FILTER_ENV_ATTACK, "filterEnv.attackMs", Float, 0.0f, 10000.0f, 10.0f, EnvTime)                \
+  X(FILTER_ENV_DECAY, "filterEnv.decayMs", Float, 0.0f, 10000.0f, 100.0f, EnvTime)                 \
+  X(FILTER_ENV_SUSTAIN, "filterEnv.sustainLevel", Float, 0.0f, 1.0f, 0.7f, None)                   \
+  X(FILTER_ENV_RELEASE, "filterEnv.releaseMs", Float, 0.0f, 10000.0f, 200.0f, EnvTime)             \
   X(FILTER_ENV_ATTACK_CURVE, "filterEnv.attackCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)       \
   X(FILTER_ENV_DECAY_CURVE, "filterEnv.decayCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)         \
   X(FILTER_ENV_RELEASE_CURVE, "filterEnv.releaseCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)     \
                                                                                                    \
-  X(MOD_ENV_ATTACK, "modEnv.attack", Float, 0.0f, 10000.0f, 10.0f, EnvTime)                        \
-  X(MOD_ENV_DECAY, "modEnv.decay", Float, 0.0f, 10000.0f, 100.0f, EnvTime)                         \
-  X(MOD_ENV_SUSTAIN, "modEnv.sustain", Float, 0.0f, 1.0f, 0.7f, None)                              \
-  X(MOD_ENV_RELEASE, "modEnv.release", Float, 0.0f, 10000.0f, 200.0f, EnvTime)                     \
+  X(MOD_ENV_ATTACK, "modEnv.attackMs", Float, 0.0f, 10000.0f, 10.0f, EnvTime)                      \
+  X(MOD_ENV_DECAY, "modEnv.decayMs", Float, 0.0f, 10000.0f, 100.0f, EnvTime)                       \
+  X(MOD_ENV_SUSTAIN, "modEnv.sustainLevel", Float, 0.0f, 1.0f, 0.7f, None)                         \
+  X(MOD_ENV_RELEASE, "modEnv.releaseMs", Float, 0.0f, 10000.0f, 200.0f, EnvTime)                   \
   X(MOD_ENV_ATTACK_CURVE, "modEnv.attackCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)             \
   X(MOD_ENV_DECAY_CURVE, "modEnv.decayCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)               \
   X(MOD_ENV_RELEASE_CURVE, "modEnv.releaseCurve", Float, -10.0f, 10.0f, -5.0f, EnvCurve)           \

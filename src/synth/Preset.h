@@ -72,10 +72,10 @@ struct Preset {
                                                                 SignalProcessor::Saturator};
 };
 
-inline Preset createDefaultPreset() {
+inline Preset createInitPreset() {
   Preset p;
-  p.metadata.name = "Default";
-  p.metadata.category = "Default";
+  p.metadata.name = "Init";
+  p.metadata.category = "Init";
   p.metadata.description = "Clean starting point";
 
   for (int i = 0; i < param::PARAM_COUNT - 1; i++) {
@@ -85,7 +85,7 @@ inline Preset createDefaultPreset() {
   return p;
 }
 
-inline float getPresetValue(Preset p, param::ParamID id) {
+inline float getPresetValue(const Preset& p, param::ParamID id) {
   return p.paramValues[id];
 }
 

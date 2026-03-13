@@ -8,6 +8,8 @@
 #include "synth/SignalChain.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
+#include <cstdint>
+#include <cstdio>
 
 namespace synth::preset {
 
@@ -15,8 +17,6 @@ namespace pb = param::bindings;
 
 namespace osc = wavetable::osc;
 namespace banks = wavetable::banks;
-
-using param::ParamID;
 
 // ============================================================
 // Helpers (anonymous)
@@ -64,146 +64,9 @@ float clampModAmount(mod_matrix::ModDest dest, float amount) {
   case LFO3Amplitude:
     return clampLFOAmplitudeMod(amount);
   default:
-    return amount; // unknown dest — pass through
+    printf("Unknown mod matrix dest: %u", dest);
+    return 0; // unknown dest — pass through
   }
-}
-
-// Resolve osc bank strings → WavetableBank pointers, fmSource strings → FMSource enums.
-void applyOscStrings(const PresetStrings& strings,
-                     voices::VoicePool& pool,
-                     std::vector<std::string>& warnings) {
-  osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
-  const char* names[] = {"osc1", "osc2", "osc3", "osc4"};
-
-  for (int i = 0; i < 4; i++) {
-    // Bank
-    auto* bank = banks::getBankByName(strings.oscBanks[i].c_str());
-    if (bank) {
-      oscs[i]->bank = bank;
-    } else {
-      oscs[i]->bank = banks::getBankByID(banks::BankID::Sine); // default
-      warnings.push_back(std::string(names[i]) + ".bank: unknown '" + strings.oscBanks[i] +
-                         "', using sine");
-    }
-
-    // FM Source
-    oscs[i]->fmSource = osc::parseFMSource(strings.oscFmSources[i].c_str());
-  }
-}
-
-void applyNoiseType(const std::string& typeStr,
-                    voices::VoicePool& pool,
-                    std::vector<std::string>& warnings) {
-  pool.noise.type = noise::parseNoiseType(typeStr.c_str());
-}
-
-// SVF mode is already written as a float by the param loop (SVF_MODE param).
-// But the binding writes to the SVFMode enum via the FilterMode binding type,
-// so the param loop handles it. Nothing extra needed here unless the
-// string→enum parse produces a different value than what's in paramValues[].
-//
-// ARCHITECTURAL NOTE: SVF mode flows through two paths:
-//   1. paramValues[SVF_MODE] → setParamValueByID → writes SVFMode enum via FilterMode binding
-//   2. strings.svfMode → parseSVFMode → (would write SVFMode enum directly)
-// The param path (1) is authoritative. The string field exists for JSON
-// round-tripping. On apply, path (1) handles it. On capture, we read the
-// enum and convert to string for the preset.
-
-void applyLFOBanks(const PresetStrings& strings,
-                   voices::VoicePool& pool,
-                   std::vector<std::string>& warnings) {
-  lfo::LFO* lfos[] = {&pool.lfo1, &pool.lfo2, &pool.lfo3};
-  const char* names[] = {"lfo1", "lfo2", "lfo3"};
-
-  for (int i = 0; i < 3; i++) {
-    if (strings.lfoBanks[i] == "sah") {
-      lfos[i]->bank = nullptr; // S&H sentinel
-    } else {
-      auto* bank = banks::getBankByName(strings.lfoBanks[i].c_str());
-      if (bank) {
-        lfos[i]->bank = bank;
-      } else {
-        lfos[i]->bank = banks::getBankByID(banks::BankID::Sine); // default
-        warnings.push_back(std::string(names[i]) + ".bank: unknown '" + strings.lfoBanks[i] +
-                           "', using sine");
-      }
-    }
-  }
-}
-
-// Apply a single oscillator's direct-write fields (bank, fmSource).
-// Returns warning string if bank not found, empty otherwise.
-void applyOscDirect(const OscPreset& src,
-                    osc::WavetableOsc& dest,
-                    const char* oscName,
-                    std::vector<std::string>& warnings) {
-  // Bank
-  auto* bank = getBankByName(src.bank.c_str());
-  if (bank) {
-    dest.bank = bank;
-  } else {
-    dest.bank = getBankByName("sine");
-    warnings.push_back(std::string(oscName) + ".bank: unknown '" + src.bank + "', using sine");
-  }
-
-  // FM Source
-  dest.fmSource = osc::parseFMSource(src.fmSource.c_str());
-}
-
-// Apply a single oscillator's bound params.
-void applyOscBound(pb::ParamRouter& router,
-                   voices::VoicePool& pool,
-                   const pb::OscParamIDs ids,
-                   const OscPreset& src) {
-  pb::setParamValueByID(router, pool, ids.mixLevel, src.mixLevel);
-  pb::setParamValueByID(router, pool, ids.detune, src.detuneAmount);
-  pb::setParamValueByID(router, pool, ids.octave, static_cast<float>(src.octaveOffset));
-  pb::setParamValueByID(router, pool, ids.scanPos, src.scanPos);
-  pb::setParamValueByID(router, pool, ids.fmDepth, src.fmDepth);
-  pb::setParamValueByID(router, pool, ids.fmRatio, src.fmRatio);
-  pb::setParamValueByID(router, pool, ids.enabled, src.enabled ? 1.0f : 0.0f);
-}
-
-// Apply an envelope's bound params.
-void applyEnvBound(pb::ParamRouter& router,
-                   voices::VoicePool& pool,
-                   const pb::EnvParamIDs ids,
-                   const EnvelopePreset& src) {
-  pb::setParamValueByID(router, pool, ids.attack, src.attackMs);
-  pb::setParamValueByID(router, pool, ids.decay, src.decayMs);
-  pb::setParamValueByID(router, pool, ids.sustain, src.sustainLevel);
-  pb::setParamValueByID(router, pool, ids.release, src.releaseMs);
-  pb::setParamValueByID(router, pool, ids.attackCurve, src.attackCurve);
-  pb::setParamValueByID(router, pool, ids.decayCurve, src.decayCurve);
-  pb::setParamValueByID(router, pool, ids.releaseCurve, src.releaseCurve);
-}
-
-// Apply a single LFO's direct-write fields (bank).
-void applyLFODirect(const LFOPreset& src,
-                    lfo::LFO& dest,
-                    const char* lfoName,
-                    std::vector<std::string>& warnings) {
-  if (src.bank == "sah") {
-    dest.bank = nullptr; // S&H sentinel
-  } else {
-    auto* bank = getBankByName(src.bank.c_str());
-    if (bank) {
-      dest.bank = bank;
-    } else {
-      dest.bank = getBankByName("sine");
-      warnings.push_back(std::string(lfoName) + ".bank: unknown '" + src.bank + "', using sine");
-    }
-  }
-}
-
-// Apply a single LFO's bound params.
-void applyLFOBound(pb::ParamRouter& router,
-                   voices::VoicePool& pool,
-                   const pb::LFOParamIDs ids,
-                   const LFOPreset& src) {
-  pb::setParamValueByID(router, pool, ids.rate, src.rate);
-  pb::setParamValueByID(router, pool, ids.amplitude, src.amplitude);
-  pb::setParamValueByID(router, pool, ids.retrigger, src.retrigger ? 1.0f : 0.0f);
 }
 
 } // namespace
@@ -222,67 +85,53 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
     pb::setParamValueByID(router, pool, id, preset.paramValues[i]);
   }
 
-  // ==== String fields — direct-write (bank/mode/type resolution) ====
-  applyOscStrings(preset.strings, pool, result.warnings);
-  applyNoiseType(preset.strings.noiseType, pool, result.warnings);
-  applySVFMode(preset.strings.svfMode, pool); // already applied as param, just need enum
-  applyLFOBanks(preset.strings, pool, result.warnings);
+  // ==== Enum fields — direct resolution, no string parsing ====
+  osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
+  for (int i = 0; i < NUM_OSCS; i++) {
+    oscs[i]->bank = banks::getBankByID(preset.oscBanks[i]);
+    oscs[i]->fmSource = preset.oscFmSources[i];
+  }
+
+  pool.noise.type = preset.noiseType;
+
+  // SVF mode: paramValues[SVF_MODE] (set above via param loop) is authoritative.
+  // preset.svfMode keeps the enum in sync for capturePreset round-trips.
+
+  lfo::LFO* lfos[] = {&pool.lfo1, &pool.lfo2, &pool.lfo3};
+  for (int i = 0; i < NUM_LFOS; i++) {
+    lfos[i]->bank = wavetable::banks::getBankByID(preset.lfoBanks[i]);
+  }
 
   // ==== Mod matrix: rebuild from scratch ====
   mod_matrix::clearRoutes(pool.modMatrix);
-  for (const auto& route : preset.modMatrix) {
-    // ... same validation + clampModAmount logic as today ...
+  for (uint8_t i = 0; i < preset.modMatrixCount; i++) {
+    const auto& r = preset.modMatrix[i];
+
+    auto src = mod_matrix::parseModSrc(r.source.c_str());
+    auto dest = mod_matrix::parseModDest(r.destination.c_str());
+
+    if (src == mod_matrix::ModSrc::NoSrc || dest == mod_matrix::ModDest::NoDest) {
+      result.warnings.push_back("mod route " + std::to_string(i) + ": invalid src/dest ('" +
+                                r.source + "' -> '" + r.destination + "'), skipped");
+      continue;
+    }
+
+    float amount = clampModAmount(dest, r.amount);
+    mod_matrix::addRoute(pool.modMatrix, src, dest, amount);
   }
   mod_matrix::clearPrevModDests(pool.modMatrix);
 
   // ==== Signal chain ====
-  // ... same string→enum parsing as today ...
+  pool.signalChain.length = 0;
+  for (int i = 0; i < signal_chain::MAX_CHAIN_SLOTS; i++) {
+    pool.signalChain.slots[i] = preset.signalChain[i];
+
+    if (preset.signalChain[i] != signal_chain::SignalProcessor::None)
+      pool.signalChain.length++;
+  }
 
   return result;
 }
-
-// ============================================================
-// Helpers for capture
-// ============================================================
-
-namespace {
-
-OscPreset captureOsc(const osc::WavetableOsc& osc) {
-  OscPreset p;
-  p.bank = osc.bank ? osc.bank->name : "sine";
-  p.scanPos = osc.scanPos;
-  p.mixLevel = osc.mixLevel;
-  p.fmDepth = osc.fmDepth;
-  p.fmRatio = osc.fmRatio;
-  p.fmSource = osc::fmSourceToString(osc.fmSource);
-  p.octaveOffset = osc.octaveOffset;
-  p.detuneAmount = osc.detuneAmount;
-  p.enabled = osc.enabled;
-  return p;
-}
-
-EnvelopePreset captureEnv(const envelope::Envelope& env) {
-  EnvelopePreset p;
-  p.attackMs = env.attackMs;
-  p.decayMs = env.decayMs;
-  p.sustainLevel = env.sustainLevel;
-  p.releaseMs = env.releaseMs;
-  p.attackCurve = env.attackCurveParam;
-  p.decayCurve = env.decayCurveParam;
-  p.releaseCurve = env.releaseCurveParam;
-  return p;
-}
-
-LFOPreset captureLFO(const lfo::LFO& lfo) {
-  LFOPreset p;
-  p.bank = lfo.bank ? lfo.bank->name : "sah";
-  p.rate = lfo.rate;
-  p.amplitude = lfo.amplitude;
-  p.retrigger = lfo.retrigger;
-  return p;
-}
-
-} // namespace
 
 // ============================================================
 // capturePreset
@@ -290,86 +139,115 @@ LFOPreset captureLFO(const lfo::LFO& lfo) {
 
 Preset capturePreset(const Engine& engine) {
   const auto& pool = engine.voicePool;
+  const auto& router = engine.paramRouter;
 
   Preset p;
   p.version = CURRENT_PRESET_VERSION;
 
-  // Metadata: leave as defaults (caller sets name before saving)
+  // ==== All bound params ====
+  for (int i = 0; i < param::PARAM_COUNT - 1; i++) {
+    auto id = static_cast<param::ParamID>(i);
+    p.paramValues[i] = pb::getParamValueByID(router, id);
+  }
 
-  // ==== Oscillators ====
-  p.osc1 = captureOsc(pool.osc1);
-  p.osc2 = captureOsc(pool.osc2);
-  p.osc3 = captureOsc(pool.osc3);
-  p.osc4 = captureOsc(pool.osc4);
+  // ==== Enum fields — read directly from engine ====
+  const osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
+  for (int i = 0; i < NUM_OSCS; i++) {
+    p.oscBanks[i] = oscs[i]->bank ? banks::parseBankID(oscs[i]->bank->name) : BankID::Sine;
+    p.oscFmSources[i] = oscs[i]->fmSource;
+  }
 
-  // ==== Noise ====
-  p.noise.mixLevel = pool.noise.mixLevel;
-  p.noise.type = noise::noiseTypeToString(pool.noise.type);
-  p.noise.enabled = pool.noise.enabled;
+  p.noiseType = pool.noise.type;
+  p.svfMode = pool.svf.mode;
 
-  // ==== Envelopes ====
-  p.ampEnv = captureEnv(pool.ampEnv);
-  p.filterEnv = captureEnv(pool.filterEnv);
-  p.modEnv = captureEnv(pool.modEnv);
-
-  // ==== SVF ====
-  p.svf.mode = param::names::svfModeToString(pool.svf.mode);
-  p.svf.cutoff = pool.svf.cutoff;
-  p.svf.resonance = pool.svf.resonance;
-  p.svf.enabled = pool.svf.enabled;
-
-  // ==== Ladder ====
-  p.ladder.cutoff = pool.ladder.cutoff;
-  p.ladder.resonance = pool.ladder.resonance;
-  p.ladder.drive = pool.ladder.drive;
-  p.ladder.enabled = pool.ladder.enabled;
-
-  // ==== Saturator ====
-  p.saturator.drive = pool.saturator.drive;
-  p.saturator.mix = pool.saturator.mix;
-  p.saturator.enabled = pool.saturator.enabled;
-
-  // ==== LFOs ====
-  p.lfo1 = captureLFO(pool.lfo1);
-  p.lfo2 = captureLFO(pool.lfo2);
-  p.lfo3 = captureLFO(pool.lfo3);
+  const lfo::LFO* lfos[] = {&pool.lfo1, &pool.lfo2, &pool.lfo3};
+  for (int i = 0; i < NUM_LFOS; i++) {
+    p.lfoBanks[i] = lfos[i]->bank ? banks::parseBankID(lfos[i]->bank->name) : BankID::Sine;
+  }
 
   // ==== Mod matrix ====
-  p.modMatrix.clear();
+  p.modMatrixCount = pool.modMatrix.count;
   for (uint8_t i = 0; i < pool.modMatrix.count; i++) {
     const auto& route = pool.modMatrix.routes[i];
-    ModRoutePreset rp;
-    rp.source = param::names::modSrcToString(route.src);
-    rp.destination = param::names::modDestToString(route.dest);
-    rp.amount = route.amount;
-    p.modMatrix.push_back(rp);
+    p.modMatrix[i].source = mod_matrix::modSrcToString(route.src);
+    p.modMatrix[i].destination = mod_matrix::modDestToString(route.dest);
+    p.modMatrix[i].amount = route.amount;
   }
 
   // ==== Signal chain ====
-  p.signalChain.clear();
-  for (uint8_t i = 0; i < pool.signalChain.length; i++) {
-    const char* name = param::names::signalProcessorToString(pool.signalChain.slots[i]);
-    if (std::strcmp(name, "unknown") != 0) {
-      p.signalChain.push_back(name);
+  for (uint8_t i = 0; i < pool.signalChain.length && i < signal_chain::MAX_CHAIN_SLOTS; i++) {
+    p.signalChain[i] = i < pool.signalChain.length ? pool.signalChain.slots[i]
+                                                   : signal_chain::SignalProcessor::None;
+  }
+
+  return p;
+}
+
+void printPreset(const Preset& p) {
+  // --- Metadata ---
+  printf("[Preset: %s]\n", p.metadata.name.c_str());
+  if (!p.metadata.category.empty())
+    printf("  category:  %s\n", p.metadata.category.c_str());
+  if (!p.metadata.author.empty())
+    printf("  author:    %s\n", p.metadata.author.c_str());
+  printf("  version:   %u\n", p.version);
+
+  // --- Params ---
+  printf("[Params]\n");
+  for (int i = 0; i < param::PARAM_COUNT - 1; i++) {
+    const auto& def = param::PARAM_DEFS[i];
+    float v = p.paramValues[i];
+    switch (def.type) {
+    case param::ParamType::Float:
+      printf("  %-28s %.3f\n", def.name, v);
+      break;
+    case param::ParamType::Int8:
+      printf("  %-28s %d\n", def.name, static_cast<int>(v));
+      break;
+    case param::ParamType::Bool:
+      printf("  %-28s %s\n", def.name, v >= 0.5f ? "true" : "false");
+      break;
+    case param::ParamType::FilterMode:
+      printf("  %-28s %d\n", def.name, static_cast<int>(v));
+      break;
     }
   }
 
-  // ==== Voice modes ====
-  p.mono.enabled = pool.mono.enabled;
-  p.mono.legato = pool.mono.legato;
+  // --- Enum Fields ---
+  printf("[Enum Fields]\n");
+  const char* oscKeys[] = {"osc1", "osc2", "osc3", "osc4"};
+  for (int i = 0; i < NUM_OSCS; i++) {
+    printf("  %s.bank     %-16s %s.fmSource  %s\n",
+           oscKeys[i],
+           banks::bankIDToString(p.oscBanks[i]),
+           oscKeys[i],
+           osc::fmSourceToString(p.oscFmSources[i]));
+  }
+  printf("  noise.type              %s\n", noise::noiseTypeToString(p.noiseType));
+  printf("  svf.mode (enum)         %s\n", filters::svfModeToString(p.svfMode));
 
-  p.porta.time = pool.porta.time;
-  p.porta.legato = pool.porta.legato;
-  p.porta.enabled = pool.porta.enabled;
+  const char* lfoKeys[] = {"lfo1", "lfo2", "lfo3"};
+  for (int i = 0; i < NUM_LFOS; i++) {
+    printf("  %s.bank     %s\n", lfoKeys[i], banks::bankIDToString(p.lfoBanks[i]));
+  }
 
-  p.unison.voices = pool.unison.voices;
-  p.unison.detune = pool.unison.detune;
-  p.unison.spread = pool.unison.spread;
-  p.unison.enabled = pool.unison.enabled;
+  // --- Mod Matrix ---
+  printf("[Mod Matrix]  (%u routes)\n", p.modMatrixCount);
+  for (uint8_t i = 0; i < p.modMatrixCount; i++) {
+    const auto& r = p.modMatrix[i];
+    printf("  %u: %-12s -> %-20s amount=%.3f\n",
+           i,
+           r.source.c_str(),
+           r.destination.c_str(),
+           r.amount);
+  }
 
-  // ==== Global ====
-  p.global.pitchBendRange = pool.pitchBend.range;
-
-  return p;
+  // --- Signal Chain ---
+  printf("[Signal Chain]\n");
+  for (int i = 0; i < signal_chain::MAX_CHAIN_SLOTS; i++) {
+    if (p.signalChain[i] == signal_chain::SignalProcessor::None)
+      break;
+    printf("  %d: %s\n", i, signal_chain::signalProcessorToString(p.signalChain[i]));
+  }
 }
 } // namespace synth::preset

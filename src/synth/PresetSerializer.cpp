@@ -46,6 +46,7 @@ constexpr JsonGroup JSON_GROUPS[] = {
     {"mono.", "voice", "mono"},
     {"porta.", "voice", "portamento"},
     {"unison.", "voice", "unison"},
+    {"master.", nullptr, "master"},
 };
 
 const JsonGroup* findGroupForParam(const char* paramName) {
@@ -259,7 +260,7 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
   }
 
   Preset& p = result.preset;
-  p = createDefaultPreset(); // start from defaults so missing fields get init values
+  p = createInitPreset(); // start from defaults so missing fields get init values
 
   // Version
   if (root.has("version")) {

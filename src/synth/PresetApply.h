@@ -11,20 +11,13 @@ struct Engine;
 
 namespace synth::preset {
 
-// ============================================================
-// Apply: Preset → Engine (VoicePool + ParamRouter)
-// ============================================================
-
 struct ApplyResult {
   std::vector<std::string> warnings;
 };
 
 ApplyResult applyPreset(const Preset& preset, Engine& engine);
 
-// ============================================================
-// Capture: Engine → Preset
-// ============================================================
-
 Preset capturePreset(const Engine& engine);
 
+void printPreset(const Preset& p);
 } // namespace synth::preset

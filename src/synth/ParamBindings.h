@@ -117,6 +117,4 @@ const char* getParamName(ParamID id);
 
 void printParamList(const char* optionalParam);
 
-SVFMode getSVFModeType(const char* inputValue);
-
 } // namespace synth::param::bindings
