@@ -189,8 +189,9 @@ ParamID handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t v
             uint8_t prevNote = pool.mono.noteStack[pool.mono.stackDepth - 1];
 
             if (pool.porta.enabled) {
-              pool.porta.offsets[v] =
-                  static_cast<float>(pool.midiNotes[v]) - static_cast<float>(prevNote);
+              float from = static_cast<float>(pool.midiNotes[v]);
+              float to = static_cast<float>(prevNote);
+              pool.porta.offsets[v] = (from - to) + pool.porta.offsets[v];
               pool.porta.lastNote = prevNote;
             }
 
