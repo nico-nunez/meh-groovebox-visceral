@@ -127,8 +127,7 @@ struct VoicePool {
   // FM Modulation
   WavetableOscModState oscModState;
 
-  float sampleRate;
-  float invSampleRate;
+  // float invSampleRate;
 
   // ==== Active voice tracking ====
   uint32_t activeCount = 0;
@@ -139,7 +138,7 @@ struct VoicePool {
 // Voice Pool Management
 // ===========================
 // Initialize VoicePool (once upon engin creation)
-void initVoicePool(VoicePool& pool, float sampleRate);
+void initVoicePool(VoicePool& pool);
 
 // ===========================
 // MIDI Event Handlers
@@ -150,7 +149,7 @@ void handleNoteOn(VoicePool& pool,
                   uint32_t noteOnTime,
                   float sampleRate);
 
-void handleNoteOff(VoicePool& pool, uint8_t midiNote);
+void handleNoteOff(VoicePool& pool, uint8_t midiNote, float sampleRate);
 
 // ====================================
 // Voice Alloaction & Initialization
@@ -171,7 +170,7 @@ void initVoice(VoicePool& pool,
 void redirectVoicePitch(VoicePool& pool, uint32_t voiceIndex, uint8_t midiNote, float sampleRate);
 
 // Trigger envelope release for voice playing midiNote
-void releaseVoice(VoicePool& pool, uint8_t midiNote);
+void releaseVoice(VoicePool& pool, uint8_t midiNote, float sampleRate);
 
 // Same as above but for mono voice
 void releaseMonoVoice(VoicePool& pool);
@@ -182,6 +181,9 @@ void addActiveIndex(VoicePool& pool, uint32_t voiceIndex);
 // Remove an inactive voice (noteOff)
 void removeInactiveIndex(VoicePool& pool, uint32_t voiceIndex);
 
-void processVoices(VoicePool& pool, StereoBuffer poolBuffer, size_t numSamples);
+void processVoices(VoicePool& pool,
+                   StereoBuffer poolBuffer,
+                   size_t numSamples,
+                   float invSampleRate);
 
 } // namespace synth::voices

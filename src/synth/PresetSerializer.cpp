@@ -1,11 +1,14 @@
 #include "PresetSerializer.h"
 
+#include "synth/FXChain.h"
 #include "synth/ModMatrix.h"
 #include "synth/ParamDefs.h"
 #include "synth/Preset.h"
 #include "synth/Tempo.h"
 
+#include "dsp/FX/Distortion.h"
 #include "json/Json.h"
+
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -48,6 +51,11 @@ constexpr JsonGroup JSON_GROUPS[] = {
     {"mono.", "voice", "mono"},
     {"porta.", "voice", "portamento"},
     {"unison.", "voice", "unison"},
+    {"fxChain.distortion.", "fx", "distortion"},
+    {"fxChain.chorus.", "fx", "chorus"},
+    {"fxChain.phaser.", "fx", "phaser"},
+    {"fxChain.delay.", "fx", "delay"},
+    {"fxChain.reverb.", "fx", "reverb"},
 };
 
 const JsonGroup* findGroupForParam(const char* paramName) {
@@ -244,6 +252,26 @@ std::string serializePreset(const Preset& p) {
       arr.push(JsonValue::string(signal_chain::signalProcessorToString(proc)));
     }
     root.set("signalChain", std::move(arr));
+  }
+
+  // FX chain
+  {
+    namespace dist = dsp::fx::distortion;
+
+    auto arr = JsonValue::array();
+    for (uint8_t i = 0; i < p.fxChainLength; i++) {
+      if (p.effectsChain[i] == FXProcessor::None)
+        break;
+      arr.push(JsonValue::string(fxProcessorToString(p.effectsChain[i])));
+    }
+    root.set("fxChain", std::move(arr));
+
+    // handle enum
+    root.getOrCreate("fx")
+        .getOrCreate("distortion")
+        .set("type",
+             JsonValue::string(dist::distortionTypeToString(static_cast<dist::DistortionType>(
+                 static_cast<uint8_t>(std::round(p.paramValues[param::FX_DISTORTION_TYPE]))))));
   }
 
   return json::serialize(root);
@@ -501,6 +529,42 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
     }
   }
 
+  // FX chain
+  {
+    using namespace fx_chain;
+    using namespace dsp::fx;
+
+    const auto& chain = root["fxChain"];
+    if (chain.isArray()) {
+      size_t writeIdx = 0;
+      for (size_t i = 0; i < chain.size() && writeIdx < MAX_EFFECT_SLOTS; i++) {
+        auto proc = parseFXProcessor(chain.at(i).asString().c_str());
+        if (proc == FXProcessor::None) {
+          result.warnings.push_back("effectsChain[" + std::to_string(i) + "]: unknown, skipping");
+          continue;
+        }
+        p.effectsChain[writeIdx++] = proc;
+      }
+      p.fxChainLength = static_cast<uint8_t>(writeIdx);
+      for (size_t i = writeIdx; i < MAX_EFFECT_SLOTS; i++)
+        p.effectsChain[i] = FXProcessor::None;
+    }
+
+    if (root.has("fx") && root["fx"].has("distortion")) {
+      const auto& dist = root["fx"]["distortion"];
+
+      if (dist.has("type")) {
+        auto type = distortion::parseDistortionType(dist["type"].asString().c_str());
+
+        if (type == distortion::DistortionType::Unknown) {
+          result.warnings.push_back("distortion.type: unknown, using soft");
+          type = distortion::DistortionType::Soft;
+        }
+
+        p.paramValues[param::FX_DISTORTION_TYPE] = static_cast<float>(type);
+      }
+    }
+  }
   return result;
 }
 

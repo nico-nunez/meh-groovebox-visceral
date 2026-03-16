@@ -119,7 +119,45 @@
                                                                                                    \
   X(LFO1_TEMPO_SYNC, "lfo1.tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)                       \
   X(LFO2_TEMPO_SYNC, "lfo2.tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)                       \
-  X(LFO3_TEMPO_SYNC, "lfo3.tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)
+  X(LFO3_TEMPO_SYNC, "lfo3.tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)                       \
+                                                                                                   \
+  /* ==== Effects ==== */                                                                          \
+                                                                                                   \
+  /* ==== Distortion ==== */                                                                       \
+  X(FX_DISTORTION_DRIVE, "fx.distortion.drive", Float, 1.0f, 10.0f, 1.0f, DistortionDerived)       \
+  X(FX_DISTORTION_MIX, "fx.distortion.mix", Float, 0.0f, 1.0f, 1.0f, None)                         \
+  X(FX_DISTORTION_TYPE, "fx.distortion.type", DistortionType, 0.0f, 1.0f, 0.0f, None)              \
+  X(FX_DISTORTION_ENABLED, "fx.distortion.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                  \
+                                                                                                   \
+  /* ==== Chorus ==== */                                                                           \
+  X(FX_CHORUS_RATE, "fx.chorus.rate", Float, 0.1f, 10.0f, 1.0f, None)                              \
+  X(FX_CHORUS_DEPTH, "fx.chorus.depth", Float, 0.0f, 1.0f, 0.5f, None)                             \
+  X(FX_CHORUS_MIX, "fx.chorus.mix", Float, 0.0f, 1.0f, 0.5f, None)                                 \
+  X(FX_CHORUS_ENABLED, "fx.chorus.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                          \
+                                                                                                   \
+  /* ==== Phaser ==== */                                                                           \
+  X(FX_PHASER_STAGES, "fx.phaser.stages", Int8, 2.0f, 12.0f, 4.0f, None)                           \
+  X(FX_PHASER_RATE, "fx.phaser.rate", Float, 0.1f, 10.0f, 0.5f, None)                              \
+  X(FX_PHASER_DEPTH, "fx.phaser.depth", Float, 0.0f, 1.0f, 1.0f, None)                             \
+  X(FX_PHASER_FEEDBACK, "fx.phaser.feedback", Float, 0.0f, 1.0f, 0.5f, None)                       \
+  X(FX_PHASER_MIX, "fx.phaser.mix", Float, 0.0f, 1.0f, 0.5f, None)                                 \
+  X(FX_PHASER_ENABLED, "fx.phaser.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                          \
+                                                                                                   \
+  /* ==== Delay ==== */                                                                            \
+  X(FX_DELAY_TIME, "fx.delay.time", Float, 0.01f, 4.0f, 0.5f, DelayTime)                           \
+  X(FX_DELAY_TEMPO_SYNC, "fx.delay.tempoSync", Bool, 0.0f, 1.0f, 1.0f, DelayTime)                  \
+  X(FX_DELAY_FEEDBACK, "fx.delay.feedback", Float, 0.0f, 0.99f, 0.4f, None)                        \
+  X(FX_DELAY_PING_PONG, "fx.delay.pingPong", Bool, 0.0f, 1.0f, 0.0f, None)                         \
+  X(FX_DELAY_MIX, "fx.delay.mix", Float, 0.0f, 1.0f, 0.5f, None)                                   \
+  X(FX_DELAY_ENABLED, "fx.delay.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                            \
+                                                                                                   \
+  /* ==== Reverb (Dattorro plate) ==== */                                                          \
+  X(FX_REVERB_PRE_DELAY, "fx.reverb.preDelay", Float, 0.0f, 100.0f, 0.0f, None)                    \
+  X(FX_REVERB_DECAY, "fx.reverb.decay", Float, 0.0f, 1.0f, 0.75f, None)                            \
+  X(FX_REVERB_DAMPING, "fx.reverb.damping", Float, 0.0f, 1.0f, 0.5f, None)                         \
+  X(FX_REVERB_BANDWIDTH, "fx.reverb.bandwidth", Float, 0.0f, 1.0f, 0.75f, None)                    \
+  X(FX_REVERB_MIX, "fx.reverb.mix", Float, 0.0f, 1.0f, 0.5f, None)                                 \
+  X(FX_REVERB_ENABLED, "fx.reverb.enabled", Bool, 0.0f, 1.0f, 0.0f, None)
 
 namespace synth::param {
 // What kind of side effect does changing this param trigger?
@@ -134,6 +172,7 @@ enum class UpdateGroup : uint8_t {
   LadderCoeff,      // recalc Ladder coefficients
                     //
   SaturatorDerived, // recalc invDrive
+  DistortionDerived,
 
   MonoEnable,    // kill poly voices or release mono
   PortaCoeff,    // recalc portamento coefficient
@@ -151,6 +190,7 @@ enum class ParamType : uint8_t {
   Int8,
   Bool,
   FilterMode,
+  DistortionType,
 };
 
 struct ParamDef {

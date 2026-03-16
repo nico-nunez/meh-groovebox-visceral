@@ -52,18 +52,18 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
       env = &pool.modEnv;
 
     if (getParamDef(id).updateGroup == UpdateGroup::EnvTime)
-      env::updateIncrements(*env, pool.sampleRate);
+      env::updateIncrements(*env, engine.sampleRate);
     else
       env::updateCurveTables(*env);
     break;
   }
 
   case UpdateGroup::SVFCoeff:
-    filters::updateSVFCoefficients(pool.svf, pool.invSampleRate);
+    filters::updateSVFCoefficients(pool.svf, engine.invSampleRate);
     break;
 
   case UpdateGroup::LadderCoeff:
-    filters::updateLadderCoefficient(pool.ladder, pool.invSampleRate);
+    filters::updateLadderCoefficient(pool.ladder, engine.invSampleRate);
     break;
 
   case UpdateGroup::SaturatorDerived:
@@ -86,7 +86,7 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     break;
 
   case UpdateGroup::PortaCoeff:
-    pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, pool.sampleRate);
+    pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, engine.sampleRate);
     break;
 
   case UpdateGroup::UnisonDerived:
@@ -102,16 +102,18 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     break;
 
   case UpdateGroup::BPMSync: {
+    auto& delay = engine.fxChain.delay;
     float bpm = engine.tempo.bpm;
+
     // Recalc each LFO only if it's synced
     for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
       if (lfo->tempoSync)
         lfo->effectiveRate = tempo::calcEffectiveRate(lfo->subdivision, bpm);
     }
-    // // Recalc delay only if it's synced
-    // if (fx.delay.tempoSync)
-    //   fx.delay.delaySamples = static_cast<uint32_t>(
-    //       tempo::subdivisionPeriodSeconds(fx.delay.subdivision, bpm) * fx.sampleRate);
+    // Recalc delay only if it's synced
+    if (delay.tempoSync)
+      delay.delaySamples = static_cast<uint32_t>(
+          tempo::subdivisionPeriodSeconds(delay.subdivision, bpm) * engine.sampleRate);
     break;
   }
 
@@ -134,13 +136,19 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     break;
   }
 
+  case UpdateGroup::DistortionDerived: {
+    using dsp::fx::distortion::calcDistortionInvNorm;
+    engine.fxChain.distortion.invNorm = calcDistortionInvNorm(engine.fxChain.distortion.drive);
+    break;
+  }
+
   case UpdateGroup::DelayTime: {
-    //  auto& d = engine.effectsChain.delay;
-    //  d.delaySamples = d.tempoSync
-    //                       ? static_cast<uint32_t>(
-    //                             tempo::subdivisionPeriodSeconds(d.subdivision, engine.tempo.bpm) *
-    //                             engine.effectsChain.sampleRate)
-    //                       : static_cast<uint32_t>(d.time * engine.effectsChain.sampleRate);
+    auto& d = engine.fxChain.delay;
+    d.delaySamples = d.tempoSync
+                         ? static_cast<uint32_t>(
+                               tempo::subdivisionPeriodSeconds(d.subdivision, engine.tempo.bpm) *
+                               engine.sampleRate)
+                         : static_cast<uint32_t>(d.time * engine.sampleRate);
     break;
   }
 
@@ -152,14 +160,21 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
 } // anonymous namespace
 
 Engine createEngine(const EngineConfig& config) {
+  namespace pb = param::bindings;
+
   Engine engine{};
+
   engine.numFrames = config.numFrames;
+
+  engine.sampleRate = config.sampleRate;
+  engine.invSampleRate = 1.0f / config.sampleRate;
 
   dsp::buffers::initStereoBuffer(engine.poolBuffer, config.numFrames);
 
-  voices::initVoicePool(engine.voicePool, config.sampleRate);
+  voices::initVoicePool(engine.voicePool);
 
-  param::bindings::initParamRouter(engine.paramRouter, engine.voicePool, engine.tempo);
+  pb::initParamRouter(engine.paramRouter, engine.voicePool, engine.tempo);
+  pb::initFXParamBindings(engine.paramRouter, engine.fxChain);
 
   auto initPreset = preset::createInitPreset();
   preset::applyPreset(initPreset, engine);
@@ -186,19 +201,20 @@ void Engine::processMIDIEvent(const synth_io::MIDIEvent& event) {
                            event.data.noteOn.note,
                            event.data.noteOn.velocity,
                            ++noteCount,
-                           voicePool.sampleRate);
+                           sampleRate);
     else
-      voices::releaseVoice(voicePool, event.data.noteOn.note);
+      voices::releaseVoice(voicePool, event.data.noteOn.note, sampleRate);
     break;
 
   case Type::NoteOff:
-    voices::handleNoteOff(voicePool, event.data.noteOff.note);
+    voices::handleNoteOff(voicePool, event.data.noteOff.note, sampleRate);
     break;
 
   case Type::ControlChange: {
     using param::bindings::handleMIDICC;
 
-    ParamID id = handleMIDICC(paramRouter, voicePool, event.data.cc.number, event.data.cc.value);
+    ParamID id =
+        handleMIDICC(paramRouter, voicePool, event.data.cc.number, event.data.cc.value, sampleRate);
 
     if (id != ParamID::UNKNOWN)
       onParamUpdate(*this, id);
@@ -236,7 +252,7 @@ void Engine::processAudioBlock(float** outputBuffer, size_t numChannels, size_t 
     uint32_t blockSize = std::min(ENGINE_BLOCK_SIZE, static_cast<uint32_t>(numFrames) - offset);
     auto bufferSlice = dsp::buffers::createStereoBufferSlice(poolBuffer, offset);
 
-    voices::processVoices(voicePool, bufferSlice, blockSize);
+    voices::processVoices(voicePool, bufferSlice, blockSize, invSampleRate);
     offset += blockSize;
   }
 

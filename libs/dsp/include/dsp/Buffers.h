@@ -11,7 +11,7 @@ struct StereoBuffer {
   float* right = nullptr;
 };
 
-void initStereoBuffer(StereoBuffer& buffer, uint32_t size);
+void initStereoBuffer(StereoBuffer& buffer, size_t size);
 StereoBuffer createStereoBufferSlice(const StereoBuffer& buffer, uint32_t offset);
 void destroyStereoBuffer(StereoBuffer& buffer);
 

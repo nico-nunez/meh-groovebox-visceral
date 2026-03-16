@@ -1,5 +1,6 @@
 #pragma once
 
+#include "synth/FXChain.h"
 #include "synth/ParamBindings.h"
 #include "synth/Tempo.h"
 #include "synth/VoicePool.h"
@@ -16,6 +17,7 @@ namespace synth {
 using synth_io::MIDIEvent;
 using synth_io::ParamEvent;
 
+using fx_chain::FXChain;
 using tempo::TempoState;
 using voices::VoicePool;
 
@@ -33,9 +35,14 @@ struct EngineConfig {
 struct Engine {
   uint32_t numFrames = synth_io::DEFAULT_FRAMES;
 
+  float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
+  float invSampleRate = 1.0f / sampleRate;
+
   TempoState tempo;
 
   VoicePool voicePool;
+
+  FXChain fxChain;
 
   ParamRouter paramRouter;
 

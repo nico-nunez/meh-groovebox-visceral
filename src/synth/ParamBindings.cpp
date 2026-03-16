@@ -1,5 +1,6 @@
 #include "ParamBindings.h"
 
+#include "dsp/FX/Distortion.h"
 #include "synth/Envelope.h"
 #include "synth/Filters.h"
 #include "synth/LFO.h"
@@ -24,6 +25,7 @@ using wavetable::osc::WavetableOsc;
 
 // Anonymous Helpers
 namespace {
+namespace dist = dsp::fx::distortion;
 
 ParamBinding makeFloatBinding(float* ptr) {
   ParamBinding b;
@@ -47,6 +49,12 @@ ParamBinding makeBoolBinding(bool* ptr) {
 ParamBinding makeFilterModeBinding(SVFMode* ptr) {
   ParamBinding b;
   b.svfModePtr = ptr;
+  return b;
+}
+
+ParamBinding makeDistortionTypeBinding(dist::DistortionType* ptr) {
+  ParamBinding b;
+  b.distortionTypePtr = ptr;
   return b;
 }
 
@@ -136,6 +144,14 @@ void initMIDIBindings(ParamRouter& router) {
   router.midiBindings[71] = ParamID::SVF_RESONANCE;
 }
 
+// =========== Effects =============
+void bindDistortion(ParamRouter& r, dist::DistortionFX& d) {
+  r.paramBindings[FX_DISTORTION_DRIVE] = makeFloatBinding(&d.drive);
+  r.paramBindings[FX_DISTORTION_MIX] = makeFloatBinding(&d.mix);
+  r.paramBindings[FX_DISTORTION_ENABLED] = makeBoolBinding(&d.enabled);
+  r.paramBindings[FX_DISTORTION_TYPE] = makeDistortionTypeBinding(&d.type);
+}
+
 } // namespace
 
 // ==== APIs ====
@@ -170,7 +186,12 @@ void initParamRouter(ParamRouter& router, voices::VoicePool& pool, tempo::TempoS
   initMIDIBindings(router);
 }
 
-ParamID handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t value) {
+void initFXParamBindings(ParamRouter& router, fx_chain::FXChain& fxChain) {
+  bindDistortion(router, fxChain.distortion);
+}
+
+ParamID
+handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t value, float sampleRate) {
   if (cc == 1) {
     pool.modWheelValue = value / 127.0f;
     return ParamID::UNKNOWN;
@@ -197,7 +218,7 @@ ParamID handleMIDICC(ParamRouter& router, VoicePool& pool, uint8_t cc, uint8_t v
               pool.porta.lastNote = prevNote;
             }
 
-            voices::redirectVoicePitch(pool, v, prevNote, pool.sampleRate);
+            voices::redirectVoicePitch(pool, v, prevNote, sampleRate);
           } else {
             envelope::triggerRelease(pool.ampEnv, v);
             envelope::triggerRelease(pool.filterEnv, v);
@@ -248,13 +269,20 @@ float getParamValueByID(const ParamRouter& router, ParamID id) {
   switch (def.type) {
   case ParamType::Float:
     return *binding.floatPtr;
+
   case ParamType::Int8:
     return static_cast<float>(*binding.int8Ptr);
+
   case ParamType::Bool:
     return *binding.boolPtr ? 1.0f : 0.0f;
+
   case ParamType::FilterMode:
     return static_cast<float>(*binding.svfModePtr);
+
+  case ParamType::DistortionType:
+    return static_cast<float>(*binding.distortionTypePtr);
   }
+
   return 0.0f;
 }
 
@@ -281,6 +309,10 @@ void setParamValue(ParamRouter& router, ParamID id, float value) {
     break;
   case ParamType::FilterMode:
     *binding.svfModePtr = static_cast<SVFMode>(static_cast<int>(std::round(value)));
+    break;
+  case ParamType::DistortionType:
+    *binding.distortionTypePtr =
+        static_cast<dist::DistortionType>(static_cast<int>(std::round(value)));
     break;
   }
 }

@@ -28,11 +28,8 @@ namespace env = envelope;
 
 using dsp::buffers::StereoBuffer;
 
-void initVoicePool(VoicePool& pool, float sampleRate) {
+void initVoicePool(VoicePool& pool) {
   wavetable::banks::initFactoryBanks();
-
-  pool.sampleRate = sampleRate;
-  pool.invSampleRate = 1.0f / sampleRate;
 
   // Initialization Stereo (balanced)
   for (uint8_t i = 0; i < MAX_VOICES; i++) {
@@ -163,9 +160,6 @@ void initVoice(VoicePool& pool,
   pool.noteOnTimes[voiceIndex] = noteOnTime;
   pool.velocities[voiceIndex] = velocity / 127.0f;
 
-  pool.sampleRate = sampleRate;
-  pool.invSampleRate = 1.0f / sampleRate;
-
   // Reset Stereo (balanced)
   pool.panL[voiceIndex] = 1.0f;
   pool.panR[voiceIndex] = 1.0f;
@@ -208,7 +202,7 @@ void releaseMonoVoice(VoicePool& pool) {
   pool.mono.stackDepth = 0;
 }
 
-void releaseVoice(VoicePool& pool, uint8_t midiNote) {
+void releaseVoice(VoicePool& pool, uint8_t midiNote, float sampleRate) {
   uint32_t voiceIndex = pool.mono.enabled && pool.mono.voiceIndex < MAX_VOICES
                             ? pool.mono.voiceIndex
                             : findVoiceRelease(pool, midiNote);
@@ -227,7 +221,7 @@ void releaseVoice(VoicePool& pool, uint8_t midiNote) {
       pool.porta.lastNote = prevNote;
     }
 
-    redirectVoicePitch(pool, voiceIndex, prevNote, pool.sampleRate);
+    redirectVoicePitch(pool, voiceIndex, prevNote, sampleRate);
     return; // don't release envs below
   }
 
@@ -301,7 +295,7 @@ void handleNoteOn(VoicePool& pool,
   addActiveIndex(pool, voiceIndex);
 }
 
-void handleNoteOff(VoicePool& pool, uint8_t midiNote) {
+void handleNoteOff(VoicePool& pool, uint8_t midiNote, float sampleRate) {
   if (pool.mono.enabled) {
     pool.mono.heldNotes[midiNote] = false;
     mono::removeNoteFromStack(pool.mono, midiNote);
@@ -317,7 +311,7 @@ void handleNoteOff(VoicePool& pool, uint8_t midiNote) {
     return;
   }
 
-  releaseVoice(pool, midiNote);
+  releaseVoice(pool, midiNote, sampleRate);
 }
 
 // ===========================
@@ -381,7 +375,7 @@ void preProcessBlock(VoicePool& pool, size_t numSamples) {
 };
 
 // Process LFOs (once per sample - global)
-void processLFOs(VoicePool& pool) {
+void processLFOs(VoicePool& pool, float invSampleRate) {
   float effectiveRate1 = pool.lfo1.effectiveRate + pool.modMatrix.destValues[ModDest::LFO1Rate][0];
   float effectiveRate2 = pool.lfo2.effectiveRate + pool.modMatrix.destValues[ModDest::LFO2Rate][0];
   float effectiveRate3 = pool.lfo3.effectiveRate + pool.modMatrix.destValues[ModDest::LFO3Rate][0];
@@ -440,9 +434,9 @@ void processLFOs(VoicePool& pool) {
     }
   }
 
-  pool.lfoModState.lfo1 = advanceLFO(pool.lfo1, pool.invSampleRate, effectiveRate1, effectiveAmp1);
-  pool.lfoModState.lfo2 = advanceLFO(pool.lfo2, pool.invSampleRate, effectiveRate2, effectiveAmp2);
-  pool.lfoModState.lfo3 = advanceLFO(pool.lfo3, pool.invSampleRate, effectiveRate3, effectiveAmp3);
+  pool.lfoModState.lfo1 = advanceLFO(pool.lfo1, invSampleRate, effectiveRate1, effectiveAmp1);
+  pool.lfoModState.lfo2 = advanceLFO(pool.lfo2, invSampleRate, effectiveRate2, effectiveAmp2);
+  pool.lfoModState.lfo3 = advanceLFO(pool.lfo3, invSampleRate, effectiveRate3, effectiveAmp3);
 }
 
 // Calculate interpolation for pitch increment (hot-loop)
@@ -650,7 +644,11 @@ void processAndMixOscs(VoicePool& pool,
 }
 
 // Signal Chain processing
-void processSignalChain(VoicePool& pool, float& signalL, float& signalR, uint32_t voiceIndex) {
+void processSignalChain(VoicePool& pool,
+                        float& signalL,
+                        float& signalR,
+                        uint32_t voiceIndex,
+                        float invSampleRate) {
   using dsp::filters::modulateCutoff;
   using param::ranges::mod::clampCutoffMod;
 
@@ -671,7 +669,7 @@ void processSignalChain(VoicePool& pool, float& signalL, float& signalR, uint32_
                                                    lfoContribs[ModDest::SVFCutoff]));
       float resonance =
           svf.resonance + destValues[ModDest::SVFResonance][v] + lfoContribs[ModDest::SVFResonance];
-      filters::processSVFilter(svf, signalL, signalR, v, cutoff, resonance, pool.invSampleRate);
+      filters::processSVFilter(svf, signalL, signalR, v, cutoff, resonance, invSampleRate);
       break;
     }
 
@@ -681,13 +679,7 @@ void processSignalChain(VoicePool& pool, float& signalL, float& signalR, uint32_
                                                    lfoContribs[ModDest::LadderCutoff]));
       float resonance = ladder.resonance + destValues[ModDest::LadderResonance][v] +
                         lfoContribs[ModDest::LadderResonance];
-      filters::processLadderFilter(ladder,
-                                   signalL,
-                                   signalR,
-                                   v,
-                                   cutoff,
-                                   resonance,
-                                   pool.invSampleRate);
+      filters::processLadderFilter(ladder, signalL, signalR, v, cutoff, resonance, invSampleRate);
       break;
     }
 
@@ -723,7 +715,7 @@ void postProcessBlock(VoicePool& pool) {
 } // namespace
 //=========================== </Anonymous Helpers> ===========================
 
-void processVoices(VoicePool& pool, StereoBuffer output, size_t numSamples) {
+void processVoices(VoicePool& pool, StereoBuffer output, size_t numSamples, float invSampleRate) {
   auto& lfoContribs = pool.lfoModState.contribs;
 
   const bool activeOscs[4] = {
@@ -741,7 +733,7 @@ void processVoices(VoicePool& pool, StereoBuffer output, size_t numSamples) {
     float sampleL = 0.0f;
     float sampleR = 0.0f;
 
-    processLFOs(pool);
+    processLFOs(pool, invSampleRate);
 
     // ---- Step 4: Compute audio-destination contributions ----
     // Global LFOs: all active voices read the same lfoContribs[] for this sample.
@@ -783,7 +775,7 @@ void processVoices(VoicePool& pool, StereoBuffer output, size_t numSamples) {
       float oscL = 0.0f;
       float oscR = 0.0f;
       processAndMixOscs(pool, oscL, oscR, activeOscs, vIndex, sIndex);
-      processSignalChain(pool, oscL, oscR, vIndex);
+      processSignalChain(pool, oscL, oscR, vIndex, invSampleRate);
 
       float ampEnv = envelope::processEnvelope(pool.ampEnv, vIndex);
 

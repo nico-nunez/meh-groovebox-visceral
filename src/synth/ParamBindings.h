@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dsp/FX/Distortion.h"
+#include "synth/FXChain.h"
 #include "synth/Filters.h"
 #include "synth/ParamDefs.h"
 #include "synth/Tempo.h"
@@ -9,6 +11,7 @@
 #include <cstdint>
 
 namespace synth::param::bindings {
+using dsp::fx::distortion::DistortionType;
 using filters::SVFMode;
 
 struct ParamBinding {
@@ -17,6 +20,7 @@ struct ParamBinding {
     int8_t* int8Ptr;
     bool* boolPtr;
     SVFMode* svfModePtr;
+    DistortionType* distortionTypePtr;
   };
 };
 
@@ -104,7 +108,14 @@ inline constexpr LFOParamIDs LFO_PARAM_IDS[3] = {
 
 // ==== API ====
 void initParamRouter(ParamRouter& router, voices::VoicePool& pool, tempo::TempoState& tempo);
-ParamID handleMIDICC(ParamRouter& router, voices::VoicePool& pool, uint8_t cc, uint8_t value);
+
+void initFXParamBindings(ParamRouter& router, fx_chain::FXChain& fxChain);
+
+ParamID handleMIDICC(ParamRouter& router,
+                     voices::VoicePool& pool,
+                     uint8_t cc,
+                     uint8_t value,
+                     float sampleRate);
 
 float getParamValueByID(const ParamRouter& router, ParamID id);
 void setParamValue(ParamRouter& router, ParamID id, float value);
