@@ -210,6 +210,9 @@ void printPreset(const Preset& p) {
     case param::ParamType::FilterMode:
       printf("  %-28s %d\n", def.name, static_cast<int>(v));
       break;
+    case param::ParamType::DistortionType:
+      printf("  %-28s %d\n", def.name, static_cast<int>(v));
+      break;
     }
   }
 

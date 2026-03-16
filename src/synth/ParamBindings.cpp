@@ -1,6 +1,7 @@
 #include "ParamBindings.h"
 
 #include "dsp/FX/Distortion.h"
+#include "dsp/FX/Reverb.h"
 #include "synth/Envelope.h"
 #include "synth/Filters.h"
 #include "synth/LFO.h"
@@ -26,6 +27,7 @@ using wavetable::osc::WavetableOsc;
 // Anonymous Helpers
 namespace {
 namespace dist = dsp::fx::distortion;
+namespace chorus = dsp::fx::chorus;
 
 ParamBinding makeFloatBinding(float* ptr) {
   ParamBinding b;
@@ -148,8 +150,43 @@ void initMIDIBindings(ParamRouter& router) {
 void bindDistortion(ParamRouter& r, dist::DistortionFX& d) {
   r.paramBindings[FX_DISTORTION_DRIVE] = makeFloatBinding(&d.drive);
   r.paramBindings[FX_DISTORTION_MIX] = makeFloatBinding(&d.mix);
-  r.paramBindings[FX_DISTORTION_ENABLED] = makeBoolBinding(&d.enabled);
   r.paramBindings[FX_DISTORTION_TYPE] = makeDistortionTypeBinding(&d.type);
+  r.paramBindings[FX_DISTORTION_ENABLED] = makeBoolBinding(&d.enabled);
+}
+
+void bindChorus(ParamRouter& r, chorus::ChorusFX& c) {
+  r.paramBindings[FX_CHORUS_RATE] = makeFloatBinding(&c.rate);
+  r.paramBindings[FX_CHORUS_DEPTH] = makeFloatBinding(&c.depth);
+  r.paramBindings[FX_CHORUS_MIX] = makeFloatBinding(&c.mix);
+  r.paramBindings[FX_CHORUS_FEEDBACK] = makeFloatBinding(&c.feedback);
+  r.paramBindings[FX_CHORUS_ENABLED] = makeBoolBinding(&c.enabled);
+}
+
+void bindPhaser(ParamRouter& r, dsp::fx::phaser::PhaserFX& p) {
+  r.paramBindings[FX_PHASER_STAGES] = makeInt8Binding(&p.stages);
+  r.paramBindings[FX_PHASER_RATE] = makeFloatBinding(&p.rate);
+  r.paramBindings[FX_PHASER_DEPTH] = makeFloatBinding(&p.depth);
+  r.paramBindings[FX_PHASER_FEEDBACK] = makeFloatBinding(&p.feedback);
+  r.paramBindings[FX_PHASER_MIX] = makeFloatBinding(&p.mix);
+  r.paramBindings[FX_PHASER_ENABLED] = makeBoolBinding(&p.enabled);
+}
+
+void bindDelay(ParamRouter& r, dsp::fx::delay::DelayFX& d) {
+  r.paramBindings[FX_DELAY_TIME] = makeFloatBinding(&d.time);
+  r.paramBindings[FX_DELAY_TEMPO_SYNC] = makeBoolBinding(&d.tempoSync);
+  r.paramBindings[FX_DELAY_FEEDBACK] = makeFloatBinding(&d.feedback);
+  r.paramBindings[FX_DELAY_PING_PONG] = makeBoolBinding(&d.pingPong);
+  r.paramBindings[FX_DELAY_MIX] = makeFloatBinding(&d.mix);
+  r.paramBindings[FX_DELAY_ENABLED] = makeBoolBinding(&d.enabled);
+}
+
+void bindReverb(ParamRouter& r, dsp::fx::reverb::ReverbFX& rv) {
+  r.paramBindings[FX_REVERB_PRE_DELAY] = makeFloatBinding(&rv.preDelay);
+  r.paramBindings[FX_REVERB_DECAY] = makeFloatBinding(&rv.decay);
+  r.paramBindings[FX_REVERB_DAMPING] = makeFloatBinding(&rv.damping);
+  r.paramBindings[FX_REVERB_BANDWIDTH] = makeFloatBinding(&rv.bandwidth);
+  r.paramBindings[FX_REVERB_MIX] = makeFloatBinding(&rv.mix);
+  r.paramBindings[FX_REVERB_ENABLED] = makeBoolBinding(&rv.enabled);
 }
 
 } // namespace
@@ -188,6 +225,10 @@ void initParamRouter(ParamRouter& router, voices::VoicePool& pool, tempo::TempoS
 
 void initFXParamBindings(ParamRouter& router, fx_chain::FXChain& fxChain) {
   bindDistortion(router, fxChain.distortion);
+  bindChorus(router, fxChain.chorus);
+  bindDelay(router, fxChain.delay);
+  bindPhaser(router, fxChain.phaser);
+  bindReverb(router, fxChain.reverb);
 }
 
 ParamID

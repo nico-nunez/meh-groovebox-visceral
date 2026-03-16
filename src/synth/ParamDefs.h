@@ -130,9 +130,10 @@
   X(FX_DISTORTION_ENABLED, "fx.distortion.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                  \
                                                                                                    \
   /* ==== Chorus ==== */                                                                           \
-  X(FX_CHORUS_RATE, "fx.chorus.rate", Float, 0.1f, 10.0f, 1.0f, None)                              \
-  X(FX_CHORUS_DEPTH, "fx.chorus.depth", Float, 0.0f, 1.0f, 0.5f, None)                             \
-  X(FX_CHORUS_MIX, "fx.chorus.mix", Float, 0.0f, 1.0f, 0.5f, None)                                 \
+  X(FX_CHORUS_RATE, "fx.chorus.rate", Float, 0.1f, 10.0f, 1.0f, ChorusDerived)                     \
+  X(FX_CHORUS_DEPTH, "fx.chorus.depth", Float, 0.0f, 1.0f, 0.5f, ChorusDerived)                    \
+  X(FX_CHORUS_MIX, "fx.chorus.mix", Float, 0.0f, 1.0f, 0.5f, ChorusDerived)                        \
+  X(FX_CHORUS_FEEDBACK, "fx.chorus.feedback", Float, 0.0f, 0.95f, 0.0f, None)                      \
   X(FX_CHORUS_ENABLED, "fx.chorus.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                          \
                                                                                                    \
   /* ==== Phaser ==== */                                                                           \
@@ -172,6 +173,8 @@ enum class UpdateGroup : uint8_t {
   LadderCoeff,      // recalc Ladder coefficients
                     //
   SaturatorDerived, // recalc invDrive
+
+  ChorusDerived, // recalc rate, mix, and depth derived values
   DistortionDerived,
 
   MonoEnable,    // kill poly voices or release mono

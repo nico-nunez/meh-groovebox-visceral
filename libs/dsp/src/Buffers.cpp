@@ -1,4 +1,5 @@
 #include "dsp/Buffers.h"
+#include "dsp/Math.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -21,4 +22,16 @@ void destroyStereoBuffer(StereoBuffer& buffer) {
   buffer.right = nullptr;
 }
 
+// Circular StereoBuffer
+void initStereoRingBuffer(StereoRingBuffer& cb, size_t requestedSize) {
+  cb.size = dsp::math::nextPow2(requestedSize);
+  cb.mask = cb.size - 1;
+  initStereoBuffer(cb, cb.size);
+}
+
+void destroyStereoRingBuffer(StereoRingBuffer& cb) {
+  destroyStereoBuffer(cb);
+  cb.size = 0;
+  cb.mask = 0;
+}
 } // namespace dsp::buffers

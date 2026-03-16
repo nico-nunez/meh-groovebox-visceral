@@ -1,6 +1,7 @@
 #include "FXChain.h"
 
 #include "dsp/Buffers.h"
+#include "dsp/FX/Chorus.h"
 #include "dsp/FX/Delay.h"
 #include "dsp/FX/Distortion.h"
 #include "dsp/FX/Phaser.h"
@@ -11,26 +12,29 @@ using dsp::buffers::StereoBuffer;
 
 void initFXChain(FXChain& fxChain, float sampleRate) {
   using namespace dsp::fx;
+
   chorus::initChorusState(fxChain.chorus.state, sampleRate);
-  phaser::initPhaserState(fxChain.phaser.state, sampleRate);
-  delay::initDelayState(fxChain.delay.state, sampleRate);
-  reverb::initReverbState(fxChain.reverb.state, sampleRate);
+  chorus::recalcChorusDerivedVals(fxChain.chorus, sampleRate);
+
+  // phaser::initPhaserState(fxChain.phaser.state, sampleRate);
+  // delay::initDelayState(fxChain.delay.state, sampleRate);
+  // reverb::initReverbState(fxChain.reverb.state, sampleRate);
 
   fxChain.length = 5;
   fxChain.slots[0] = FXProcessor::Distortion;
   fxChain.slots[1] = FXProcessor::Chorus;
-  fxChain.slots[2] = FXProcessor::Phaser;
-  fxChain.slots[3] = FXProcessor::Delay;
-  fxChain.slots[4] = FXProcessor::ReverbPlate;
+  // fxChain.slots[2] = FXProcessor::Phaser;
+  // fxChain.slots[3] = FXProcessor::Delay;
+  // fxChain.slots[4] = FXProcessor::ReverbPlate;
   // All effects disabled by default — applyPreset sets enabled flags
 }
 
 void destroyFXChain(FXChain& fxChain) {
   using namespace dsp::fx;
   chorus::destroyChorusState(fxChain.chorus.state);
-  phaser::destroyPhaserState(fxChain.phaser.state);
-  delay::destroyDelayState(fxChain.delay.state);
-  reverb::destroyReverbState(fxChain.reverb.state);
+  // phaser::destroyPhaserState(fxChain.phaser.state);
+  // delay::destroyDelayState(fxChain.delay.state);
+  // reverb::destroyReverbState(fxChain.reverb.state);
 }
 
 void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples, float sampleRate) {
@@ -42,7 +46,7 @@ void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples, float
     switch (fx) {
     case FXProcessor::Chorus:
       if (fxChain.chorus.enabled)
-        chorus::processChorus(fxChain.chorus, buf, numSamples, sampleRate);
+        chorus::processChorus(fxChain.chorus, buf, numSamples);
       break;
 
     case FXProcessor::Delay:

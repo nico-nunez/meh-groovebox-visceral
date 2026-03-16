@@ -4,7 +4,7 @@
 #include <cstddef>
 
 namespace dsp::fx::delay {
-void process(DelayFX&, buffers::StereoBuffer&, size_t) {
+void processDelay(DelayFX&, buffers::StereoBuffer, size_t) {
   // TODO....
 }
 

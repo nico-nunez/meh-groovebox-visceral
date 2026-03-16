@@ -1,5 +1,7 @@
 #include "Engine.h"
 
+#include "dsp/FX/Chorus.h"
+#include "synth/FXChain.h"
 #include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
 #include "synth/Preset.h"
@@ -27,9 +29,13 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
   namespace pb = param::bindings;
   namespace env = envelope;
 
+  namespace dist = dsp::fx::distortion;
+  namespace chorus = dsp::fx::chorus;
+
   auto& pool = engine.voicePool;
 
   switch (getParamDef(id).updateGroup) {
+  // ==== Oscillators ====
   case UpdateGroup::OscEnable: {
     int count = pool.osc1.enabled + pool.osc2.enabled + pool.osc3.enabled + pool.osc4.enabled +
                 pool.noise.enabled;
@@ -37,6 +43,7 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     break;
   }
 
+  // ==== Envelopes ====
   case UpdateGroup::EnvTime:
   case UpdateGroup::EnvCurve: {
     const auto& ampIds = pb::ENV_PARAM_IDS[0];
@@ -58,18 +65,20 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     break;
   }
 
+  // ==== Filters ====
   case UpdateGroup::SVFCoeff:
     filters::updateSVFCoefficients(pool.svf, engine.invSampleRate);
     break;
-
   case UpdateGroup::LadderCoeff:
     filters::updateLadderCoefficient(pool.ladder, engine.invSampleRate);
     break;
 
+  // ==== Signal Chain ====
   case UpdateGroup::SaturatorDerived:
     pool.saturator.invDrive = saturator::calcInvDrive(pool.saturator.drive);
     break;
 
+  // ==== Mono =====
   case UpdateGroup::MonoEnable:
     if (pool.mono.enabled) {
       for (uint32_t i = 0; i < pool.activeCount; i++) {
@@ -85,10 +94,12 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     }
     break;
 
+  // ==== Portamento ====
   case UpdateGroup::PortaCoeff:
     pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, engine.sampleRate);
     break;
 
+  // ==== Unison ====
   case UpdateGroup::UnisonDerived:
     if (pool.unison.enabled) {
       unison::updateDetuneOffsets(pool.unison);
@@ -96,11 +107,11 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
       unison::updateGainComp(pool.unison);
     }
     break;
-
   case UpdateGroup::UnisonSpread:
     unison::updatePanPositions(pool.unison);
     break;
 
+  // ==== Tempo ====
   case UpdateGroup::BPMSync: {
     auto& delay = engine.fxChain.delay;
     float bpm = engine.tempo.bpm;
@@ -117,6 +128,7 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     break;
   }
 
+  // ==== LFOs ====
   case UpdateGroup::LFOTempoSync: {
     lfo::LFO& lfo = (id == param::LFO1_TEMPO_SYNC)   ? pool.lfo1
                     : (id == param::LFO2_TEMPO_SYNC) ? pool.lfo2
@@ -125,7 +137,6 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
         lfo.tempoSync ? tempo::calcEffectiveRate(lfo.subdivision, engine.tempo.bpm) : lfo.rate;
     break;
   }
-
   case UpdateGroup::LFORate: {
     // Only updates effectiveRate when !tempoSync — synced LFOs ignore lfo.rate entirely
     lfo::LFO& lfo = (id == param::LFO1_RATE)   ? pool.lfo1
@@ -136,12 +147,16 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     break;
   }
 
-  case UpdateGroup::DistortionDerived: {
-    using dsp::fx::distortion::calcDistortionInvNorm;
-    engine.fxChain.distortion.invNorm = calcDistortionInvNorm(engine.fxChain.distortion.drive);
+  // ==== Effects ====
+  case UpdateGroup::ChorusDerived: {
+    chorus::recalcChorusDerivedVals(engine.fxChain.chorus, engine.sampleRate);
     break;
   }
-
+  case UpdateGroup::DistortionDerived: {
+    engine.fxChain.distortion.invNorm =
+        dist::calcDistortionInvNorm(engine.fxChain.distortion.drive);
+    break;
+  }
   case UpdateGroup::DelayTime: {
     auto& d = engine.fxChain.delay;
     d.delaySamples = d.tempoSync
@@ -175,6 +190,8 @@ Engine createEngine(const EngineConfig& config) {
 
   pb::initParamRouter(engine.paramRouter, engine.voicePool, engine.tempo);
   pb::initFXParamBindings(engine.paramRouter, engine.fxChain);
+
+  fx_chain::initFXChain(engine.fxChain, engine.sampleRate);
 
   auto initPreset = preset::createInitPreset();
   preset::applyPreset(initPreset, engine);
@@ -239,15 +256,13 @@ void Engine::processMIDIEvent(const synth_io::MIDIEvent& event) {
   }
 }
 
+/* NOTE: Use internal Engine block size to allow processing of
+ * expensive calculation that need to occur more often than once per audio
+ * buffer block but NOT on every sample either.  E.g. Modulation
+ */
 void Engine::processAudioBlock(float** outputBuffer, size_t numChannels, size_t numFrames) {
-  /* NOTE(nico): Use internal Engine block size to allow processing of
-   * expensive calculation that need to occur more often than once per audio
-   * buffer block but NOT on every sample either.  E.g. Modulation
-   *
-   * TODO(nico): mess with ENGINE_BLOCK_SIZE value (currently 64) to see
-   * how it effects things
-   */
   uint32_t offset = 0;
+
   while (offset < numFrames) {
     uint32_t blockSize = std::min(ENGINE_BLOCK_SIZE, static_cast<uint32_t>(numFrames) - offset);
     auto bufferSlice = dsp::buffers::createStereoBufferSlice(poolBuffer, offset);
@@ -255,6 +270,8 @@ void Engine::processAudioBlock(float** outputBuffer, size_t numChannels, size_t 
     voices::processVoices(voicePool, bufferSlice, blockSize, invSampleRate);
     offset += blockSize;
   }
+
+  fx_chain::processFXChain(fxChain, poolBuffer, numFrames, sampleRate);
 
   for (size_t frame = 0; frame < numFrames; frame++) {
     if (numChannels == 0)

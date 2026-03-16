@@ -72,4 +72,25 @@ inline float midiKeyTrackAmount(int midiNote, int rootNote = 69) { // default A4
   return static_cast<float>(midiNote - rootNote) * SEMITONE_PER_OCTAVE;
 }
 
+// Lagrange 4-point cubic interpolation.
+// p0=x[-1], p1=x[0], p2=x[1], p3=x[2]; t in [0, 1) interpolates between p1 and p2.
+// At t=0 → p1; at t→1 → p2.
+inline float cubicInterp(float p0, float p1, float p2, float p3, float t) {
+  return p1 + 0.5f * t *
+                  (p2 - p0 +
+                   t * (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3 + t * (3.0f * (p1 - p2) + p3 - p0)));
+}
+
+inline size_t nextPow2(size_t x) {
+  if (x == 0)
+    return 1;
+  x--;
+  x |= x >> 1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  x |= x >> 32;
+  return x + 1;
+}
 } // namespace dsp::math

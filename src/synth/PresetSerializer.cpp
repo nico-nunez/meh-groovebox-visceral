@@ -51,11 +51,11 @@ constexpr JsonGroup JSON_GROUPS[] = {
     {"mono.", "voice", "mono"},
     {"porta.", "voice", "portamento"},
     {"unison.", "voice", "unison"},
-    {"fxChain.distortion.", "fx", "distortion"},
-    {"fxChain.chorus.", "fx", "chorus"},
-    {"fxChain.phaser.", "fx", "phaser"},
-    {"fxChain.delay.", "fx", "delay"},
-    {"fxChain.reverb.", "fx", "reverb"},
+    {"fx.distortion.", "fx", "distortion"},
+    {"fx.chorus.", "fx", "chorus"},
+    {"fx.phaser.", "fx", "phaser"},
+    {"fx.delay.", "fx", "delay"},
+    {"fx.reverb.", "fx", "reverb"},
 };
 
 const JsonGroup* findGroupForParam(const char* paramName) {
@@ -260,9 +260,9 @@ std::string serializePreset(const Preset& p) {
 
     auto arr = JsonValue::array();
     for (uint8_t i = 0; i < p.fxChainLength; i++) {
-      if (p.effectsChain[i] == FXProcessor::None)
+      if (p.fxChain[i] == FXProcessor::None)
         break;
-      arr.push(JsonValue::string(fxProcessorToString(p.effectsChain[i])));
+      arr.push(JsonValue::string(fxProcessorToString(p.fxChain[i])));
     }
     root.set("fxChain", std::move(arr));
 
@@ -543,11 +543,11 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
           result.warnings.push_back("effectsChain[" + std::to_string(i) + "]: unknown, skipping");
           continue;
         }
-        p.effectsChain[writeIdx++] = proc;
+        p.fxChain[writeIdx++] = proc;
       }
       p.fxChainLength = static_cast<uint8_t>(writeIdx);
       for (size_t i = writeIdx; i < MAX_EFFECT_SLOTS; i++)
-        p.effectsChain[i] = FXProcessor::None;
+        p.fxChain[i] = FXProcessor::None;
     }
 
     if (root.has("fx") && root["fx"].has("distortion")) {
