@@ -13,26 +13,25 @@ using dsp::buffers::StereoBuffer;
 void initFXChain(FXChain& fxChain, float sampleRate) {
   using namespace dsp::fx;
 
-  chorus::initChorusState(fxChain.chorus.state, sampleRate);
-  chorus::recalcChorusDerivedVals(fxChain.chorus, sampleRate);
+  chorus::initChorus(fxChain.chorus, sampleRate);
+  phaser::initPhaser(fxChain.phaser, sampleRate);
 
-  // phaser::initPhaserState(fxChain.phaser.state, sampleRate);
   // delay::initDelayState(fxChain.delay.state, sampleRate);
   // reverb::initReverbState(fxChain.reverb.state, sampleRate);
 
+  // Presets disabled as default
   fxChain.length = 5;
   fxChain.slots[0] = FXProcessor::Distortion;
   fxChain.slots[1] = FXProcessor::Chorus;
-  // fxChain.slots[2] = FXProcessor::Phaser;
+  fxChain.slots[2] = FXProcessor::Phaser;
   // fxChain.slots[3] = FXProcessor::Delay;
   // fxChain.slots[4] = FXProcessor::ReverbPlate;
-  // All effects disabled by default — applyPreset sets enabled flags
 }
 
 void destroyFXChain(FXChain& fxChain) {
   using namespace dsp::fx;
-  chorus::destroyChorusState(fxChain.chorus.state);
-  // phaser::destroyPhaserState(fxChain.phaser.state);
+  chorus::destroyChorus(fxChain.chorus);
+  phaser::destroyPhaser(fxChain.phaser);
   // delay::destroyDelayState(fxChain.delay.state);
   // reverb::destroyReverbState(fxChain.reverb.state);
 }
@@ -61,7 +60,7 @@ void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples, float
 
     case FXProcessor::Phaser:
       if (fxChain.phaser.enabled)
-        phaser::processPhaser(fxChain.phaser, buf, numSamples, sampleRate);
+        phaser::processPhaser(fxChain.phaser, buf, numSamples);
       break;
 
     case FXProcessor::ReverbPlate:

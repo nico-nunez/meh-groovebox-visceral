@@ -1,6 +1,7 @@
 #include "Engine.h"
 
 #include "dsp/FX/Chorus.h"
+#include "dsp/FX/Phaser.h"
 #include "synth/FXChain.h"
 #include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
@@ -31,6 +32,7 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
 
   namespace dist = dsp::fx::distortion;
   namespace chorus = dsp::fx::chorus;
+  namespace phaser = dsp::fx::phaser;
 
   auto& pool = engine.voicePool;
 
@@ -157,7 +159,10 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
         dist::calcDistortionInvNorm(engine.fxChain.distortion.drive);
     break;
   }
-  case UpdateGroup::DelayTime: {
+  case UpdateGroup::PhaserDerived:
+    phaser::recalcPhaseDerivedVals(engine.fxChain.phaser, engine.invSampleRate);
+    break;
+  case UpdateGroup::DelayDerived: {
     auto& d = engine.fxChain.delay;
     d.delaySamples = d.tempoSync
                          ? static_cast<uint32_t>(

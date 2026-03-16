@@ -53,8 +53,8 @@ struct ChorusFX {
   float dryGain = 1.0f - mix;
 };
 
-void initChorusState(ChorusState& state, float sampleRate);
-void destroyChorusState(ChorusState& state);
+void initChorus(ChorusFX& fx, float sampleRate);
+void destroyChorus(ChorusFX& fx);
 
 void recalcChorusDerivedVals(ChorusFX& fx, float sampleRate);
 

@@ -8,6 +8,8 @@
 namespace dsp::fx::chorus {
 namespace buf = dsp::buffers;
 
+namespace {
+
 void initChorusState(ChorusState& state, float sampleRate) {
   size_t requested = static_cast<size_t>(MAX_CHORUS_DELAY_MS / 1000.0f * sampleRate) + 1;
 
@@ -28,17 +30,24 @@ void initChorusState(ChorusState& state, float sampleRate) {
   }
 }
 
-void destroyChorusState(ChorusState& state) {
-  buf::destroyStereoRingBuffer(state.buffer);
-  state.writeHead = 0;
-  state.lastWetL = 0.0f;
-  state.lastWetR = 0.0f;
+} // anonymous namespace
+
+void initChorus(ChorusFX& fx, float sampleRate) {
+  initChorusState(fx.state, sampleRate);
+  recalcChorusDerivedVals(fx, sampleRate);
+}
+
+void destroyChorus(ChorusFX& fx) {
+  buf::destroyStereoRingBuffer(fx.state.buffer);
+  fx.state.writeHead = 0;
+  fx.state.lastWetL = 0.0f;
+  fx.state.lastWetR = 0.0f;
 
   for (int v = 0; v < CHORUS_VOICES; v++) {
-    state.lfoReL[v] = 0.0f;
-    state.lfoImL[v] = 0.0f;
-    state.lfoReR[v] = 0.0f;
-    state.lfoImR[v] = 0.0f;
+    fx.state.lfoReL[v] = 0.0f;
+    fx.state.lfoImL[v] = 0.0f;
+    fx.state.lfoReR[v] = 0.0f;
+    fx.state.lfoImR[v] = 0.0f;
   }
 }
 

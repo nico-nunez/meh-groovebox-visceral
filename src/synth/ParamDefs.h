@@ -138,15 +138,15 @@
                                                                                                    \
   /* ==== Phaser ==== */                                                                           \
   X(FX_PHASER_STAGES, "fx.phaser.stages", Int8, 2.0f, 12.0f, 4.0f, None)                           \
-  X(FX_PHASER_RATE, "fx.phaser.rate", Float, 0.1f, 10.0f, 0.5f, None)                              \
-  X(FX_PHASER_DEPTH, "fx.phaser.depth", Float, 0.0f, 1.0f, 1.0f, None)                             \
+  X(FX_PHASER_RATE, "fx.phaser.rate", Float, 0.1f, 10.0f, 0.5f, PhaserDerived)                     \
+  X(FX_PHASER_DEPTH, "fx.phaser.depth", Float, 0.0f, 1.0f, 1.0f, PhaserDerived)                    \
   X(FX_PHASER_FEEDBACK, "fx.phaser.feedback", Float, 0.0f, 1.0f, 0.5f, None)                       \
   X(FX_PHASER_MIX, "fx.phaser.mix", Float, 0.0f, 1.0f, 0.5f, None)                                 \
   X(FX_PHASER_ENABLED, "fx.phaser.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                          \
                                                                                                    \
   /* ==== Delay ==== */                                                                            \
-  X(FX_DELAY_TIME, "fx.delay.time", Float, 0.01f, 4.0f, 0.5f, DelayTime)                           \
-  X(FX_DELAY_TEMPO_SYNC, "fx.delay.tempoSync", Bool, 0.0f, 1.0f, 1.0f, DelayTime)                  \
+  X(FX_DELAY_TIME, "fx.delay.time", Float, 0.01f, 4.0f, 0.5f, DelayDerived)                        \
+  X(FX_DELAY_TEMPO_SYNC, "fx.delay.tempoSync", Bool, 0.0f, 1.0f, 1.0f, DelayDerived)               \
   X(FX_DELAY_FEEDBACK, "fx.delay.feedback", Float, 0.0f, 0.99f, 0.4f, None)                        \
   X(FX_DELAY_PING_PONG, "fx.delay.pingPong", Bool, 0.0f, 1.0f, 0.0f, None)                         \
   X(FX_DELAY_MIX, "fx.delay.mix", Float, 0.0f, 1.0f, 0.5f, None)                                   \
@@ -174,8 +174,10 @@ enum class UpdateGroup : uint8_t {
                     //
   SaturatorDerived, // recalc invDrive
 
-  ChorusDerived, // recalc rate, mix, and depth derived values
-  DistortionDerived,
+  ChorusDerived,     // recalc  on rate, mix, or depth update
+  DistortionDerived, // recalc on drive update
+  PhaserDerived,     // recalc on rate or depth update
+  DelayDerived,      // delay.time, delay.subdivision, or delay.tempoSync changed
 
   MonoEnable,    // kill poly voices or release mono
   PortaCoeff,    // recalc portamento coefficient
@@ -185,7 +187,6 @@ enum class UpdateGroup : uint8_t {
   BPMSync,      // BPM changed — recalc all synced components
   LFOTempoSync, // lfo.tempoSync or lfo.subdivision changed
   LFORate,      // lfo.rate changed — update effectiveRate when !tempoSync
-  DelayTime,    // delay.time, delay.subdivision, or delay.tempoSync changed
 };
 
 enum class ParamType : uint8_t {
