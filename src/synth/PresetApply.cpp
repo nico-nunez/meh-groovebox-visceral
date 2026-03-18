@@ -5,6 +5,7 @@
 #include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
 #include "synth/ParamRanges.h"
+#include "synth/ParamSync.h"
 #include "synth/SignalChain.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
@@ -129,6 +130,9 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
     if (preset.signalChain[i] != signal_chain::SignalProcessor::None)
       pool.signalChain.length++;
   }
+
+  engine.dirtyFlags.markAll();
+  param::sync::syncDirtyParams(engine);
 
   engine.fxChain.delay.state.currentDelaySamples = engine.fxChain.delay.targetDelaySamples;
 

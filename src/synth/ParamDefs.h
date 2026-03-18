@@ -85,15 +85,15 @@
   X(SATURATOR_ENABLED, "saturator.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                          \
                                                                                                    \
   /* ==== LFOs ==== */                                                                             \
-  X(LFO1_RATE, "lfo1.rate", Float, 0.0f, 20.0f, 1.0f, None)                                        \
+  X(LFO1_RATE, "lfo1.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
   X(LFO1_AMPLITUDE, "lfo1.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
   X(LFO1_RETRIGGER, "lfo1.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
                                                                                                    \
-  X(LFO2_RATE, "lfo2.rate", Float, 0.0f, 20.0f, 1.0f, None)                                        \
+  X(LFO2_RATE, "lfo2.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
   X(LFO2_AMPLITUDE, "lfo2.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
   X(LFO2_RETRIGGER, "lfo2.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
                                                                                                    \
-  X(LFO3_RATE, "lfo3.rate", Float, 0.0f, 20.0f, 1.0f, None)                                        \
+  X(LFO3_RATE, "lfo3.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
   X(LFO3_AMPLITUDE, "lfo3.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
   X(LFO3_RETRIGGER, "lfo3.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
                                                                                                    \
@@ -163,8 +163,10 @@
   X(FX_REVERB_ENABLED, "fx.reverb.enabled", Bool, 0.0f, 1.0f, 0.0f, None)
 
 namespace synth::param {
-// What kind of side effect does changing this param trigger?
-enum class UpdateGroup : uint8_t {
+// ===================
+// Update Groups
+// ===================
+enum UpdateGroup {
   None = 0,
   OscEnable,        // recalc oscMixGain
                     //
@@ -190,8 +192,36 @@ enum class UpdateGroup : uint8_t {
   BPMSync,      // BPM changed — recalc all synced components
   LFOTempoSync, // lfo.tempoSync or lfo.subdivision changed
   LFORate,      // lfo.rate changed — update effectiveRate when !tempoSync
+  COUNT
 };
 
+struct UpdateGroupFlags {
+  uint32_t flagBits{0};
+
+  void mark(UpdateGroup grp) {
+    if (grp == UpdateGroup::None || grp == UpdateGroup::COUNT)
+      return;
+
+    flagBits |= 1u << (grp - 1);
+  }
+  void markAll() {
+    uint32_t mask;
+    if (UpdateGroup::COUNT >= 32) {
+      mask = 0xFFFFFFFF;
+    } else {
+      mask = (1u << UpdateGroup::COUNT) - 1u;
+    }
+    flagBits = mask;
+  }
+  bool isSet(const UpdateGroup grp) const { return (flagBits & (1u << (grp - 1))) != 0; }
+  void clear(const UpdateGroup grp) { flagBits &= ~(1u << (grp - 1)); }
+  void clearAll() { flagBits = 0; }
+  bool any() const { return flagBits != 0; }
+};
+
+// ================
+// Params
+// ================
 enum class ParamType : uint8_t {
   Float,
   Int8,

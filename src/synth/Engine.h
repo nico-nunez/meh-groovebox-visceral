@@ -2,6 +2,7 @@
 
 #include "synth/FXChain.h"
 #include "synth/ParamBindings.h"
+#include "synth/ParamDefs.h"
 #include "synth/Tempo.h"
 #include "synth/VoicePool.h"
 
@@ -25,6 +26,8 @@ using dsp::buffers::StereoBuffer;
 using dsp::waveforms::WaveformType;
 
 using param::ParamID;
+using param::UpdateGroup;
+using param::UpdateGroupFlags;
 using param::bindings::ParamRouter;
 
 struct EngineConfig {
@@ -49,6 +52,8 @@ struct Engine {
   StereoBuffer poolBuffer{};
 
   uint32_t noteCount = 0;
+
+  UpdateGroupFlags dirtyFlags;
 
   void processMIDIEvent(const MIDIEvent& event);
   void processParamEvent(const ParamEvent& event);
