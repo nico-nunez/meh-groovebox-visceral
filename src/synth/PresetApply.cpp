@@ -130,6 +130,8 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
       pool.signalChain.length++;
   }
 
+  engine.fxChain.delay.state.currentDelaySamples = engine.fxChain.delay.targetDelaySamples;
+
   return result;
 }
 

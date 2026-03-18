@@ -148,6 +148,8 @@
   X(FX_DELAY_TIME, "fx.delay.time", Float, 0.01f, 4.0f, 0.5f, DelayDerived)                        \
   X(FX_DELAY_TEMPO_SYNC, "fx.delay.tempoSync", Bool, 0.0f, 1.0f, 1.0f, DelayDerived)               \
   X(FX_DELAY_FEEDBACK, "fx.delay.feedback", Float, 0.0f, 0.99f, 0.4f, None)                        \
+  X(FX_DELAY_DAMPING, "fx.delay.damping", Float, 0.0f, 1.0f, 0.0f, DelayDamping)                   \
+  X(FX_DELAY_HP_DAMPING, "fx.delay.hpDamping", Float, 0.0f, 1.0f, 0.0f, DelayDamping)              \
   X(FX_DELAY_PING_PONG, "fx.delay.pingPong", Bool, 0.0f, 1.0f, 0.0f, None)                         \
   X(FX_DELAY_MIX, "fx.delay.mix", Float, 0.0f, 1.0f, 0.5f, None)                                   \
   X(FX_DELAY_ENABLED, "fx.delay.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                            \
@@ -178,6 +180,7 @@ enum class UpdateGroup : uint8_t {
   DistortionDerived, // recalc on drive update
   PhaserDerived,     // recalc on rate or depth update
   DelayDerived,      // delay.time, delay.subdivision, or delay.tempoSync changed
+  DelayDamping,      // recalc on damping or hpDamping update
 
   MonoEnable,    // kill poly voices or release mono
   PortaCoeff,    // recalc portamento coefficient

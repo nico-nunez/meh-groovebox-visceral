@@ -175,6 +175,8 @@ void bindDelay(ParamRouter& r, dsp::fx::delay::DelayFX& d) {
   r.paramBindings[FX_DELAY_TIME] = makeFloatBinding(&d.time);
   r.paramBindings[FX_DELAY_TEMPO_SYNC] = makeBoolBinding(&d.tempoSync);
   r.paramBindings[FX_DELAY_FEEDBACK] = makeFloatBinding(&d.feedback);
+  r.paramBindings[FX_DELAY_DAMPING] = makeFloatBinding(&d.damping);
+  r.paramBindings[FX_DELAY_HP_DAMPING] = makeFloatBinding(&d.hpDamping);
   r.paramBindings[FX_DELAY_PING_PONG] = makeBoolBinding(&d.pingPong);
   r.paramBindings[FX_DELAY_MIX] = makeFloatBinding(&d.mix);
   r.paramBindings[FX_DELAY_ENABLED] = makeBoolBinding(&d.enabled);

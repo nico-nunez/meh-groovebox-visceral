@@ -70,7 +70,7 @@ inline const char* fxProcessorToString(FXProcessor proc) {
   return "unknown";
 }
 
-void initFXChain(FXChain& fxChain, float sampleRate);
+void initFXChain(FXChain& fxChain, float bpm, float sampleRate);
 void destroyFXChain(FXChain& fxChain);
 void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples, float sampleRate);
 

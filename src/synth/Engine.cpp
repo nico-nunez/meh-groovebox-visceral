@@ -1,6 +1,7 @@
 #include "Engine.h"
 
 #include "dsp/FX/Chorus.h"
+#include "dsp/FX/Delay.h"
 #include "dsp/FX/Phaser.h"
 #include "synth/FXChain.h"
 #include "synth/ParamBindings.h"
@@ -33,6 +34,7 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
   namespace dist = dsp::fx::distortion;
   namespace chorus = dsp::fx::chorus;
   namespace phaser = dsp::fx::phaser;
+  namespace delay = dsp::fx::delay;
 
   auto& pool = engine.voicePool;
 
@@ -118,15 +120,13 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     auto& delay = engine.fxChain.delay;
     float bpm = engine.tempo.bpm;
 
-    // Recalc each LFO only if it's synced
     for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
       if (lfo->tempoSync)
         lfo->effectiveRate = tempo::calcEffectiveRate(lfo->subdivision, bpm);
     }
-    // Recalc delay only if it's synced
+
     if (delay.tempoSync)
-      delay.delaySamples = static_cast<uint32_t>(
-          tempo::subdivisionPeriodSeconds(delay.subdivision, bpm) * engine.sampleRate);
+      delay::recalcTargetDelaySamples(engine.fxChain.delay, engine.tempo.bpm, engine.sampleRate);
     break;
   }
 
@@ -163,12 +163,11 @@ void onParamUpdate(Engine& engine, param::ParamID id) {
     phaser::recalcPhaseDerivedVals(engine.fxChain.phaser, engine.invSampleRate);
     break;
   case UpdateGroup::DelayDerived: {
-    auto& d = engine.fxChain.delay;
-    d.delaySamples = d.tempoSync
-                         ? static_cast<uint32_t>(
-                               tempo::subdivisionPeriodSeconds(d.subdivision, engine.tempo.bpm) *
-                               engine.sampleRate)
-                         : static_cast<uint32_t>(d.time * engine.sampleRate);
+    delay::recalcTargetDelaySamples(engine.fxChain.delay, engine.tempo.bpm, engine.sampleRate);
+    break;
+  }
+  case UpdateGroup::DelayDamping: {
+    delay::recalcDerivedDampCoeff(engine.fxChain.delay);
     break;
   }
 
@@ -196,7 +195,7 @@ Engine createEngine(const EngineConfig& config) {
   pb::initParamRouter(engine.paramRouter, engine.voicePool, engine.tempo);
   pb::initFXParamBindings(engine.paramRouter, engine.fxChain);
 
-  fx_chain::initFXChain(engine.fxChain, engine.sampleRate);
+  fx_chain::initFXChain(engine.fxChain, engine.tempo.bpm, engine.sampleRate);
 
   auto initPreset = preset::createInitPreset();
   preset::applyPreset(initPreset, engine);
