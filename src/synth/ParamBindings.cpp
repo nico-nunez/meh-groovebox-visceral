@@ -186,7 +186,11 @@ void bindReverb(ParamRouter& r, dsp::fx::reverb::ReverbFX& rv) {
   r.paramBindings[FX_REVERB_PRE_DELAY] = makeFloatBinding(&rv.preDelay);
   r.paramBindings[FX_REVERB_DECAY] = makeFloatBinding(&rv.decay);
   r.paramBindings[FX_REVERB_DAMPING] = makeFloatBinding(&rv.damping);
+  r.paramBindings[FX_REVERB_LOW_DAMPING] = makeFloatBinding(&rv.lowDamping);
+  r.paramBindings[FX_REVERB_DIFFUSION] = makeFloatBinding(&rv.diffusion);
   r.paramBindings[FX_REVERB_BANDWIDTH] = makeFloatBinding(&rv.bandwidth);
+  r.paramBindings[FX_REVERB_MOD_RATE] = makeFloatBinding(&rv.modRate);
+  r.paramBindings[FX_REVERB_MOD_DEPTH] = makeFloatBinding(&rv.modDepth);
   r.paramBindings[FX_REVERB_MIX] = makeFloatBinding(&rv.mix);
   r.paramBindings[FX_REVERB_ENABLED] = makeBoolBinding(&rv.enabled);
 }

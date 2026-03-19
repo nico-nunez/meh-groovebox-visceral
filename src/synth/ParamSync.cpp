@@ -1,8 +1,12 @@
 #include "ParamSync.h"
 
+#include "dsp/FX/Reverb.h"
 #include "synth/Engine.h"
 #include "synth/Envelope.h"
 #include "synth/FXChain.h"
+#include "synth/Filters.h"
+#include "synth/Saturator.h"
+#include "synth/Unison.h"
 #include "synth/VoicePool.h"
 
 #include "dsp/FX/Chorus.h"
@@ -20,6 +24,7 @@ namespace dist = dsp::fx::distortion;
 namespace chorus = dsp::fx::chorus;
 namespace phaser = dsp::fx::phaser;
 namespace delay = dsp::fx::delay;
+namespace reverb = dsp::fx::reverb;
 
 void updateOscMixGain(VoicePool& pool) {
   int count = pool.osc1.enabled + pool.osc2.enabled + pool.osc3.enabled + pool.osc4.enabled +
@@ -39,16 +44,16 @@ void updateAllEnvCurves(VoicePool& pool) {
   envelope::updateCurveTables(pool.modEnv);
 }
 
-void updateSVFCoeff(VoicePool& pool, const float invSampleRate) {
-  filters::updateSVFCoefficients(pool.svf, invSampleRate);
+void updateSVFCoeff(filters::SVFilter& svf, const float invSampleRate) {
+  filters::updateSVFCoefficients(svf, invSampleRate);
 }
 
-void updateLadderCoeff(VoicePool& pool, const float invSampleRate) {
-  filters::updateLadderCoefficient(pool.ladder, invSampleRate);
+void updateLadderCoeff(filters::LadderFilter& ladder, const float invSampleRate) {
+  filters::updateLadderCoefficient(ladder, invSampleRate);
 }
 
-void updateSaturatorDerived(VoicePool& pool) {
-  pool.saturator.invDrive = saturator::calcInvDrive(pool.saturator.drive);
+void updateSaturatorDerived(saturator::Saturator& sat) {
+  sat.invDrive = saturator::calcInvDrive(sat.drive);
 }
 
 void updateMonoEnabled(VoicePool& pool) {
@@ -66,20 +71,20 @@ void updateMonoEnabled(VoicePool& pool) {
   }
 }
 
-void updatePortaCoeff(VoicePool& pool, const float sampleRate) {
-  pool.porta.coeff = dsp::math::calcPortamento(pool.porta.time, sampleRate);
+void updatePortaCoeff(voices::Portamento& porta, const float sampleRate) {
+  porta.coeff = dsp::math::calcPortamento(porta.time, sampleRate);
 }
 
-void updateUnisonDerived(VoicePool& pool) {
-  if (pool.unison.enabled) {
-    unison::updateDetuneOffsets(pool.unison);
-    unison::updatePanPositions(pool.unison);
-    unison::updateGainComp(pool.unison);
+void updateUnisonDerived(unison::UnisonState& uni) {
+  if (uni.enabled) {
+    unison::updateDetuneOffsets(uni);
+    unison::updatePanPositions(uni);
+    unison::updateGainComp(uni);
   }
 }
 
-void updateUnisonSpread(VoicePool& pool) {
-  unison::updatePanPositions(pool.unison);
+void updateUnisonSpread(unison::UnisonState& uni) {
+  unison::updatePanPositions(uni);
 }
 
 void updateAllLFOEffectiveRates(VoicePool& pool, const float bpm) {
@@ -89,33 +94,35 @@ void updateAllLFOEffectiveRates(VoicePool& pool, const float bpm) {
   }
 }
 
-void updateChorusDerived(FXChain& fxChain, const float sampleRate) {
-  chorus::recalcChorusDerivedVals(fxChain.chorus, sampleRate);
+void updateChorusDerived(chorus::ChorusFX& chorus, const float sampleRate) {
+  chorus::recalcChorusDerivedVals(chorus, sampleRate);
 }
 
-void updateDistortionDerived(FXChain& fxChain) {
-  fxChain.distortion.invNorm = dist::calcDistortionInvNorm(fxChain.distortion.drive);
+void updateDistortionDerived(dist::DistortionFX& dist) {
+  dist.invNorm = dist::calcDistortionInvNorm(dist.drive);
 }
 
-void updatePhaserDerived(FXChain& fxChain, const float invSampleRate) {
-  phaser::recalcPhaseDerivedVals(fxChain.phaser, invSampleRate);
+void updatePhaserDerived(phaser::PhaserFX& phaser, const float invSampleRate) {
+  phaser::recalcPhaseDerivedVals(phaser, invSampleRate);
 }
 
-void updateDelayDerived(FXChain& fxChain, const float bpm, const float sampleRate) {
-  delay::recalcTargetDelaySamples(fxChain.delay, bpm, sampleRate);
+void updateDelayDerived(delay::DelayFX& delay, const float bpm, const float sampleRate) {
+  delay::recalcTargetDelaySamples(delay, bpm, sampleRate);
 }
 
-void updateDelayDamping(FXChain& fxChain) {
-  delay::recalcDerivedDampCoeff(fxChain.delay);
+void updateDelayDamping(delay::DelayFX& delay) {
+  delay::recalcDerivedDampCoeff(delay);
+}
+
+void updateReverdDerived(reverb::ReverbFX& reverb, float sampleRate) {
+  reverb::recalcReverbDerivedVals(reverb, sampleRate);
 }
 
 void updateBPMSync(VoicePool& pool, FXChain& fxChain, const float bpm, const float sampleRate) {
-  auto& delay = fxChain.delay;
-
   updateAllLFOEffectiveRates(pool, bpm);
 
-  if (delay.tempoSync)
-    updateDelayDerived(fxChain, bpm, sampleRate);
+  if (fxChain.delay.tempoSync)
+    updateDelayDerived(fxChain.delay, bpm, sampleRate);
 }
 
 } // anonymous namespace
@@ -146,28 +153,28 @@ void syncDirtyParams(Engine& engine) {
 
   // ==== Filters ====
   if (flags.isSet(UpdateGroup::SVFCoeff))
-    updateSVFCoeff(pool, invSampleRate);
+    updateSVFCoeff(pool.svf, invSampleRate);
 
   if (flags.isSet(UpdateGroup::LadderCoeff))
-    updateLadderCoeff(pool, invSampleRate);
+    updateLadderCoeff(pool.ladder, invSampleRate);
 
   // ==== Saturator ====
   if (flags.isSet(UpdateGroup::SaturatorDerived))
-    updateSaturatorDerived(pool);
+    updateSaturatorDerived(pool.saturator);
 
   // ==== Mono/Portamento ====
   if (flags.isSet(UpdateGroup::MonoEnable))
     updateMonoEnabled(pool);
 
   if (flags.isSet(UpdateGroup::PortaCoeff))
-    updatePortaCoeff(engine.voicePool, sampleRate);
+    updatePortaCoeff(pool.porta, sampleRate);
 
   // ==== Unison ====
   if (flags.isSet(UpdateGroup::UnisonDerived))
-    updateUnisonDerived(pool);
+    updateUnisonDerived(pool.unison);
 
   if (flags.isSet(UpdateGroup::UnisonSpread))
-    updateUnisonSpread(pool);
+    updateUnisonSpread(pool.unison);
 
   // ==== LFOs ====
   if (flags.isSet(UpdateGroup::LFORate) || flags.isSet(UpdateGroup::LFOTempoSync))
@@ -181,19 +188,22 @@ void syncDirtyParams(Engine& engine) {
 
   // ==== FX ====
   if (flags.isSet(UpdateGroup::ChorusDerived))
-    updateChorusDerived(fxChain, sampleRate);
+    updateChorusDerived(fxChain.chorus, sampleRate);
 
   if (flags.isSet(UpdateGroup::DistortionDerived))
-    updateDistortionDerived(fxChain);
+    updateDistortionDerived(fxChain.distortion);
 
   if (flags.isSet(UpdateGroup::PhaserDerived))
-    updatePhaserDerived(fxChain, invSampleRate);
+    updatePhaserDerived(fxChain.phaser, invSampleRate);
 
   if (flags.isSet(UpdateGroup::DelayDerived))
-    updateDelayDerived(fxChain, bpm, sampleRate);
+    updateDelayDerived(fxChain.delay, bpm, sampleRate);
 
   if (flags.isSet(UpdateGroup::DelayDamping))
-    updateDelayDamping(fxChain);
+    updateDelayDamping(fxChain.delay);
+
+  if (flags.isSet(UpdateGroup::ReverbDerived))
+    updateReverdDerived(fxChain.reverb, sampleRate);
 
   engine.dirtyFlags.clearAll();
 }

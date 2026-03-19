@@ -72,6 +72,7 @@ inline const char* fxProcessorToString(FXProcessor proc) {
 
 void initFXChain(FXChain& fxChain, float bpm, float sampleRate);
 void destroyFXChain(FXChain& fxChain);
-void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples, float sampleRate);
+
+void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples);
 
 } // namespace synth::fx_chain

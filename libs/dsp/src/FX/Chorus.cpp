@@ -69,6 +69,22 @@ void processChorus(ChorusFX& fx, buf::StereoBuffer buf, size_t numSamples) {
   const size_t mask = s.buffer.mask;
   const size_t cbSize = s.buffer.size;
 
+  // Renormalize quadrature LFOs — magnitude drifts from floating-point accumulation.
+  for (int v = 0; v < CHORUS_VOICES; v++) {
+    const float magL = s.lfoReL[v] * s.lfoReL[v] + s.lfoImL[v] * s.lfoImL[v];
+    if (magL > 0.0f) {
+      const float invL = 1.0f / sqrtf(magL);
+      s.lfoReL[v] *= invL;
+      s.lfoImL[v] *= invL;
+    }
+    const float magR = s.lfoReR[v] * s.lfoReR[v] + s.lfoImR[v] * s.lfoImR[v];
+    if (magR > 0.0f) {
+      const float invR = 1.0f / sqrtf(magR);
+      s.lfoReR[v] *= invR;
+      s.lfoImR[v] *= invR;
+    }
+  }
+
   for (size_t i = 0; i < numSamples; i++) {
     const float dryL = buf.left[i];
     const float dryR = buf.right[i];

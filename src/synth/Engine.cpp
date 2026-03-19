@@ -121,7 +121,7 @@ void Engine::processAudioBlock(float** outputBuffer, size_t numChannels, size_t 
     offset += blockSize;
   }
 
-  fx_chain::processFXChain(fxChain, poolBuffer, numFrames, sampleRate);
+  fx_chain::processFXChain(fxChain, poolBuffer, numFrames);
 
   for (size_t frame = 0; frame < numFrames; frame++) {
     if (numChannels == 0)

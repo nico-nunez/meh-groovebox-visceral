@@ -155,11 +155,15 @@
   X(FX_DELAY_ENABLED, "fx.delay.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                            \
                                                                                                    \
   /* ==== Reverb (Dattorro plate) ==== */                                                          \
-  X(FX_REVERB_PRE_DELAY, "fx.reverb.preDelay", Float, 0.0f, 100.0f, 0.0f, None)                    \
-  X(FX_REVERB_DECAY, "fx.reverb.decay", Float, 0.0f, 1.0f, 0.75f, None)                            \
-  X(FX_REVERB_DAMPING, "fx.reverb.damping", Float, 0.0f, 1.0f, 0.5f, None)                         \
+  X(FX_REVERB_PRE_DELAY, "fx.reverb.preDelay", Float, 0.0f, 100.0f, 0.0f, ReverbDerived)           \
+  X(FX_REVERB_DECAY, "fx.reverb.decay", Float, 0.0f, 1.0f, 0.5f, ReverbDerived)                    \
+  X(FX_REVERB_DAMPING, "fx.reverb.damping", Float, 0.0f, 1.0f, 0.5f, ReverbDerived)                \
+  X(FX_REVERB_LOW_DAMPING, "fx.reverb.lowDamping", Float, 0.0f, 1.0f, 0.5f, ReverbDerived)         \
+  X(FX_REVERB_DIFFUSION, "fx.reverb.diffusion", Float, 0.0f, 1.0f, 0.75f, None)                    \
   X(FX_REVERB_BANDWIDTH, "fx.reverb.bandwidth", Float, 0.0f, 1.0f, 0.75f, None)                    \
-  X(FX_REVERB_MIX, "fx.reverb.mix", Float, 0.0f, 1.0f, 0.5f, None)                                 \
+  X(FX_REVERB_MOD_RATE, "fx.reverb.modRate", Float, 0.01f, 5.0f, 0.5f, ReverbDerived)              \
+  X(FX_REVERB_MOD_DEPTH, "fx.reverb.modDepth", Float, 0.0f, 1.0f, 0.5f, ReverbDerived)             \
+  X(FX_REVERB_MIX, "fx.reverb.mix", Float, 0.0f, 1.0f, 0.3f, None)                                 \
   X(FX_REVERB_ENABLED, "fx.reverb.enabled", Bool, 0.0f, 1.0f, 0.0f, None)
 
 namespace synth::param {
@@ -183,6 +187,7 @@ enum UpdateGroup {
   PhaserDerived,     // recalc on rate or depth update
   DelayDerived,      // delay.time, delay.subdivision, or delay.tempoSync changed
   DelayDamping,      // recalc on damping or hpDamping update
+  ReverbDerived,
 
   MonoEnable,    // kill poly voices or release mono
   PortaCoeff,    // recalc portamento coefficient
