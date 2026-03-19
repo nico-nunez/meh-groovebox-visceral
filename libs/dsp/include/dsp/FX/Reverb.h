@@ -93,15 +93,16 @@ struct DattorroState {
 
 struct ReverbFX {
   // --- User params ---
-  float preDelay = 0.0f;   // ms [0, 100]
-  float decay = 0.5f;      // [0, 1] — tank feedback + APF coefficient
-  float damping = 0.5f;    // [0, 1] — tank LP intensity
-  float lowDamping = 0.0f; // [0, 1] — tank HP intensity
-  float bandwidth = 0.75f; // [0, 1] — input LP pass-through amount
-  float diffusion = 0.75f; // [0, 1] — input APF coefficient scale (new)
-  float modRate = 0.5f;    // Hz [0.01, 5.0] (new)
-  float modDepth = 0.5f;   // [0, 1] → [0, 16] samples (new)
+  float preDelay = 0.0f;     // ms [0, 100]
+  float decaySeconds = 4.0f; // [0.1s - 20s]
+  float damping = 0.5f;      // [0, 1] — tank LP intensity
+  float lowDamping = 0.0f;   // [0, 1] — tank HP intensity
+  float bandwidth = 0.75f;   // [0, 1] — input LP pass-through amount
+  float diffusion = 0.75f;   // [0, 1] — input APF coefficient scale (new)
+  float modRate = 0.5f;      // Hz [0.01, 5.0] (new)
+  float modDepth = 0.5f;     // [0, 1] → [0, 16] samples (new)
   float mix = 0.3f;
+  float loopTime = 0.36f; // assuming default of 48kHz sample rate
   bool enabled = false;
 
   // --- Derived (set by ReverbDerived UpdateGroup) ---
@@ -111,6 +112,7 @@ struct ReverbFX {
   float modDepthSamples = 8.0f; // = modDepth * MAX_MOD_DEPTH_SAMPLES
   float cosW = 1.0f;            // quadrature oscillator step
   float sinW = 0.0f;
+  float decay = 0.5f;            // [0, 1] — tank feedback + APF coefficient
   float decayDiffusion = 0.525f; // = decay * TANK_DIFF_COEFF (= decay * 0.7f)
 
   DattorroState state;

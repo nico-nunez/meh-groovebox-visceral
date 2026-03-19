@@ -156,7 +156,7 @@
                                                                                                    \
   /* ==== Reverb (Dattorro plate) ==== */                                                          \
   X(FX_REVERB_PRE_DELAY, "fx.reverb.preDelay", Float, 0.0f, 100.0f, 0.0f, ReverbDerived)           \
-  X(FX_REVERB_DECAY, "fx.reverb.decay", Float, 0.0f, 1.0f, 0.5f, ReverbDerived)                    \
+  X(FX_REVERB_DECAY, "fx.reverb.decay", Float, 0.1f, 20.0f, 4.0f, ReverbDerived)                   \
   X(FX_REVERB_DAMPING, "fx.reverb.damping", Float, 0.0f, 1.0f, 0.5f, ReverbDerived)                \
   X(FX_REVERB_LOW_DAMPING, "fx.reverb.lowDamping", Float, 0.0f, 1.0f, 0.5f, ReverbDerived)         \
   X(FX_REVERB_DIFFUSION, "fx.reverb.diffusion", Float, 0.0f, 1.0f, 0.75f, None)                    \

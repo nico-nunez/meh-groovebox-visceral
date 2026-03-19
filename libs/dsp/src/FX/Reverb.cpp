@@ -32,6 +32,10 @@ void initReverb(ReverbFX& fx, float sampleRate) {
   s.len[MOD_A] = s.modNominal[0] + modPad;
   s.len[MOD_B] = s.modNominal[1] + modPad;
 
+  const size_t loopA = s.modNominal[0] + s.len[DLY1_A] + s.len[APF_A] + s.len[DLY2_A];
+  const size_t loopB = s.modNominal[1] + s.len[DLY1_B] + s.len[APF_B] + s.len[DLY2_B];
+  fx.loopTime = static_cast<float>(loopA + loopB) / (2.0f * sampleRate);
+
   // 2. Compute contiguous offsets + total allocation size
   size_t total = 0;
   for (int i = 0; i < NUM_DATTORRO_LINES; i++) {
@@ -88,11 +92,15 @@ void destroyReverb(ReverbFX& fx) {
 void recalcReverbDerivedVals(ReverbFX& fx, float sampleRate) {
   fx.dampCoeff = 1.0f - fx.damping;
   fx.lowDampCoeff = fx.lowDamping * 0.03f;
+
   fx.preDelaySamples = fx.preDelay * sampleRate / 1000.0f;
   fx.modDepthSamples = fx.modDepth * MAX_MOD_DEPTH_SAMPLES;
+
   const float w = 2.0f * dsp::math::PI_F * fx.modRate / sampleRate;
   fx.cosW = cosf(w);
   fx.sinW = sinf(w);
+
+  fx.decay = powf(10.0f, -3.0f * fx.loopTime / fx.decaySeconds);
   fx.decayDiffusion = fx.decay * TANK_DIFF_COEFF;
 }
 

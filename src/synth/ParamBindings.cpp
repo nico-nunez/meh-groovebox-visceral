@@ -184,7 +184,7 @@ void bindDelay(ParamRouter& r, dsp::fx::delay::DelayFX& d) {
 
 void bindReverb(ParamRouter& r, dsp::fx::reverb::ReverbFX& rv) {
   r.paramBindings[FX_REVERB_PRE_DELAY] = makeFloatBinding(&rv.preDelay);
-  r.paramBindings[FX_REVERB_DECAY] = makeFloatBinding(&rv.decay);
+  r.paramBindings[FX_REVERB_DECAY] = makeFloatBinding(&rv.decaySeconds);
   r.paramBindings[FX_REVERB_DAMPING] = makeFloatBinding(&rv.damping);
   r.paramBindings[FX_REVERB_LOW_DAMPING] = makeFloatBinding(&rv.lowDamping);
   r.paramBindings[FX_REVERB_DIFFUSION] = makeFloatBinding(&rv.diffusion);
