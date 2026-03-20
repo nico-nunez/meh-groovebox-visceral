@@ -9,6 +9,7 @@
 #include "synth/ParamDefs.h"
 #include "synth/PresetCmd.h"
 #include "synth/SignalChain.h"
+#include "synth/VoicePool.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
@@ -309,6 +310,9 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
   } else if (cmd == "signal") {
     signal_chain::parseSigChainCmd(iss, engine.voicePool.signalChain);
 
+  } else if (cmd == "panic") {
+    voices::panicVoicePool(engine.voicePool);
+
     // HELP: print available commands
   } else if (cmd == "help") {
     printf("Commands:\n");
@@ -319,6 +323,7 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
     printf("  preset ...           - Preset management (preset help)\n");
     printf("  fx ...               - Effects chain order (fx set/list/clear)\n");
     printf("  signal ...           - Signal chain order (signal set/list/clear)\n");
+    printf("  panic                - Force ALL voices to release\n");
     printf("  help                 - Show this help\n");
     printf("  quit                 - Exit\n");
     printf("\nNote commands: a-k (play notes)\n");

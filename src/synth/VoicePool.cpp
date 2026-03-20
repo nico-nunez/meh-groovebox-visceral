@@ -232,6 +232,25 @@ void releaseVoice(VoicePool& pool, uint8_t midiNote, float sampleRate) {
   envelope::triggerRelease(pool.modEnv, voiceIndex);
 }
 
+void panicVoicePool(VoicePool& pool) {
+  pool.activeCount = 0;
+  for (uint32_t v = 0; v < MAX_VOICES; v++) {
+    pool.activeIndices[v] = 0;
+    pool.isActive[v] = 0;
+    pool.sustain.notes[v] = false;
+    pool.porta.offsets[v] = 0.0f;
+  }
+  pool.porta.lastNote = 0;
+
+  for (uint8_t i = 0; i < mono::MAX_HELD_NOTES; i++) {
+    pool.mono.heldNotes[i] = false;
+  }
+  pool.mono.stackDepth = 0;
+  for (uint8_t i = 0; i < mono::MAX_NOTE_STACK; i++) {
+    pool.mono.noteStack[i] = 0;
+  }
+}
+
 // ========================
 // Note Event Handers
 // ========================

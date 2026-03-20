@@ -169,8 +169,9 @@ void initVoice(VoicePool& pool,
 // Mono Legato (adjust pitch without reseting phases if legato)
 void redirectVoicePitch(VoicePool& pool, uint32_t voiceIndex, uint8_t midiNote, float sampleRate);
 
-// Trigger envelope release for voice playing midiNote
 void releaseVoice(VoicePool& pool, uint8_t midiNote, float sampleRate);
+
+void panicVoicePool(VoicePool& pool);
 
 // Same as above but for mono voice
 void releaseMonoVoice(VoicePool& pool);

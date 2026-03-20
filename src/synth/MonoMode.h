@@ -5,6 +5,8 @@
 #include <cstdint>
 
 namespace synth::mono {
+inline constexpr uint8_t MAX_HELD_NOTES = 128;
+inline constexpr uint8_t MAX_NOTE_STACK = 16;
 
 struct MonoState {
   bool enabled = false;
@@ -12,8 +14,8 @@ struct MonoState {
 
   uint32_t voiceIndex = synth::MAX_VOICES;
 
-  bool heldNotes[128]{};
-  uint8_t noteStack[16]{};
+  bool heldNotes[MAX_HELD_NOTES]{};
+  uint8_t noteStack[MAX_NOTE_STACK]{};
   uint8_t stackDepth = 0;
 };
 
