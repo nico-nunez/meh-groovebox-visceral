@@ -5,6 +5,7 @@
 #include "dsp/FX/Delay.h"
 #include "dsp/FX/Distortion.h"
 #include "dsp/FX/Phaser.h"
+#include <algorithm>
 
 namespace synth::fx_chain {
 using namespace dsp::fx;
@@ -72,4 +73,65 @@ void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples) {
     }
   }
 }
+
+// ====================
+// Command Helpers
+// ====================
+
+void setFXChain(FXChain& fxChain, const FXProcessor* procs, uint8_t count) {
+  fxChain.length = std::min(count, MAX_EFFECT_SLOTS);
+  for (uint8_t i = 0; i < fxChain.length; i++)
+    fxChain.slots[i] = procs[i];
+}
+
+void clearFXChain(FXChain& fxChain) {
+  for (uint8_t i = 0; i < MAX_EFFECT_SLOTS; i++)
+    fxChain.slots[i] = FXProcessor::None;
+  fxChain.length = 0;
+}
+
+void parseFXChainCmd(std::istringstream& iss, FXChain& fxChain) {
+  std::string subcmd;
+  iss >> subcmd;
+
+  if (subcmd == "set") {
+    FXProcessor procs[MAX_EFFECT_SLOTS];
+    uint8_t count = 0;
+    std::string name;
+
+    while (iss >> name && count < MAX_EFFECT_SLOTS) {
+      FXProcessor p = parseFXProcessor(name.c_str());
+      if (p == FXProcessor::None) {
+        printf("fxChain: unknown effect '%s'\n", name.c_str());
+        return;
+      }
+      procs[count++] = p;
+    }
+
+    setFXChain(fxChain, procs, count);
+    printf("OK\n");
+
+  } else if (subcmd == "list") {
+    if (fxChain.length == 0) {
+      printf("fx chain: (empty)\n");
+      return;
+    }
+    printf("fx chain: ");
+    for (uint8_t i = 0; i < fxChain.length; i++) {
+      if (i > 0)
+        printf(" -> ");
+      printf("%s", fxProcessorToString(fxChain.slots[i]));
+    }
+    printf("\n");
+
+  } else if (subcmd == "clear") {
+    clearFXChain(fxChain);
+    printf("OK\n");
+
+  } else {
+    printf("fxChain subcommands: set <effect...>, list, clear\n");
+    printf("valid effects: distortion, chorus, phaser, delay, reverb\n");
+  }
+}
+
 } // namespace synth::fx_chain

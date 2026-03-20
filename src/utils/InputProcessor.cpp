@@ -1,12 +1,14 @@
 #include "InputProcessor.h"
 
 #include "synth/Engine.h"
+#include "synth/FXChain.h"
 #include "synth/Filters.h"
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
 #include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
 #include "synth/PresetCmd.h"
+#include "synth/SignalChain.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
@@ -299,6 +301,14 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
   } else if (cmd == "preset") {
     preset::processPresetCmd(iss, engine);
 
+    // ==== FX Chain =====
+  } else if (cmd == "fx") {
+    fx_chain::parseFXChainCmd(iss, engine.fxChain);
+
+    // ==== Signal Chain =====
+  } else if (cmd == "signal") {
+    signal_chain::parseSigChainCmd(iss, engine.voicePool.signalChain);
+
     // HELP: print available commands
   } else if (cmd == "help") {
     printf("Commands:\n");
@@ -307,6 +317,8 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
     printf("  list                 - List all parameters\n");
     printf("  mod ...              - Modulation routing (mod help)\n");
     printf("  preset ...           - Preset management (preset help)\n");
+    printf("  fx ...               - Effects chain order (fx set/list/clear)\n");
+    printf("  signal ...           - Signal chain order (signal set/list/clear)\n");
     printf("  help                 - Show this help\n");
     printf("  quit                 - Exit\n");
     printf("\nNote commands: a-k (play notes)\n");

@@ -8,6 +8,7 @@
 #include "dsp/FX/Reverb.h"
 
 #include <cstdint>
+#include <sstream>
 
 namespace synth::fx_chain {
 
@@ -74,5 +75,14 @@ void initFXChain(FXChain& fxChain, float bpm, float sampleRate);
 void destroyFXChain(FXChain& fxChain);
 
 void processFXChain(FXChain& fxChain, StereoBuffer buf, size_t numSamples);
+
+// ====================
+// Command Helpers
+// ====================
+
+void parseFXChainCmd(std::istringstream& iss, FXChain& fxChain);
+
+void setFXChain(FXChain& fxChain, const FXProcessor* procs, uint8_t count);
+void clearFXChain(FXChain& fxChain);
 
 } // namespace synth::fx_chain

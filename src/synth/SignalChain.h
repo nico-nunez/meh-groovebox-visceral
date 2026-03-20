@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <sstream>
 
 namespace synth::signal_chain {
 
@@ -20,8 +21,8 @@ struct SignalChain {
   uint8_t length = 0;
 };
 
-void setChain(SignalChain& chain, const SignalProcessor* procs, uint8_t count);
-void clearChain(SignalChain& chain);
+void setSigChain(SignalChain& chain, const SignalProcessor* procs, uint8_t count);
+void clearSigChain(SignalChain& chain);
 
 struct SignalProcessorMapping {
   const char* name;
@@ -51,4 +52,5 @@ inline const char* signalProcessorToString(signal_chain::SignalProcessor proc) {
   return "unknown";
 }
 
+void parseSigChainCmd(std::istringstream& iss, SignalChain& chain);
 } // namespace synth::signal_chain
