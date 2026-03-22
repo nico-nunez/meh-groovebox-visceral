@@ -305,12 +305,21 @@ void handleNoteOn(VoicePool& pool,
   pool.porta.lastNote = midiNote;
 
   if (pool.activeCount == 0) {
-    if (pool.lfo1.retrigger)
+    if (pool.lfo1.retrigger) {
       pool.lfo1.phase = 0.0f;
-    if (pool.lfo2.retrigger)
+      pool.lfo1.delayTimer = pool.lfo1.delayCount;
+      pool.lfo1.attackTimer = pool.lfo1.attackCount;
+    }
+    if (pool.lfo2.retrigger) {
       pool.lfo2.phase = 0.0f;
-    if (pool.lfo3.retrigger)
+      pool.lfo2.delayTimer = pool.lfo2.delayCount;
+      pool.lfo2.attackTimer = pool.lfo2.attackCount;
+    }
+    if (pool.lfo3.retrigger) {
       pool.lfo3.phase = 0.0f;
+      pool.lfo3.delayTimer = pool.lfo3.delayCount;
+      pool.lfo3.attackTimer = pool.lfo3.attackCount;
+    }
   }
 
   addActiveIndex(pool, voiceIndex);

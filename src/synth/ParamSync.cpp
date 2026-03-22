@@ -95,10 +95,17 @@ void updateUnisonSpread(unison::UnisonState& uni) {
   unison::updatePanPositions(uni);
 }
 
-void updateAllLFOEffectiveRates(VoicePool& pool, const float bpm) {
+void updateLFOEffectiveRates(VoicePool& pool, const float bpm) {
   for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
     lfo->effectiveRate =
         lfo->tempoSync ? tempo::calcEffectiveRate(lfo->subdivision, bpm) : lfo->rate;
+  }
+}
+
+void updateLFOFadeCounts(VoicePool& pool, float sampleRate) {
+  for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
+    lfo->delayCount = lfo->delayMs * sampleRate / 1000.0f;
+    lfo->attackCount = lfo->attackMs * sampleRate / 1000.0f;
   }
 }
 
@@ -127,7 +134,7 @@ void updateReverdDerived(reverb::ReverbFX& reverb, float sampleRate) {
 }
 
 void updateBPMSync(VoicePool& pool, FXChain& fxChain, const float bpm, const float sampleRate) {
-  updateAllLFOEffectiveRates(pool, bpm);
+  updateLFOEffectiveRates(pool, bpm);
 
   if (fxChain.delay.tempoSync)
     updateDelayDerived(fxChain.delay, bpm, sampleRate);
@@ -188,7 +195,10 @@ void syncDirtyParams(Engine& engine) {
 
   // ==== LFOs ====
   if (flags.isSet(UpdateGroup::LFORate) || flags.isSet(UpdateGroup::LFOTempoSync))
-    updateAllLFOEffectiveRates(engine.voicePool, bpm);
+    updateLFOEffectiveRates(engine.voicePool, bpm);
+
+  if (flags.isSet(UpdateGroup::LFOFadeIn))
+    updateLFOFadeCounts(pool, sampleRate);
 
   // ==== Tempo ====
   // BPMSync runs after LFO flags because if both are set during a preset

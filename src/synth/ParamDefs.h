@@ -96,14 +96,20 @@
   X(LFO1_RATE, "lfo1.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
   X(LFO1_AMPLITUDE, "lfo1.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
   X(LFO1_RETRIGGER, "lfo1.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
+  X(LFO1_DELAY, "lfo1.delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                             \
+  X(LFO1_ATTACK, "lfo1.attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                           \
                                                                                                    \
   X(LFO2_RATE, "lfo2.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
   X(LFO2_AMPLITUDE, "lfo2.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
   X(LFO2_RETRIGGER, "lfo2.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
+  X(LFO2_DELAY, "lfo2.delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                             \
+  X(LFO2_ATTACK, "lfo2.attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                           \
                                                                                                    \
   X(LFO3_RATE, "lfo3.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
   X(LFO3_AMPLITUDE, "lfo3.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
   X(LFO3_RETRIGGER, "lfo3.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
+  X(LFO3_DELAY, "lfo3.delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                             \
+  X(LFO3_ATTACK, "lfo3.attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                           \
                                                                                                    \
   /* ==== Global / Voice modes ==== */                                                             \
   X(PITCH_BEND_RANGE, "pitchBend.range", Float, 0.0f, 48.0f, 2.0f, None)                           \
@@ -204,9 +210,12 @@ enum UpdateGroup {
   UnisonDerived, // recalc detune offsets, pan, gain comp
   UnisonSpread,  // recalc pan positions only
 
-  BPMSync,      // BPM changed — recalc all synced components
   LFOTempoSync, // lfo.tempoSync or lfo.subdivision changed
   LFORate,      // lfo.rate changed — update effectiveRate when !tempoSync
+  LFOFadeIn,    // lfo.delayMs or lfo.attackMs changed — recompute sample counts
+
+  BPMSync, // BPM changed — recalc all synced components
+
   COUNT
 };
 

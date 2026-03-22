@@ -106,6 +106,8 @@ void bindLFO(ParamBinding* bindings, LFOParamIDs ids, lfo::LFO& lfo) {
   bindings[ids.amplitude] = makeFloatBinding(&lfo.amplitude);
   bindings[ids.retrigger] = makeBoolBinding(&lfo.retrigger);
   bindings[ids.tempoSync] = makeBoolBinding(&lfo.tempoSync);
+  bindings[ids.delay] = makeFloatBinding(&lfo.delayMs);
+  bindings[ids.attack] = makeFloatBinding(&lfo.attackMs);
 }
 
 // Envelope Bindings

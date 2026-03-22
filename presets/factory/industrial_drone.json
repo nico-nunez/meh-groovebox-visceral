@@ -116,7 +116,9 @@
       "amplitude": 0.8,
       "retrigger": false,
       "tempoSync": false,
-      "subdivision": "1/4"
+      "subdivision": "1/4",
+      "delayMs": 0.0,
+      "attackMs": 0.0
     },
     "lfo2": {
       "bank": "triangle",
@@ -124,7 +126,9 @@
       "amplitude": 0.6,
       "retrigger": false,
       "tempoSync": false,
-      "subdivision": "1/4"
+      "subdivision": "1/4",
+      "delayMs": 0.0,
+      "attackMs": 0.0
     },
     "lfo3": {
       "bank": "sah",
@@ -132,7 +136,9 @@
       "amplitude": 0.5,
       "retrigger": false,
       "tempoSync": false,
-      "subdivision": "1/4"
+      "subdivision": "1/4",
+      "delayMs": 0.0,
+      "attackMs": 0.0
     }
   },
   "modMatrix": [

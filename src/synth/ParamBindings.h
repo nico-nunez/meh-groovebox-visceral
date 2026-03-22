@@ -38,7 +38,7 @@ struct EnvParamIDs {
 };
 
 struct LFOParamIDs {
-  ParamID rate, amplitude, retrigger, tempoSync;
+  ParamID rate, amplitude, retrigger, tempoSync, delay, attack;
 };
 
 // One bundle per instance, order matches the ParamID enum layout.
@@ -109,9 +109,9 @@ inline constexpr EnvParamIDs ENV_PARAM_IDS[3] = {
 };
 
 inline constexpr LFOParamIDs LFO_PARAM_IDS[3] = {
-    {LFO1_RATE, LFO1_AMPLITUDE, LFO1_RETRIGGER, LFO1_TEMPO_SYNC},
-    {LFO2_RATE, LFO2_AMPLITUDE, LFO2_RETRIGGER, LFO2_TEMPO_SYNC},
-    {LFO3_RATE, LFO3_AMPLITUDE, LFO3_RETRIGGER, LFO3_TEMPO_SYNC},
+    {LFO1_RATE, LFO1_AMPLITUDE, LFO1_RETRIGGER, LFO1_TEMPO_SYNC, LFO1_DELAY, LFO1_ATTACK},
+    {LFO2_RATE, LFO2_AMPLITUDE, LFO2_RETRIGGER, LFO2_TEMPO_SYNC, LFO2_DELAY, LFO2_ATTACK},
+    {LFO3_RATE, LFO3_AMPLITUDE, LFO3_RETRIGGER, LFO3_TEMPO_SYNC, LFO3_DELAY, LFO3_ATTACK},
 };
 
 // ==== API ====

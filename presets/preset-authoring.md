@@ -81,9 +81,7 @@ Things the synth **cannot** do — useful context for realistic preset design:
 - **No pulse width modulation** — square wave is fixed 50% duty cycle
 - **No aftertouch** — channel pressure is not parsed
 - **No per-oscillator unison count** — unison applies uniformly to all 4 oscillators
-- **No fixed-frequency oscillator mode** — all oscillators track MIDI pitch (can't set an absolute Hz)
 - **No filter envelope amount as a direct param** — filter modulation depth is set via mod matrix route amount (e.g., `filterEnv → svf.cutoff` with amount 2.0)
-- **Pink noise** type exists in code but is not yet wirable via params
 
 ---
 
@@ -250,6 +248,8 @@ Three LFOs (lfo1–lfo3) share the same fields:
 | `subdivision` | string | see [subdivisions](#subdivisions) | `"1/4"` | Beat fraction used when `tempoSync` is true |
 | `amplitude` | float | 0.0 – 1.0 | 1.0 | Output range: -amplitude to +amplitude |
 | `retrigger` | bool | | false | Reset LFO phase to 0 on first note-on |
+| `attackMs` | float | 0.0 – 10000.0 | 10.0 | Attack time in milliseconds |
+| `decayMs` | float | 0.0 – 10000.0 | 100.0 | Decay time in milliseconds |
 
 **Notes:**
 - `"sah"` (Sample & Hold) outputs a random value that changes at the LFO rate. Useful for random modulation.
