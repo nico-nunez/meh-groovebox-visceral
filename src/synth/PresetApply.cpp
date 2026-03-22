@@ -221,18 +221,18 @@ void printPreset(const Preset& p) {
     const auto& def = param::PARAM_DEFS[i];
     float v = p.paramValues[i];
     switch (def.type) {
+
     case param::ParamType::Float:
       printf("  %-28s %.3f\n", def.name, v);
       break;
-    case param::ParamType::Int8:
-      printf("  %-28s %d\n", def.name, static_cast<int>(v));
-      break;
+
     case param::ParamType::Bool:
       printf("  %-28s %s\n", def.name, v >= 0.5f ? "true" : "false");
       break;
+
+    case param::ParamType::Int8:
+    case param::ParamType::PhaseMode:
     case param::ParamType::FilterMode:
-      printf("  %-28s %d\n", def.name, static_cast<int>(v));
-      break;
     case param::ParamType::DistortionType:
       printf("  %-28s %d\n", def.name, static_cast<int>(v));
       break;

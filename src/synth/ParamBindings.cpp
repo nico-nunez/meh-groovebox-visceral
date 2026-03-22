@@ -60,11 +60,20 @@ ParamBinding makeDistortionTypeBinding(dist::DistortionType* ptr) {
   return b;
 }
 
+ParamBinding makePhaseModeBinding(wavetable::osc::PhaseMode* ptr) {
+  ParamBinding b;
+  b.phaseModePtr = ptr;
+  return b;
+}
+
 void bindOscillator(ParamBinding* bindings, const OscParamIDs& ids, WavetableOsc& osc) {
   bindings[ids.mixLevel] = makeFloatBinding(&osc.mixLevel);
   bindings[ids.detune] = makeFloatBinding(&osc.detuneAmount);
   bindings[ids.octave] = makeInt8Binding(&osc.octaveOffset);
   bindings[ids.scanPos] = makeFloatBinding(&osc.scanPos);
+  bindings[ids.phaseMode] = makePhaseModeBinding(&osc.phaseMode);
+  bindings[ids.randomRange] = makeFloatBinding(&osc.randomRange);
+  bindings[ids.resetPhase] = makeFloatBinding(&osc.resetPhase);
   bindings[ids.fmDepth] = makeFloatBinding(&osc.fmDepth);
   bindings[ids.ratio] = makeFloatBinding(&osc.ratio);
   bindings[ids.fixed] = makeBoolBinding(&osc.fixed);
@@ -332,6 +341,9 @@ float getParamValueByID(const ParamRouter& router, ParamID id) {
 
   case ParamType::DistortionType:
     return static_cast<float>(*binding.distortionTypePtr);
+
+  case ParamType::PhaseMode:
+    return static_cast<float>(*binding.phaseModePtr);
   }
 
   return 0.0f;
@@ -364,6 +376,9 @@ void setParamValue(ParamRouter& router, ParamID id, float value) {
   case ParamType::DistortionType:
     *binding.distortionTypePtr =
         static_cast<dist::DistortionType>(static_cast<int>(std::round(value)));
+    break;
+  case ParamType::PhaseMode:
+    *binding.phaseModePtr = static_cast<PhaseMode>(static_cast<int>(std::round(value)));
     break;
   }
 }

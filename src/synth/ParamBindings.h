@@ -6,6 +6,7 @@
 #include "synth/ParamDefs.h"
 #include "synth/Tempo.h"
 #include "synth/VoicePool.h"
+#include "synth/WavetableOsc.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -13,6 +14,7 @@
 namespace synth::param::bindings {
 using dsp::fx::distortion::DistortionType;
 using filters::SVFMode;
+using wavetable::osc::PhaseMode;
 
 struct ParamBinding {
   union {
@@ -21,6 +23,7 @@ struct ParamBinding {
     bool* boolPtr;
     SVFMode* svfModePtr;
     DistortionType* distortionTypePtr;
+    PhaseMode* phaseModePtr;
   };
 };
 
@@ -30,7 +33,8 @@ struct ParamRouter {
 };
 
 struct OscParamIDs {
-  ParamID mixLevel, detune, octave, scanPos, fmDepth, ratio, fixed, fixedFreq, enabled;
+  ParamID mixLevel, detune, octave, scanPos, phaseMode, randomRange, resetPhase, fmDepth, ratio,
+      fixed, fixedFreq, enabled;
 };
 
 struct EnvParamIDs {
@@ -47,6 +51,9 @@ inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
      OSC1_DETUNE,
      OSC1_OCTAVE,
      OSC1_SCAN_POS,
+     OSC1_PHASE_MODE,
+     OSC1_RANDOM_RANGE,
+     OSC1_RESET_PHASE,
      OSC1_FM_DEPTH,
      OSC1_RATIO,
      OSC1_FIXED,
@@ -57,6 +64,9 @@ inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
      OSC2_DETUNE,
      OSC2_OCTAVE,
      OSC2_SCAN_POS,
+     OSC2_PHASE_MODE,
+     OSC2_RANDOM_RANGE,
+     OSC2_RESET_PHASE,
      OSC2_FM_DEPTH,
      OSC2_RATIO,
      OSC2_FIXED,
@@ -67,6 +77,9 @@ inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
      OSC3_DETUNE,
      OSC3_OCTAVE,
      OSC3_SCAN_POS,
+     OSC3_PHASE_MODE,
+     OSC3_RANDOM_RANGE,
+     OSC3_RESET_PHASE,
      OSC3_FM_DEPTH,
      OSC3_RATIO,
      OSC3_FIXED,
@@ -77,6 +90,9 @@ inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
      OSC4_DETUNE,
      OSC4_OCTAVE,
      OSC4_SCAN_POS,
+     OSC4_PHASE_MODE,
+     OSC4_RANDOM_RANGE,
+     OSC4_RESET_PHASE,
      OSC4_FM_DEPTH,
      OSC4_RATIO,
      OSC4_FIXED,

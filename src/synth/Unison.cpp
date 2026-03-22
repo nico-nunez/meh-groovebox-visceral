@@ -4,12 +4,43 @@
 
 namespace synth::unison {
 
-void initUnisonSubPhases(UnisonState& unison, uint32_t voiceIndex) {
-  for (uint8_t u = 0; u < MAX_UNISON_VOICES; u++) {
-    unison.subPhases[0][u][voiceIndex] = 0.0f;
-    unison.subPhases[1][u][voiceIndex] = 0.0f;
-    unison.subPhases[2][u][voiceIndex] = 0.0f;
-    unison.subPhases[3][u][voiceIndex] = 0.0f;
+void initUnisonSubPhases(UnisonState& unison,
+                         const PhaseMode phaseModes[NUM_OSCS],
+                         const float randomRanges[NUM_OSCS],
+                         const float resetPhases[NUM_OSCS],
+                         uint32_t voiceIndex) {
+
+  for (uint8_t osc = 0; osc < NUM_OSCS; osc++) {
+    PhaseMode mode = phaseModes[osc];
+
+    if (mode == PhaseMode::Free)
+      continue; // don't reset any sub-voice phases for this oscillator
+
+    for (uint8_t uni = 0; uni < MAX_UNISON_VOICES; uni++) {
+      float ph = 0.0f;
+
+      switch (mode) {
+      case PhaseMode::Reset:
+      case PhaseMode::Unknown:
+        ph = resetPhases[osc];
+        break;
+
+      case PhaseMode::Random:
+        ph = (dsp::math::randNoiseValue() + 1.0f) * 0.5f * randomRanges[osc];
+        break;
+
+      case PhaseMode::Spread:
+        // Evenly distribute sub-voices across [resetPhase, resetPhase + 1)
+        ph = std::fmod(resetPhases[osc] +
+                           static_cast<float>(uni) / static_cast<float>(unison.voices),
+                       1.0f);
+        break;
+
+      default:
+        break;
+      }
+      unison.subPhases[osc][uni][voiceIndex] = ph;
+    }
   }
 }
 

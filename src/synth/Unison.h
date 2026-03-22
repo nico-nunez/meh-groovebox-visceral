@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Types.h"
+#include "synth/WavetableOsc.h"
 #include <cstdint>
 
 namespace synth::unison {
+using wavetable::osc::PhaseMode;
+
 inline constexpr uint8_t MAX_UNISON_VOICES = 8;
-inline constexpr uint8_t NUM_OSCS = 4;
 
 struct UnisonState {
   int8_t voices = 4;    // 1–8 (1 = off)
@@ -25,7 +27,11 @@ struct UnisonState {
   float subPhases[NUM_OSCS][MAX_UNISON_VOICES][MAX_VOICES]{};
 };
 
-void initUnisonSubPhases(UnisonState& unison, uint32_t voiceIndex);
+void initUnisonSubPhases(UnisonState& unison,
+                         const PhaseMode phaseModes[NUM_OSCS],
+                         const float randomRanges[NUM_OSCS],
+                         const float resetPhases[NUM_OSCS],
+                         uint32_t voiceIndex);
 
 // ==== Helpers ====
 void updateDetuneOffsets(unison::UnisonState& u);

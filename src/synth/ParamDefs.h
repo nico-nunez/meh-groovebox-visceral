@@ -11,6 +11,9 @@
   X(OSC1_DETUNE, "osc1.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
   X(OSC1_OCTAVE, "osc1.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC1_SCAN_POS, "osc1.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
+  X(OSC1_PHASE_MODE, "osc1.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
+  X(OSC1_RANDOM_RANGE, "osc1.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
+  X(OSC1_RESET_PHASE, "osc1.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
   X(OSC1_FM_DEPTH, "osc1.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC1_RATIO, "osc1.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
   X(OSC1_FIXED, "osc1.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
@@ -21,6 +24,9 @@
   X(OSC2_DETUNE, "osc2.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
   X(OSC2_OCTAVE, "osc2.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC2_SCAN_POS, "osc2.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
+  X(OSC2_PHASE_MODE, "osc2.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
+  X(OSC2_RANDOM_RANGE, "osc2.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
+  X(OSC2_RESET_PHASE, "osc2.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
   X(OSC2_FM_DEPTH, "osc2.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC2_RATIO, "osc2.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
   X(OSC2_FIXED, "osc2.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
@@ -31,6 +37,9 @@
   X(OSC3_DETUNE, "osc3.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
   X(OSC3_OCTAVE, "osc3.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC3_SCAN_POS, "osc3.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
+  X(OSC3_PHASE_MODE, "osc3.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
+  X(OSC3_RANDOM_RANGE, "osc3.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
+  X(OSC3_RESET_PHASE, "osc3.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
   X(OSC3_FM_DEPTH, "osc3.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC3_RATIO, "osc3.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
   X(OSC3_FIXED, "osc3.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
@@ -41,6 +50,9 @@
   X(OSC4_DETUNE, "osc4.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
   X(OSC4_OCTAVE, "osc4.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
   X(OSC4_SCAN_POS, "osc4.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
+  X(OSC4_PHASE_MODE, "osc4.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
+  X(OSC4_RANDOM_RANGE, "osc4.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
+  X(OSC4_RESET_PHASE, "osc4.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
   X(OSC4_FM_DEPTH, "osc4.fmDepth", Float, 0.0f, 5.0f, 0.0f, None)                                  \
   X(OSC4_RATIO, "osc4.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
   X(OSC4_FIXED, "osc4.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
@@ -252,6 +264,7 @@ enum class ParamType : uint8_t {
   Bool,
   FilterMode,
   DistortionType,
+  PhaseMode,
 };
 
 struct ParamDef {

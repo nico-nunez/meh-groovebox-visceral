@@ -11,7 +11,17 @@ namespace synth::wavetable::osc {
 
 using dsp::wavetable::WavetableBank;
 
-enum class FMSource : uint8_t {
+enum PhaseMode : uint8_t {
+  Reset = 0,
+  Free,
+  Random,
+  Spread,
+  Unknown,
+};
+inline const char* UNKNOWN_PHASE_MODE = "unknown phase mode";
+inline constexpr uint8_t NUM_PHASE_MODES = 4;
+
+enum FMSource : uint8_t {
   None = 0,
   Osc1,
   Osc2,
@@ -31,6 +41,10 @@ struct WavetableOsc {
   float detuneAmount = 0.0f;
 
   float scanPos = 0.0f;
+
+  PhaseMode phaseMode = PhaseMode::Reset;
+  float randomRange = 1.0f; // [0.0, 1.0]
+  float resetPhase = 0.0f;  // [0.0, 1.0]
 
   float fmDepth = 0.0f;
   float ratio = 1.0f;
@@ -96,6 +110,34 @@ float getFmInputValue(WavetableOscModState& modState,
 // ===================
 // Parsing Helpers
 // ===================
+
+inline const char* phaseModeToString(PhaseMode mode) {
+  switch (mode) {
+  case PhaseMode::Reset:
+    return "reset";
+  case PhaseMode::Free:
+    return "free";
+  case PhaseMode::Random:
+    return "random";
+  case PhaseMode::Spread:
+    return "spread";
+  default:
+    return UNKNOWN_PHASE_MODE;
+  }
+}
+
+inline PhaseMode parsePhaseMode(const char* s) {
+  if (std::strcmp(s, "reset") == 0)
+    return PhaseMode::Reset;
+  if (std::strcmp(s, "free") == 0)
+    return PhaseMode::Free;
+  if (std::strcmp(s, "random") == 0)
+    return PhaseMode::Random;
+  if (std::strcmp(s, "spread") == 0)
+    return PhaseMode::Spread;
+  return PhaseMode::Unknown;
+}
+
 struct FMSourceMapping {
   const char* name;
   FMSource src;

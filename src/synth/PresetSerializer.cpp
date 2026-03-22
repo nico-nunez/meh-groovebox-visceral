@@ -26,6 +26,13 @@ using JsonValue = json::Value;
 
 namespace {
 
+static constexpr param::ParamID phaseModeIDs[NUM_OSCS] = {
+    param::OSC1_PHASE_MODE,
+    param::OSC2_PHASE_MODE,
+    param::OSC3_PHASE_MODE,
+    param::OSC4_PHASE_MODE,
+};
+
 struct JsonGroup {
   const char* prefix; // param name prefix, e.g. "osc1." (deserialized)
   const char* parent; // JSON parent key (nullptr = root-level)
@@ -208,6 +215,9 @@ std::string serializePreset(const Preset& p) {
   for (int i = 0; i < NUM_OSCS; i++) {
     auto& oscObj = root.getOrCreate("oscillators").getOrCreate(OSC_KEYS[i]);
     oscObj.set("bank", JsonValue::string(banks::bankIDToString(p.oscBanks[i])));
+    oscObj.set("phaseMode",
+               JsonValue::string(osc::phaseModeToString(
+                   static_cast<osc::PhaseMode>(std::round(p.paramValues[phaseModeIDs[i]])))));
     oscObj.set("fmSource", JsonValue::string(osc::fmSourceToString(p.oscFmSources[i])));
   }
 
@@ -392,6 +402,16 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
           id = BankID::Sine;
         }
         p.oscBanks[i] = id;
+      }
+
+      if (oscObj.has("phaseMode")) {
+        auto pm = osc::parsePhaseMode(oscObj["phaseMode"].asString().c_str());
+        if (pm == osc::PhaseMode::Unknown) {
+          result.warnings.push_back(std::string(OSC_KEYS[i]) +
+                                    ".phaseMode: unknown, using [reset]");
+          pm = osc::PhaseMode::Reset;
+        }
+        p.paramValues[phaseModeIDs[i]] = static_cast<float>(pm);
       }
 
       if (oscObj.has("fmSource"))

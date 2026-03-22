@@ -7,6 +7,7 @@ inline constexpr uint32_t ENGINE_BLOCK_SIZE = 64;
 inline constexpr float INV_ENGINE_BLOCK_SIZE = 1.0f / static_cast<float>(ENGINE_BLOCK_SIZE);
 
 inline constexpr uint32_t MAX_VOICES = 64;
+inline constexpr uint8_t NUM_OSCS = 4;
 
 inline constexpr int ROOT_NOTE_MIDI{69};
 inline constexpr float ROOT_NOTE_FREQ{440.0f};

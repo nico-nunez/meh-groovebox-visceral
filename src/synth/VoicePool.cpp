@@ -14,6 +14,7 @@
 #include "dsp/Math.h"
 #include "dsp/Waveshaper.h"
 #include "dsp/Wavetable.h"
+#include "synth/Types.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -161,6 +162,7 @@ void initVoice(VoicePool& pool,
   pool.midiNotes[voiceIndex] = midiNote;
   pool.noteOnTimes[voiceIndex] = noteOnTime;
   pool.velocities[voiceIndex] = velocity / 127.0f;
+  pool.deClickGain[voiceIndex] = 0.0f;
 
   // Reset Stereo (balanced)
   pool.panL[voiceIndex] = 1.0f;
@@ -177,7 +179,24 @@ void initVoice(VoicePool& pool,
   osc::initOsc(pool.osc3, voiceIndex, midiNote, sampleRate);
   osc::initOsc(pool.osc4, voiceIndex, midiNote, sampleRate);
 
-  unison::initUnisonSubPhases(pool.unison, voiceIndex);
+  const osc::PhaseMode phaseModes[NUM_OSCS] = {pool.osc1.phaseMode,
+                                               pool.osc2.phaseMode,
+                                               pool.osc3.phaseMode,
+                                               pool.osc4.phaseMode};
+  const float randomRanges[NUM_OSCS] = {
+      pool.osc1.randomRange,
+      pool.osc2.randomRange,
+      pool.osc3.randomRange,
+      pool.osc4.randomRange,
+  };
+  const float resetPhases[NUM_OSCS] = {
+      pool.osc1.resetPhase,
+      pool.osc2.resetPhase,
+      pool.osc3.resetPhase,
+      pool.osc4.resetPhase,
+  };
+
+  unison::initUnisonSubPhases(pool.unison, phaseModes, randomRanges, resetPhases, voiceIndex);
 
   if (retrigger) {
     env::retriggerEnvelope(pool.ampEnv, voiceIndex, sampleRate);
@@ -820,7 +839,9 @@ void processVoices(VoicePool& pool, StereoBuffer output, size_t numSamples, floa
         // No index adjustment needed - iterating backwards
       }
 
-      float gain = ampEnv * pool.velocities[vIndex] * VOICE_GAIN;
+      pool.deClickGain[vIndex] = std::min(1.0f, pool.deClickGain[vIndex] + DE_CLICK_INCREMENT);
+      float gain = ampEnv * pool.velocities[vIndex] * VOICE_GAIN * pool.deClickGain[vIndex];
+
       sampleL += oscL * gain * pool.panL[vIndex];
       sampleR += oscR * gain * pool.panR[vIndex];
     }

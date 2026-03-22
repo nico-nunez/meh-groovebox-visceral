@@ -45,6 +45,9 @@ using unison::UnisonState;
 
 using dsp::buffers::StereoBuffer;
 
+// Used with osc phase modes
+inline constexpr float DE_CLICK_INCREMENT = 1.0f / 32.0f;
+
 struct PitchBend {
   float value = 0.0f; // [-1.0, 1.0]
   float range = param::ranges::pitch::BEND_RANGE_DEFAULT;
@@ -73,6 +76,8 @@ struct VoicePool {
   WavetableOsc osc2;
   WavetableOsc osc3;
   WavetableOsc osc4;
+
+  float deClickGain[MAX_VOICES]{}; // 0.0 at note-on, ramps to 1.0 over DE_CLICK_SAMPLES
 
   // TODO(nico): this needs to be tide to number of active oscs
   // Reduce gain for multiple oscillators

@@ -2,6 +2,8 @@
 
 #include "utils/Utils.h"
 
+#include "dsp/Math.h"
+
 #include <cmath>
 #include <cstdint>
 
@@ -15,8 +17,27 @@ void initOsc(WavetableOsc& osc, uint32_t voiceIndex, uint8_t midiNote, float sam
   float offsetExp = static_cast<float>(osc.octaveOffset) + (osc.detuneAmount / 1200.0f);
   float freq = utils::midiToFrequency(midiNote) * std::exp2f(offsetExp);
 
-  osc.phases[voiceIndex] = 0.0f;
   osc.phaseIncrements[voiceIndex] = freq / sampleRate;
+
+  switch (osc.phaseMode) {
+  case PhaseMode::Reset:
+  case PhaseMode::Spread: // spread only differs for unison sub-voices; main voice = resetPhase
+  case PhaseMode::Unknown:
+    osc.phases[voiceIndex] = osc.resetPhase; // default
+    break;
+
+  case PhaseMode::Random:
+    // randNoiseValue() returns [-1, 1]; scale to [0, 1) then apply range
+    osc.phases[voiceIndex] = (dsp::math::randNoiseValue() + 1.0f) * 0.5f * osc.randomRange;
+    break;
+
+  case PhaseMode::Free:
+    // Don't reset — phase continues from wherever it is.
+    // Note: osc.phases[voiceIndex] is not read by processOscsUnison when unison is active.
+    // Sub-voice phases are managed separately in UnisonState.subPhases.
+    // This call is a no-op for the active-unison path but kept in case unison is disabled mid-session.
+    break;
+  }
 }
 
 // Mono (no retrigger/legato)
