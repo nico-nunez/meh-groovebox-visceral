@@ -513,6 +513,20 @@ float interpolatePitchInc(const WavetableOsc& osc,
   return osc.phaseIncrements[v] * dsp::math::semitonesToFreqRatio(pitchMod) * osc.ratio;
 }
 
+float computeOscFMMod(osc::WavetableOsc& osc,
+                      float globalMod,
+                      uint32_t voiceIndex,
+                      osc::FMSource src,
+                      osc::WavetableOscModState& modState) {
+  float fm = 0.0f;
+
+  for (uint8_t r = 0; r < osc.fmRouteCount; r++) {
+    float depth = std::max(0.0f, osc.fmRoutes[r].depth + globalMod);
+    fm += osc::getFmInputValue(modState, voiceIndex, osc.fmRoutes[r].source, src) * depth;
+  }
+  return fm;
+}
+
 // Shared oscillator parameters — computed once, used by both mono and unison paths
 struct OscParams {
   float pitchInc[4];
@@ -579,19 +593,16 @@ OscParams computeOscParams(VoicePool& pool, uint32_t v, uint32_t s) {
 
   // FM
   auto& oscModState = pool.oscModState;
-  float fd1 =
-      max(0.0f, pool.osc1.fmDepth + dest[ModDest::Osc1FMDepth][v] + lfo[ModDest::Osc1FMDepth]);
-  float fd2 =
-      max(0.0f, pool.osc2.fmDepth + dest[ModDest::Osc2FMDepth][v] + lfo[ModDest::Osc2FMDepth]);
-  float fd3 =
-      max(0.0f, pool.osc3.fmDepth + dest[ModDest::Osc3FMDepth][v] + lfo[ModDest::Osc3FMDepth]);
-  float fd4 =
-      max(0.0f, pool.osc4.fmDepth + dest[ModDest::Osc4FMDepth][v] + lfo[ModDest::Osc4FMDepth]);
 
-  p.fm[0] = osc::getFmInputValue(oscModState, v, pool.osc1.fmSource, FMSource::Osc1) * fd1;
-  p.fm[1] = osc::getFmInputValue(oscModState, v, pool.osc2.fmSource, FMSource::Osc2) * fd2;
-  p.fm[2] = osc::getFmInputValue(oscModState, v, pool.osc3.fmSource, FMSource::Osc3) * fd3;
-  p.fm[3] = osc::getFmInputValue(oscModState, v, pool.osc4.fmSource, FMSource::Osc4) * fd4;
+  float fm1 = pool.osc1.fmDepthMod + dest[ModDest::Osc1FMDepth][v] + lfo[ModDest::Osc1FMDepth];
+  float fm2 = pool.osc2.fmDepthMod + dest[ModDest::Osc2FMDepth][v] + lfo[ModDest::Osc2FMDepth];
+  float fm3 = pool.osc3.fmDepthMod + dest[ModDest::Osc3FMDepth][v] + lfo[ModDest::Osc3FMDepth];
+  float fm4 = pool.osc4.fmDepthMod + dest[ModDest::Osc4FMDepth][v] + lfo[ModDest::Osc4FMDepth];
+
+  p.fm[0] = computeOscFMMod(pool.osc1, fm1, v, FMSource::Osc1, oscModState);
+  p.fm[1] = computeOscFMMod(pool.osc2, fm2, v, FMSource::Osc2, oscModState);
+  p.fm[2] = computeOscFMMod(pool.osc3, fm3, v, FMSource::Osc3, oscModState);
+  p.fm[3] = computeOscFMMod(pool.osc4, fm4, v, FMSource::Osc4, oscModState);
 
   // Mix
   p.mix[0] = max(0.0f, pool.osc1.mixLevel + dest[ModDest::Osc1Mix][v] + lfo[ModDest::Osc1Mix]);

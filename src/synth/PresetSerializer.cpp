@@ -215,10 +215,20 @@ std::string serializePreset(const Preset& p) {
   for (int i = 0; i < NUM_OSCS; i++) {
     auto& oscObj = root.getOrCreate("oscillators").getOrCreate(OSC_KEYS[i]);
     oscObj.set("bank", JsonValue::string(banks::bankIDToString(p.oscBanks[i])));
+
     oscObj.set("phaseMode",
                JsonValue::string(osc::phaseModeToString(
                    static_cast<osc::PhaseMode>(std::round(p.paramValues[phaseModeIDs[i]])))));
-    oscObj.set("fmSource", JsonValue::string(osc::fmSourceToString(p.oscFmSources[i])));
+
+    // FM Routes
+    auto routesArr = JsonValue::array();
+    for (uint8_t r = 0; r < p.oscFmRouteCounts[i]; r++) {
+      auto routeObj = JsonValue::object();
+      routeObj.set("source", JsonValue::string(osc::fmSourceToString(p.oscFmRoutes[i][r].source)));
+      routeObj.set("depth", JsonValue::number(p.oscFmRoutes[i][r].depth));
+      routesArr.push(std::move(routeObj));
+    }
+    oscObj.set("fmRoutes", std::move(routesArr));
   }
 
   root.getOrCreate("oscillators")
@@ -414,8 +424,46 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
         p.paramValues[phaseModeIDs[i]] = static_cast<float>(pm);
       }
 
-      if (oscObj.has("fmSource"))
-        p.oscFmSources[i] = osc::parseFMSource(oscObj["fmSource"].asString().c_str());
+      // Parse FM Routes
+      if (oscObj.has("fmRoutes") && oscObj["fmRoutes"].isArray()) {
+        uint8_t count = 0;
+
+        for (size_t r = 0; r < oscObj["fmRoutes"].size() && count < 4; r++) {
+          const auto& route = oscObj["fmRoutes"].at(r);
+
+          if (!route.isObject())
+            continue;
+
+          osc::FMSource src = osc::FMSource::None;
+          if (route.has("source"))
+            src = osc::parseFMSource(route["source"].asString().c_str());
+
+          if (src == osc::FMSource::None)
+            continue; // skip missing or unrecognized source — None routes waste a slot
+
+          // Reject duplicate sources — double-calling getFmInputValue for the same source
+          // corrupts the feedback register for self-routes and doubles contribution for others.
+          bool duplicate = false;
+          for (uint8_t d = 0; d < count; d++) {
+            if (p.oscFmRoutes[i][d].source == src) {
+              duplicate = true;
+              break;
+            }
+          }
+          if (duplicate) {
+            printf("warning: duplicate FM source '%s' on osc%d — skipping\n",
+                   osc::fmSourceToString(src),
+                   i + 1);
+            continue;
+          }
+
+          p.oscFmRoutes[i][count].source = src;
+          if (route.has("depth"))
+            p.oscFmRoutes[i][count].depth = std::clamp(route["depth"].asFloat(), 0.0f, 10.0f);
+          count++;
+        }
+        p.oscFmRouteCounts[i] = count;
+      }
     }
   }
 

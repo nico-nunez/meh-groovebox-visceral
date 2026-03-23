@@ -86,6 +86,116 @@ int setInputParam(const std::string& paramName,
   return 0;
 }
 
+void parseFMCmd(std::istringstream& iss, voices::VoicePool& pool) {
+  std::string sub;
+  iss >> sub;
+
+  if (sub != "route") {
+    printf("unknown fm subcommand: %s\n", sub.c_str());
+    return;
+  }
+
+  std::string action;
+  iss >> action;
+
+  if (action == "add") {
+    std::string carrierName, sourceName;
+    float depth = 1.0f;
+    iss >> carrierName >> sourceName >> depth;
+
+    osc::WavetableOsc* osc = voices::getOscByName(pool, carrierName);
+
+    if (!osc) {
+      printf("unknown carrier: %s\n", carrierName.c_str());
+      return;
+    }
+
+    auto src = osc::parseFMSource(sourceName.c_str());
+    if (src == osc::FMSource::None) {
+      printf("unknown source: %s\n", sourceName.c_str());
+      return;
+    }
+
+    // Update existing route if source already present
+    for (uint8_t r = 0; r < osc->fmRouteCount; r++) {
+      if (osc->fmRoutes[r].source == src) {
+        osc->fmRoutes[r].depth = depth;
+        printf("updated route %s -> %s depth=%.3f\n",
+               sourceName.c_str(),
+               carrierName.c_str(),
+               depth);
+        return;
+      }
+    }
+
+    if (osc->fmRouteCount >= 4) {
+      printf("carrier %s already has 4 routes\n", carrierName.c_str());
+      return;
+    }
+
+    osc->fmRoutes[osc->fmRouteCount++] = {src, depth};
+    printf("added route %s -> %s depth=%.3f\n", sourceName.c_str(), carrierName.c_str(), depth);
+
+  } else if (action == "remove") {
+    std::string carrierName, sourceName;
+    iss >> carrierName >> sourceName;
+
+    osc::WavetableOsc* osc = voices::getOscByName(pool, carrierName);
+    if (!osc) {
+      printf("unknown carrier: %s\n", carrierName.c_str());
+      return;
+    }
+
+    auto src = osc::parseFMSource(sourceName.c_str());
+    for (uint8_t r = 0; r < osc->fmRouteCount; r++) {
+      if (osc->fmRoutes[r].source == src) {
+        // Shift remaining routes down
+        for (uint8_t i = r; i < osc->fmRouteCount - 1; i++)
+          osc->fmRoutes[i] = osc->fmRoutes[i + 1];
+        osc->fmRouteCount--;
+        printf("removed route %s -> %s\n", sourceName.c_str(), carrierName.c_str());
+        return;
+      }
+    }
+    printf("route not found: %s -> %s\n", sourceName.c_str(), carrierName.c_str());
+
+  } else if (action == "clear") {
+    std::string carrierName;
+    iss >> carrierName;
+
+    osc::WavetableOsc* osc = voices::getOscByName(pool, carrierName);
+    if (!osc) {
+      printf("unknown carrier: %s\n", carrierName.c_str());
+      return;
+    }
+
+    osc->fmRouteCount = 0;
+    printf("cleared all routes on %s\n", carrierName.c_str());
+
+  } else if (action == "list") {
+    std::string carrierName;
+    iss >> carrierName;
+
+    osc::WavetableOsc* osc = voices::getOscByName(pool, carrierName);
+    if (!osc) {
+      printf("unknown carrier: %s\n", carrierName.c_str());
+      return;
+    }
+
+    if (osc->fmRouteCount == 0) {
+      printf("%s: no routes\n", carrierName.c_str());
+    } else {
+      for (uint8_t r = 0; r < osc->fmRouteCount; r++)
+        printf("  %s -> %s  depth=%.3f\n",
+               osc::fmSourceToString(osc->fmRoutes[r].source),
+               carrierName.c_str(),
+               osc->fmRoutes[r].depth);
+    }
+
+  } else {
+    printf("usage: fm route add|remove|clear|list <carrier> [<source>] [<depth>]\n");
+  }
+}
 } // namespace
 
 void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession session) {
@@ -156,31 +266,18 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
       return;
     }
 
-    if (paramName == "osc1.fmSource") {
+    if (paramName == "osc1.fmSource" || paramName == "osc2.fmSource" ||
+        paramName == "osc3.fmSource" || paramName == "osc4.fmSource") {
       std::string value;
       iss >> value;
-      engine.voicePool.osc1.fmSource = osc::parseFMSource(value.c_str());
-      return;
-    }
-
-    if (paramName == "osc2.fmSource") {
-      std::string value;
-      iss >> value;
-      engine.voicePool.osc2.fmSource = osc::parseFMSource(value.c_str());
-      return;
-    }
-
-    if (paramName == "osc3.fmSource") {
-      std::string value;
-      iss >> value;
-      engine.voicePool.osc3.fmSource = osc::parseFMSource(value.c_str());
-      return;
-    }
-
-    if (paramName == "osc4.fmSource") {
-      std::string value;
-      iss >> value;
-      engine.voicePool.osc4.fmSource = osc::parseFMSource(value.c_str());
+      auto osc = voices::getOscByName(engine.voicePool, paramName.substr(0, 4));
+      auto src = osc::parseFMSource(value.c_str());
+      if (src == osc::FMSource::None) {
+        osc->fmRouteCount = 0;
+      } else {
+        osc->fmRoutes[0] = {src, 1.0f};
+        osc->fmRouteCount = 1;
+      }
       return;
     }
 
@@ -294,13 +391,13 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
 
     pb::printParamList(optionalParam.empty() ? nullptr : optionalParam.c_str());
 
+    // ==== FM Routes =====
+  } else if (cmd == "fm") {
+    parseFMCmd(iss, engine.voicePool);
+
     // ==== Mod Matrix =====
   } else if (cmd == "mod") {
     mm::parseModCommand(iss, engine.voicePool.modMatrix);
-
-    // ==== Presets =====
-  } else if (cmd == "preset") {
-    preset::processPresetCmd(iss, engine);
 
     // ==== FX Chain =====
   } else if (cmd == "fx") {
@@ -310,6 +407,9 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
   } else if (cmd == "signal") {
     signal_chain::parseSigChainCmd(iss, engine.voicePool.signalChain);
 
+    // ==== Presets =====
+  } else if (cmd == "preset") {
+    preset::processPresetCmd(iss, engine);
   } else if (cmd == "panic") {
     voices::panicVoicePool(engine.voicePool);
 

@@ -8,6 +8,7 @@
 #include "synth/ParamDefs.h"
 #include "synth/SignalChain.h"
 #include "synth/Tempo.h"
+#include "synth/Types.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
@@ -17,7 +18,7 @@
 namespace synth::preset {
 
 using wavetable::banks::BankID;
-using wavetable::osc::FMSource;
+using wavetable::osc::FMRoute;
 
 using noise::NoiseType;
 
@@ -67,8 +68,10 @@ struct Preset {
 
   // Enum fields — the serializer converts these to/from JSON strings at the boundary.
   // Internally everything speaks enum; no strings in the data model.
-  BankID oscBanks[NUM_OSCS] = {};       // BankID(0) = Sine
-  FMSource oscFmSources[NUM_OSCS] = {}; // FMSource::None
+  BankID oscBanks[NUM_OSCS] = {}; // BankID(0) = Sine
+
+  FMRoute oscFmRoutes[NUM_OSCS][NUM_OSCS] = {};
+  uint8_t oscFmRouteCounts[NUM_OSCS] = {};
 
   NoiseType noiseType = NoiseType::White;
 

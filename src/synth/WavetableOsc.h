@@ -29,6 +29,11 @@ enum FMSource : uint8_t {
   Osc4,
 };
 
+struct FMRoute {
+  FMSource source = FMSource::None;
+  float depth = 0.0f; // valid range [0.0, 10.0]
+};
+
 struct WavetableOsc {
   // ==== Per-voice hot data (SoA) ====
   float phases[MAX_VOICES];          // normalized [0, 1.0)
@@ -46,13 +51,14 @@ struct WavetableOsc {
   float randomRange = 1.0f; // [0.0, 1.0]
   float resetPhase = 0.0f;  // [0.0, 1.0]
 
-  float fmDepth = 0.0f;
   float ratio = 1.0f;
   bool fixed = false; // false == ratio | true == fixedFreq
   float fixedFreq = 440.0f;
   float fixedPhaseInc = 0.0f; // fixedFreq / sampleRate
 
-  FMSource fmSource = FMSource::None;
+  FMRoute fmRoutes[NUM_OSCS] = {};
+  uint8_t fmRouteCount = 0;
+  float fmDepthMod = 0.0f;
 
   bool enabled = true;
 };
@@ -110,6 +116,7 @@ float getFmInputValue(WavetableOscModState& modState,
 // ===================
 // Parsing Helpers
 // ===================
+void parseFMCmd();
 
 inline const char* phaseModeToString(PhaseMode mode) {
   switch (mode) {

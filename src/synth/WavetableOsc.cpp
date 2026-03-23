@@ -134,4 +134,5 @@ float processOsc(WavetableOsc& osc,
                                      fmPhaseOffset,
                                      pitchIncrement);
 }
+
 } // namespace synth::wavetable::osc

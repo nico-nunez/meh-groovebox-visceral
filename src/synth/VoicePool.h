@@ -192,4 +192,19 @@ void processVoices(VoicePool& pool,
                    size_t numSamples,
                    float invSampleRate);
 
+// ===================
+// Parsing Helpers
+// ===================
+inline WavetableOsc* getOscByName(VoicePool& pool, const std::string& name) {
+  if (name == "osc1")
+    return &pool.osc1;
+  if (name == "osc2")
+    return &pool.osc2;
+  if (name == "osc3")
+    return &pool.osc3;
+  if (name == "osc4")
+    return &pool.osc4;
+  return nullptr;
+}
+
 } // namespace synth::voices

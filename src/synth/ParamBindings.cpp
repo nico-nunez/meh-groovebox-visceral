@@ -74,7 +74,7 @@ void bindOscillator(ParamBinding* bindings, const OscParamIDs& ids, WavetableOsc
   bindings[ids.phaseMode] = makePhaseModeBinding(&osc.phaseMode);
   bindings[ids.randomRange] = makeFloatBinding(&osc.randomRange);
   bindings[ids.resetPhase] = makeFloatBinding(&osc.resetPhase);
-  bindings[ids.fmDepth] = makeFloatBinding(&osc.fmDepth);
+  bindings[ids.fmDepth] = makeFloatBinding(&osc.fmDepthMod);
   bindings[ids.ratio] = makeFloatBinding(&osc.ratio);
   bindings[ids.fixed] = makeBoolBinding(&osc.fixed);
   bindings[ids.fixedFreq] = makeFloatBinding(&osc.fixedFreq);

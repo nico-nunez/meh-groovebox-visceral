@@ -90,7 +90,9 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
   osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
   for (int i = 0; i < NUM_OSCS; i++) {
     oscs[i]->bank = banks::getBankByID(preset.oscBanks[i]);
-    oscs[i]->fmSource = preset.oscFmSources[i];
+    oscs[i]->fmRouteCount = preset.oscFmRouteCounts[i];
+    for (uint8_t r = 0; r < preset.oscFmRouteCounts[i]; r++)
+      oscs[i]->fmRoutes[r] = preset.oscFmRoutes[i][r];
   }
 
   pool.noise.type = preset.noiseType;
@@ -168,7 +170,9 @@ Preset capturePreset(const Engine& engine) {
   const osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
   for (int i = 0; i < NUM_OSCS; i++) {
     p.oscBanks[i] = oscs[i]->bank ? banks::parseBankID(oscs[i]->bank->name) : BankID::Sine;
-    p.oscFmSources[i] = oscs[i]->fmSource;
+    p.oscFmRouteCounts[i] = oscs[i]->fmRouteCount;
+    for (uint8_t r = 0; r < oscs[i]->fmRouteCount; r++)
+      p.oscFmRoutes[i][r] = oscs[i]->fmRoutes[r];
   }
 
   p.noiseType = pool.noise.type;
@@ -243,11 +247,17 @@ void printPreset(const Preset& p) {
   printf("[Enum Fields]\n");
   const char* oscKeys[] = {"osc1", "osc2", "osc3", "osc4"};
   for (int i = 0; i < NUM_OSCS; i++) {
-    printf("  %s.bank     %-16s %s.fmSource  %s\n",
-           oscKeys[i],
-           banks::bankIDToString(p.oscBanks[i]),
-           oscKeys[i],
-           osc::fmSourceToString(p.oscFmSources[i]));
+    printf("  %s.bank  %s\n", oscKeys[i], banks::bankIDToString(p.oscBanks[i]));
+    if (p.oscFmRouteCounts[i] == 0) {
+      printf("  %s.fmRoutes  (none)\n", oscKeys[i]);
+    } else {
+      for (uint8_t r = 0; r < p.oscFmRouteCounts[i]; r++)
+        printf("  %s.fmRoutes[%u]  source=%-6s depth=%.3f\n",
+               oscKeys[i],
+               r,
+               osc::fmSourceToString(p.oscFmRoutes[i][r].source),
+               p.oscFmRoutes[i][r].depth);
+    }
   }
   printf("  noise.type              %s\n", noise::noiseTypeToString(p.noiseType));
   printf("  svf.mode (enum)         %s\n", filters::svfModeToString(p.svfMode));
