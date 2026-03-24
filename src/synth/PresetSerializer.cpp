@@ -459,7 +459,7 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
 
           p.oscFmRoutes[i][count].source = src;
           if (route.has("depth"))
-            p.oscFmRoutes[i][count].depth = std::clamp(route["depth"].asFloat(), 0.0f, 10.0f);
+            p.oscFmRoutes[i][count].depth = std::clamp(route["depth"].asFloat(), 0.0f, 1.0f);
           count++;
         }
         p.oscFmRouteCounts[i] = count;

@@ -18,6 +18,15 @@ A complete reference for crafting presets for the meh-synth-wave synthesizer. Th
   - [FX Chain](#fx-chain)
   - [Voice](#voice)
 - [String Value Reference](#string-value-reference)
+  - [Wavetable Banks](#wavetable-banks)
+  - [FM Routes](#fm-routes)
+  - [Phase Modes](#phase-modes)
+  - [SVF Modes](#svf-modes)
+  - [Distortion Types](#distortion-types)
+  - [LFO Banks](#lfo-banks)
+  - [Subdivisions](#subdivisions)
+  - [Modulation Sources](#modulation-sources)
+  - [Modulation Destinations](#modulation-destinations)
 - [Annotated Example Preset](#annotated-example-preset)
 - [Init Preset](#init-preset)
 
@@ -29,7 +38,7 @@ A complete reference for crafting presets for the meh-synth-wave synthesizer. Th
 - **4 wavetable oscillators** (osc1–osc4), each independently configurable
 - **5 factory wavetable banks**: sine, saw, square, triangle, sine_to_saw (sine-to-saw morph)
 - **Wavetable scanning**: smoothly interpolate between frames within a bank via `scanPos`
-- **FM synthesis**: any oscillator can frequency-modulate any other oscillator's phase, including self-feedback
+- **FM synthesis**: up to 4 FM routes per oscillator (carrier), each with its own source and depth. Any oscillator can modulate any other, including self-feedback. Routes are summed before phase application.
 - **FM ratio**: frequency multiplier per oscillator (0.5x–16x) for precise carrier:modulator tuning
 - **Noise oscillator**: white noise (pink noise type exists but is not yet wired to params)
 - **Per-oscillator enable/disable**: unused oscillators cost nothing; mix gain auto-normalizes
@@ -77,7 +86,7 @@ Things the synth **cannot** do — useful context for realistic preset design:
 - **No sample playback** — wavetable-only; no .wav file loading
 - **No user-imported wavetables** — limited to the 5 factory banks
 - **No per-voice LFOs** — LFOs are global (all voices share the same LFO phase)
-- **No oscillator phase randomization** — all voices start at phase 0; can cause comb filtering on pads
+- **No per-oscillator unison phase spread for non-unison voices** — phase spread mode only applies to unison sub-voices, not across polyphonic voice slots
 - **No pulse width modulation** — square wave is fixed 50% duty cycle
 - **No aftertouch** — channel pressure is not parsed
 - **No per-oscillator unison count** — unison applies uniformly to all 4 oscillators
@@ -147,11 +156,12 @@ Each oscillator (osc1–osc4) has the same fields:
 | `bank` | string | see [banks](#wavetable-banks) | `"sine"` | Wavetable bank name |
 | `scanPos` | float | 0.0 – 1.0 | 0.0 | Position within the wavetable (frame interpolation) |
 | `mixLevel` | float | 0.0 – 4.0 | 1.0 | Output level (>1.0 overdrives into chain) |
-| `fmDepth` | float | 0.0 – 5.0 | 0.0 | FM modulation intensity from the FM source |
+| `fmRoutes` | array | see [FM routes](#fm-routes) | `[]` | FM modulation inputs — up to 4 routes, each with source + depth |
+| `fmDepth` | float | 0.0 – 2.0 | 1.0 | Global FM depth multiplier — scales all routes together (1.0 = neutral) |
 | `ratio` | float | 0.5 – 16.0 | 1.0 | Frequency multiplier (carrier:modulator ratio) |
 | `fixed` | bool | | false | Fixed frequency mode |
-| `fixedFreq` | float | 20.0 - 8000.0 | 440.0 | Fixed frequency value |
-| `fmSource` | string | see [FM sources](#fm-sources) | `"none"` | Which oscillator modulates this one's phase |
+| `fixedFreq` | float | 20.0 – 8000.0 | 440.0 | Fixed frequency value (Hz) — only used when `fixed` is true |
+| `phaseMode` | string | see [phase modes](#phase-modes) | `"reset"` | Phase reset behavior on note-on |
 | `octaveOffset` | int | -2 – 2 | 0 | Octave transpose in semitone steps of 12 |
 | `detuneAmount` | float | -100.0 – 100.0 | 0.0 | Pitch offset in cents |
 | `enabled` | bool | | true | Whether the oscillator is active |
@@ -161,6 +171,8 @@ Each oscillator (osc1–osc4) has the same fields:
 - `scanPos` only matters for multi-frame banks (currently only `sine_to_saw`). For single-frame banks (sine, saw, square, triangle), `scanPos` has no audible effect.
 - `ratio` multiplies the oscillator's frequency. At ratio 2.0, the oscillator runs an octave above its MIDI pitch. This is applied before FM modulation — it determines the carrier or modulator frequency relationship.
 - Mix gain is auto-normalized: `1.0 / enabledOscCount`. If only osc1 is enabled, it gets full level. If all 4 are enabled, each gets 0.25x before the per-voice gain stage.
+- `fmDepth` is a multiplier on all routes, useful as a mod matrix target for sweeping overall FM intensity. Set to 1.0 in presets with no mod matrix involvement (neutral). Setting it to 0.0 silences all FM routes.
+- `fmRoutes` depths are **normalized 0–1**, mapped through a quadratic curve to raw phase deviation (0–5). Use moderate values (0.3–0.6) for musical FM; above 0.7 produces dense/aliasing spectra.
 
 ### Noise
 
@@ -285,7 +297,7 @@ The `modMatrix` is an array of route objects. Maximum 16 routes.
 | Oscillator pitch | Semitones | ±24.0 | `12.0` = one octave vibrato depth |
 | Oscillator mix | Linear | ±1.0 | `0.5` = tremolo |
 | Scan position | Normalized | 0.0–1.0 | `0.8` = near-full scan sweep |
-| FM depth | Linear | ±5.0 | `1.0` = moderate FM modulation |
+| FM depth | Normalized | ±1.0 | `0.5` = increase/decrease global FM multiplier by 0.5× |
 | LFO rate | Hz | ±20.0 | `2.0` = rate modulation |
 | LFO amplitude | Linear | ±1.0 | `0.5` = amplitude modulation |
 
@@ -472,17 +484,56 @@ See [Saturator](#saturator) above. Serialized here because it is a per-voice pro
 | `"triangle"` | Triangle wave (single frame, mip-mapped) |
 | `"sine_to_saw"` | Multi-frame morph from sine to saw — **the only bank where `scanPos` is audible** |
 
-### FM Sources
+### FM Routes
+
+`fmRoutes` is an array of route objects on each oscillator. Up to 4 routes per carrier. All routes are summed before phase application.
+
+```json
+"fmRoutes": [
+  { "source": "osc2", "depth": 0.55 },
+  { "source": "osc1", "depth": 0.25 }
+]
+```
+
+| Field | Type | Range | Description |
+|-------|------|-------|-------------|
+| `source` | string | see below | Which oscillator feeds this route |
+| `depth` | float | 0.0 – 1.0 | Normalized FM depth for this route (quadratic curve: 1.0 → raw depth 5.0) |
+
+**Valid source strings:**
 
 | String | Description |
 |--------|-------------|
-| `"none"` | No FM modulation |
-| `"osc1"` | Osc1's output modulates this oscillator's phase |
-| `"osc2"` | Osc2's output modulates this oscillator's phase |
-| `"osc3"` | Osc3's output modulates this oscillator's phase |
-| `"osc4"` | Osc4's output modulates this oscillator's phase |
+| `"osc1"` | Osc1's output |
+| `"osc2"` | Osc2's output |
+| `"osc3"` | Osc3's output |
+| `"osc4"` | Osc4's output |
 
-Self-modulation is valid (e.g., `osc1.fmSource = "osc1"`) — uses averaged previous sample for feedback stability.
+**Notes:**
+- Self-modulation (e.g., `"source": "osc1"` on osc1) is valid — uses averaged previous sample for feedback stability
+- Duplicate sources in the same route array are rejected at load (silently skipped)
+- An empty array (`[]`) means no FM on this oscillator
+- Route depths are independent; `fmDepth` (the global multiplier) scales all routes together
+
+**Depth guidance:**
+
+| Normalized depth | Raw depth (approx) | Character |
+|---|---|---|
+| 0.1–0.3 | 0.05–0.45 | Subtle — light harmonic enrichment; safe zone for self-feedback |
+| 0.3–0.55 | 0.45–1.5 | Noticeable FM character |
+| 0.55–0.75 | 1.5–2.8 | Heavy FM |
+| 0.75–1.0 | 2.8–5.0 | Extreme — dense sidebands, aliasing likely |
+
+### Phase Modes
+
+Controls how an oscillator's phase is handled on note-on.
+
+| String | Description |
+|--------|-------------|
+| `"reset"` | Phase resets to 0 on every note-on. Consistent attack transient. Default. |
+| `"free"` | Phase never resets — oscillator runs continuously regardless of notes. Useful for drones and textures where phase coherence isn't needed. |
+| `"random"` | Phase randomized on each note-on. Avoids the comb-filtering that can occur when multiple voices start at the same phase. Recommended for pads with unison. |
+| `"spread"` | Phases of unison sub-voices are evenly distributed around the cycle. Only meaningful when unison is active; falls back to reset behavior for non-unison voices. |
 
 ### SVF Modes
 
@@ -572,10 +623,10 @@ Key tracking is most impactful on presets with low filter cutoffs — without it
 | `"osc2.scanPos"` | normalized (0–1) | Osc2 wavetable position |
 | `"osc3.scanPos"` | normalized (0–1) | Osc3 wavetable position |
 | `"osc4.scanPos"` | normalized (0–1) | Osc4 wavetable position |
-| `"osc1.fmDepth"` | linear (±5) | Osc1 FM intensity |
-| `"osc2.fmDepth"` | linear (±5) | Osc2 FM intensity |
-| `"osc3.fmDepth"` | linear (±5) | Osc3 FM intensity |
-| `"osc4.fmDepth"` | linear (±5) | Osc4 FM intensity |
+| `"osc1.fmDepth"` | normalized (±1) | Osc1 global FM multiplier — adds to the 1.0 neutral; scales all routes |
+| `"osc2.fmDepth"` | normalized (±1) | Osc2 global FM multiplier |
+| `"osc3.fmDepth"` | normalized (±1) | Osc3 global FM multiplier |
+| `"osc4.fmDepth"` | normalized (±1) | Osc4 global FM multiplier |
 | `"lfo1.rate"` | Hz (±20) | LFO1 speed |
 | `"lfo2.rate"` | Hz (±20) | LFO2 speed |
 | `"lfo3.rate"` | Hz (±20) | LFO3 speed |
@@ -603,23 +654,23 @@ A dub techno chord stab with filter envelope sweep, LFO wobble, and post-mix del
   "oscillators": {
     "osc1": {
       "bank": "saw", "scanPos": 0.0, "mixLevel": 1.0,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": 8.0, "enabled": true
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": 0, "detuneAmount": 8.0, "enabled": true
     },
     "osc2": {
       "bank": "saw", "scanPos": 0.0, "mixLevel": 0.8,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": -8.0, "enabled": true
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": 0, "detuneAmount": -8.0, "enabled": true
     },
     "osc3": {
       "bank": "sine", "scanPos": 0.0, "mixLevel": 0.4,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": -1, "detuneAmount": 0.0, "enabled": true
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": -1, "detuneAmount": 0.0, "enabled": true
     },
     "osc4": {
       "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
     },
     "noise": { "mixLevel": 0.0, "type": "white", "enabled": false }
   },
@@ -713,23 +764,23 @@ The init preset is a clean starting point — one sine oscillator, no filters, n
   "oscillators": {
     "osc1": {
       "bank": "sine", "scanPos": 0.0, "mixLevel": 1.0,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": true
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": 0, "detuneAmount": 0.0, "enabled": true
     },
     "osc2": {
       "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
     },
     "osc3": {
       "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
     },
     "osc4": {
       "bank": "sine", "scanPos": 0.0, "mixLevel": 0.0,
-      "fmDepth": 0.0, "ratio": 1.0, "fmSource": "none",
-      "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
+      "fmDepth": 1.0, "ratio": 1.0, "fmRoutes": [],
+      "phaseMode": "reset", "octaveOffset": 0, "detuneAmount": 0.0, "enabled": false
     },
     "noise": { "mixLevel": 0.0, "type": "white", "enabled": false }
   },

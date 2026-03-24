@@ -13,8 +13,8 @@ inline constexpr float DETUNE_MIN = -100.0f; // cents
 inline constexpr float DETUNE_MAX = 100.0f;
 inline constexpr int8_t OCTAVE_MIN = -2;
 inline constexpr int8_t OCTAVE_MAX = 2;
-inline constexpr float FM_DEPTH_MIN = 0.0f;
-inline constexpr float FM_DEPTH_MAX = 5.0f;
+inline constexpr float FM_DEPTH_MIN = 0.0f; // route (not fmDepthMod)
+inline constexpr float FM_DEPTH_MAX = 1.0f;
 inline constexpr float RATIO_MIN = 0.5f;
 inline constexpr float RATIO_MAX = 16.0f;
 inline constexpr float SCAN_POS_MIN = 0.0f;
@@ -107,8 +107,8 @@ inline constexpr float SCAN_POS_MOD_MIN = -1.0f;
 inline constexpr float SCAN_POS_MOD_MAX = 1.0f;
 
 // FM depth modulation (bipolar, added to base fmDepth)
-inline constexpr float FM_DEPTH_MOD_MIN = -5.0f;
-inline constexpr float FM_DEPTH_MOD_MAX = 5.0f;
+inline constexpr float FM_DEPTH_MOD_MIN = -1.0f;
+inline constexpr float FM_DEPTH_MOD_MAX = 1.0f;
 
 // LFO rate modulation (Hz offset, bipolar)
 inline constexpr float LFO_RATE_MOD_MIN = -20.0f;

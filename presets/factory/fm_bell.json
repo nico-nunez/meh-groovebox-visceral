@@ -13,11 +13,16 @@
       "mixLevel": 1.0,
       "octaveOffset": 0,
       "detuneAmount": 0.0,
-      "fmDepth": 1.8,
       "ratio": 1.0,
       "fixed": false,
       "fixedFreq": 440.0,
-      "fmSource": "osc2",
+      "fmDepth": 1.0,
+      "fmRoutes": [
+        {
+          "source": "osc2",
+          "depth": 1.8
+        }
+      ],
       "enabled": true
     },
     "osc2": {
@@ -26,11 +31,11 @@
       "mixLevel": 0.0,
       "octaveOffset": 0,
       "detuneAmount": 0.0,
-      "fmDepth": 0.0,
       "ratio": 3.5,
       "fixed": false,
       "fixedFreq": 440.0,
-      "fmSource": "none",
+      "fmDepth": 1.0,
+      "fmRoutes": [],
       "enabled": true
     },
     "osc3": {
@@ -39,11 +44,16 @@
       "mixLevel": 0.25,
       "octaveOffset": 1,
       "detuneAmount": 0.0,
-      "fmDepth": 0.6,
       "ratio": 7.0,
       "fixed": false,
       "fixedFreq": 440.0,
-      "fmSource": "osc2",
+      "fmDepth": 1.0,
+      "fmRoutes": [
+        {
+          "source": "osc2",
+          "depth": 0.6
+        }
+      ],
       "enabled": true
     },
     "osc4": {
@@ -52,11 +62,11 @@
       "mixLevel": 0.0,
       "octaveOffset": 0,
       "detuneAmount": 0.0,
-      "fmDepth": 0.0,
       "ratio": 1.0,
       "fixed": false,
       "fixedFreq": 440.0,
-      "fmSource": "none",
+      "fmDepth": 1.0,
+      "fmRoutes": [],
       "enabled": false
     },
     "noise": {

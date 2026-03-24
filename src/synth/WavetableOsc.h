@@ -4,6 +4,7 @@
 
 #include "dsp/Wavetable.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 
@@ -56,9 +57,9 @@ struct WavetableOsc {
   float fixedFreq = 440.0f;
   float fixedPhaseInc = 0.0f; // fixedFreq / sampleRate
 
+  float fmDepthMod = 1.0f;
   FMRoute fmRoutes[NUM_OSCS] = {};
   uint8_t fmRouteCount = 0;
-  float fmDepthMod = 0.0f;
 
   bool enabled = true;
 };
@@ -106,6 +107,18 @@ struct WavetableOscModState {
   float osc4Feedback[MAX_VOICES] = {};
 };
 
+static constexpr float kFMDepthMax = 5.0f;
+
+// Normalized depth (0–1) → raw FM phase deviation (0–5).
+// Applied in the hot path. Never call with values outside [0, 1].
+inline float fmDepthCurve(float t) {
+  return t * t * kFMDepthMax;
+}
+
+// Inverse: raw depth → normalized. Used only for preset migration.
+inline float fmDepthCurveInverse(float raw) {
+  return std::sqrt(raw / kFMDepthMax);
+}
 void resetOscModState(WavetableOscModState& modState, uint32_t voiceIndex);
 
 float getFmInputValue(WavetableOscModState& modState,

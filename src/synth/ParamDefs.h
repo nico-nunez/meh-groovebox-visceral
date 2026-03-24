@@ -4,60 +4,39 @@
 #include <cstddef>
 #include <cstdint>
 
+// This defines the "shape" of your 12 oscillator parameters
+#define OSC_PARAMS(X, N)                                                                           \
+  X(OSC##N##_MIX_LEVEL, "osc" #N ".mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                       \
+  X(OSC##N##_DETUNE, "osc" #N ".detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                 \
+  X(OSC##N##_OCTAVE, "osc" #N ".octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                      \
+  X(OSC##N##_SCAN_POS, "osc" #N ".scanPos", Float, 0.0f, 1.0f, 0.0f, None)                         \
+  X(OSC##N##_PHASE_MODE, "osc" #N ".phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                 \
+  X(OSC##N##_RANDOM_RANGE, "osc" #N ".randomRange", Float, 0.0f, 1.0f, 1.0f, None)                 \
+  X(OSC##N##_RESET_PHASE, "osc" #N ".resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                   \
+  X(OSC##N##_FM_DEPTH, "osc" #N ".fmDepth", Float, 0.0f, 2.0f, 1.0f, None)                         \
+  X(OSC##N##_RATIO, "osc" #N ".ratio", Float, 0.5f, 16.0f, 1.0f, None)                             \
+  X(OSC##N##_FIXED, "osc" #N ".fixed", Bool, 0.0f, 1.0f, 0.0f, None)                               \
+  X(OSC##N##_FIXED_FREQ, "osc" #N ".fixedFreq", Float, 20.0f, 8000.0f, 440.0f, OscFreqFixed)       \
+  X(OSC##N##_ENABLED, "osc" #N ".enabled", Bool, 0.0f, 1.0f, 1.0f, OscEnable)
+
+#define LFO_PARAMS(X, N)                                                                           \
+  X(LFO##N##_RATE, "lfo" #N ".rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                            \
+  X(LFO##N##_AMPLITUDE, "lfo" #N ".amplitude", Float, 0.0f, 1.0f, 1.0f, None)                      \
+  X(LFO##N##_RETRIGGER, "lfo" #N ".retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                       \
+  X(LFO##N##_DELAY, "lfo" #N ".delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                    \
+  X(LFO##N##_ATTACK, "lfo" #N ".attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                  \
+  X(LFO##N##_TEMPO_SYNC, "lfo" #N ".tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)
+
 // X(enumId,           name,               type,       min,     max,      default, updateGroup)
 #define PARAM_LIST                                                                                 \
-  /* ==== Oscillators ==== */                                                                      \
-  X(OSC1_MIX_LEVEL, "osc1.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC1_DETUNE, "osc1.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
-  X(OSC1_OCTAVE, "osc1.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
-  X(OSC1_SCAN_POS, "osc1.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
-  X(OSC1_PHASE_MODE, "osc1.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
-  X(OSC1_RANDOM_RANGE, "osc1.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
-  X(OSC1_RESET_PHASE, "osc1.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
-  X(OSC1_FM_DEPTH, "osc1.fmDepth", Float, -5.0f, 5.0f, 0.0f, None)                                 \
-  X(OSC1_RATIO, "osc1.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
-  X(OSC1_FIXED, "osc1.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
-  X(OSC1_FIXED_FREQ, "osc1.fixedFreq", Float, 20.0f, 8000.0f, 440.0f, OscFreqFixed)                \
-  X(OSC1_ENABLED, "osc1.enabled", Bool, 0.0f, 1.0f, 1.0f, OscEnable)                               \
+  OSC_PARAMS(X, 1)                                                                                 \
+  OSC_PARAMS(X, 2)                                                                                 \
+  OSC_PARAMS(X, 3)                                                                                 \
+  OSC_PARAMS(X, 4)                                                                                 \
                                                                                                    \
-  X(OSC2_MIX_LEVEL, "osc2.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC2_DETUNE, "osc2.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
-  X(OSC2_OCTAVE, "osc2.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
-  X(OSC2_SCAN_POS, "osc2.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
-  X(OSC2_PHASE_MODE, "osc2.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
-  X(OSC2_RANDOM_RANGE, "osc2.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
-  X(OSC2_RESET_PHASE, "osc2.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
-  X(OSC2_FM_DEPTH, "osc2.fmDepth", Float, -5.0f, 5.0f, 0.0f, None)                                 \
-  X(OSC2_RATIO, "osc2.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
-  X(OSC2_FIXED, "osc2.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
-  X(OSC2_FIXED_FREQ, "osc2.fixedFreq", Float, 20.0f, 8000.0f, 440.0f, OscFreqFixed)                \
-  X(OSC2_ENABLED, "osc2.enabled", Bool, 0.0f, 1.0f, 0.0f, OscEnable)                               \
-                                                                                                   \
-  X(OSC3_MIX_LEVEL, "osc3.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC3_DETUNE, "osc3.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
-  X(OSC3_OCTAVE, "osc3.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
-  X(OSC3_SCAN_POS, "osc3.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
-  X(OSC3_PHASE_MODE, "osc3.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
-  X(OSC3_RANDOM_RANGE, "osc3.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
-  X(OSC3_RESET_PHASE, "osc3.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
-  X(OSC3_FM_DEPTH, "osc3.fmDepth", Float, -5.0f, 5.0f, 0.0f, None)                                 \
-  X(OSC3_RATIO, "osc3.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
-  X(OSC3_FIXED, "osc3.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
-  X(OSC3_FIXED_FREQ, "osc3.fixedFreq", Float, 20.0f, 8000.0f, 440.0f, OscFreqFixed)                \
-  X(OSC3_ENABLED, "osc3.enabled", Bool, 0.0f, 1.0f, 0.0f, OscEnable)                               \
-                                                                                                   \
-  X(OSC4_MIX_LEVEL, "osc4.mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                                \
-  X(OSC4_DETUNE, "osc4.detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                          \
-  X(OSC4_OCTAVE, "osc4.octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                               \
-  X(OSC4_SCAN_POS, "osc4.scanPos", Float, 0.0f, 1.0f, 0.0f, None)                                  \
-  X(OSC4_PHASE_MODE, "osc4.phaseMode", PhaseMode, 0.0f, 3.0f, 0.0f, None)                          \
-  X(OSC4_RANDOM_RANGE, "osc4.randomRange", Float, 0.0f, 1.0f, 1.0f, None)                          \
-  X(OSC4_RESET_PHASE, "osc4.resetPhase", Float, 0.0f, 1.0f, 0.0f, None)                            \
-  X(OSC4_FM_DEPTH, "osc4.fmDepth", Float, -5.0f, 5.0f, 0.0f, None)                                 \
-  X(OSC4_RATIO, "osc4.ratio", Float, 0.5f, 16.0f, 1.0f, None)                                      \
-  X(OSC4_FIXED, "osc4.fixed", Bool, 0.0f, 1.0f, 0.0f, None)                                        \
-  X(OSC4_FIXED_FREQ, "osc4.fixedFreq", Float, 20.0f, 8000.0f, 440.0f, OscFreqFixed)                \
-  X(OSC4_ENABLED, "osc4.enabled", Bool, 0.0f, 1.0f, 0.0f, OscEnable)                               \
+  LFO_PARAMS(X, 1)                                                                                 \
+  LFO_PARAMS(X, 2)                                                                                 \
+  LFO_PARAMS(X, 3)                                                                                 \
                                                                                                    \
   /* ==== Noise ==== */                                                                            \
   X(NOISE_MIX_LEVEL, "noise.mixLevel", Float, 0.0f, 1.0f, 0.0f, None)                              \
@@ -104,25 +83,6 @@
   X(SATURATOR_MIX, "saturator.mix", Float, 0.0f, 1.0f, 1.0f, None)                                 \
   X(SATURATOR_ENABLED, "saturator.enabled", Bool, 0.0f, 1.0f, 0.0f, None)                          \
                                                                                                    \
-  /* ==== LFOs ==== */                                                                             \
-  X(LFO1_RATE, "lfo1.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
-  X(LFO1_AMPLITUDE, "lfo1.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
-  X(LFO1_RETRIGGER, "lfo1.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
-  X(LFO1_DELAY, "lfo1.delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                             \
-  X(LFO1_ATTACK, "lfo1.attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                           \
-                                                                                                   \
-  X(LFO2_RATE, "lfo2.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
-  X(LFO2_AMPLITUDE, "lfo2.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
-  X(LFO2_RETRIGGER, "lfo2.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
-  X(LFO2_DELAY, "lfo2.delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                             \
-  X(LFO2_ATTACK, "lfo2.attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                           \
-                                                                                                   \
-  X(LFO3_RATE, "lfo3.rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                                     \
-  X(LFO3_AMPLITUDE, "lfo3.amplitude", Float, 0.0f, 1.0f, 1.0f, None)                               \
-  X(LFO3_RETRIGGER, "lfo3.retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                                \
-  X(LFO3_DELAY, "lfo3.delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                             \
-  X(LFO3_ATTACK, "lfo3.attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                           \
-                                                                                                   \
   /* ==== Global / Voice modes ==== */                                                             \
   X(PITCH_BEND_RANGE, "pitchBend.range", Float, 0.0f, 48.0f, 2.0f, None)                           \
                                                                                                    \
@@ -143,12 +103,7 @@
   /* ==== Tempo ==== */                                                                            \
   X(BPM, "bpm", Float, 20.0f, 300.0f, 120.0f, BPMSync)                                             \
                                                                                                    \
-  X(LFO1_TEMPO_SYNC, "lfo1.tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)                       \
-  X(LFO2_TEMPO_SYNC, "lfo2.tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)                       \
-  X(LFO3_TEMPO_SYNC, "lfo3.tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)                       \
-                                                                                                   \
-  /* ==== Effects ==== */                                                                          \
-                                                                                                   \
+  /* ======== Effects ======== */                                                                  \
   /* ==== Distortion ==== */                                                                       \
   X(FX_DISTORTION_DRIVE, "fx.distortion.drive", Float, 1.0f, 10.0f, 1.0f, DistortionDerived)       \
   X(FX_DISTORTION_MIX, "fx.distortion.mix", Float, 0.0f, 1.0f, 1.0f, None)                         \

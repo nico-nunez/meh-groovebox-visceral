@@ -1,18 +1,18 @@
 {
   "version": 1,
   "metadata": {
-    "name": "Pluck Lead",
+    "name": "FM Bell",
     "author": "",
-    "category": "Lead",
-    "description": "Sharp pluck lead — fast attack, short decay, velocity-sensitive filter, mono with glide"
+    "category": "Keys",
+    "description": "Bright metallic bell — FM synthesis with high ratio modulator, fast decay, no sustain"
   },
   "oscillators": {
     "osc1": {
-      "bank": "saw",
+      "bank": "sine",
       "scanPos": 0.0,
       "mixLevel": 1.0,
       "octaveOffset": 0,
-      "detuneAmount": 5.0,
+      "detuneAmount": 0.0,
       "ratio": 1.0,
       "fixed": false,
       "fixedFreq": 440.0,
@@ -21,12 +21,12 @@
       "enabled": true
     },
     "osc2": {
-      "bank": "square",
+      "bank": "sine",
       "scanPos": 0.0,
-      "mixLevel": 0.6,
+      "mixLevel": 0.0,
       "octaveOffset": 0,
-      "detuneAmount": -5.0,
-      "ratio": 1.0,
+      "detuneAmount": 0.0,
+      "ratio": 3.5,
       "fixed": false,
       "fixedFreq": 440.0,
       "fmDepth": 1.0,
@@ -36,15 +36,15 @@
     "osc3": {
       "bank": "sine",
       "scanPos": 0.0,
-      "mixLevel": 0.0,
-      "octaveOffset": 0,
+      "mixLevel": 0.25,
+      "octaveOffset": 1,
       "detuneAmount": 0.0,
-      "ratio": 1.0,
+      "ratio": 7.0,
       "fixed": false,
       "fixedFreq": 440.0,
       "fmDepth": 1.0,
       "fmRoutes": [],
-      "enabled": false
+      "enabled": true
     },
     "osc4": {
       "bank": "sine",
@@ -68,23 +68,14 @@
   "envelopes": {
     "ampEnv": {
       "attackMs": 1.0,
-      "decayMs": 300.0,
-      "sustainLevel": 0.3,
-      "releaseMs": 150.0,
+      "decayMs": 2000.0,
+      "sustainLevel": 0.0,
+      "releaseMs": 1500.0,
       "attackCurve": -1.0,
       "decayCurve": -6.0,
       "releaseCurve": -5.0
     },
     "filterEnv": {
-      "attackMs": 1.0,
-      "decayMs": 250.0,
-      "sustainLevel": 0.15,
-      "releaseMs": 100.0,
-      "attackCurve": -1.0,
-      "decayCurve": -7.0,
-      "releaseCurve": -5.0
-    },
-    "modEnv": {
       "attackMs": 10.0,
       "decayMs": 100.0,
       "sustainLevel": 0.7,
@@ -92,14 +83,23 @@
       "attackCurve": -5.0,
       "decayCurve": -5.0,
       "releaseCurve": -5.0
+    },
+    "modEnv": {
+      "attackMs": 1.0,
+      "decayMs": 800.0,
+      "sustainLevel": 0.0,
+      "releaseMs": 500.0,
+      "attackCurve": -1.0,
+      "decayCurve": -7.0,
+      "releaseCurve": -5.0
     }
   },
   "filters": {
     "svf": {
       "mode": "lp",
-      "cutoff": 2000.0,
-      "resonance": 0.35,
-      "enabled": true
+      "cutoff": 1000.0,
+      "resonance": 0.5,
+      "enabled": false
     },
     "ladder": {
       "cutoff": 1000.0,
@@ -112,9 +112,9 @@
   "lfos": {
     "lfo1": {
       "bank": "sine",
-      "rate": 5.0,
-      "amplitude": 0.3,
-      "retrigger": true,
+      "rate": 1.0,
+      "amplitude": 1.0,
+      "retrigger": false,
       "tempoSync": false,
       "subdivision": "1/4",
       "delayMs": 0.0,
@@ -141,33 +141,7 @@
       "attackMs": 0.0
     }
   },
-  "modMatrix": [
-    {
-      "source": "filterEnv",
-      "destination": "svf.cutoff",
-      "amount": 2.0
-    },
-    {
-      "source": "velocity",
-      "destination": "svf.cutoff",
-      "amount": 1.5
-    },
-    {
-      "source": "keyTrack",
-      "destination": "svf.cutoff",
-      "amount": 1.0
-    },
-    {
-      "source": "lfo1",
-      "destination": "osc1.pitch",
-      "amount": 1.0
-    },
-    {
-      "source": "lfo1",
-      "destination": "osc2.pitch",
-      "amount": 1.0
-    }
-  ],
+  "modMatrix": [],
   "signalChain": [
     "svf",
     "ladder",
@@ -188,11 +162,11 @@
       "enabled": false
     },
     "chorus": {
-      "rate": 0.4,
-      "depth": 0.25,
-      "mix": 0.18,
+      "rate": 1.0,
+      "depth": 0.5,
+      "mix": 0.5,
       "feedback": 0.0,
-      "enabled": true
+      "enabled": false
     },
     "phaser": {
       "stages": 4,
@@ -205,24 +179,24 @@
     "delay": {
       "time": 0.5,
       "tempoSync": true,
-      "subdivision": "1/8t",
-      "feedback": 0.35,
-      "damping": 0.35,
-      "hpDamping": 0.0,
+      "subdivision": "1/4",
+      "feedback": 0.3,
+      "damping": 0.45,
+      "hpDamping": 0.05,
       "pingPong": true,
-      "mix": 0.18,
+      "mix": 0.2,
       "enabled": true
     },
     "reverb": {
-      "preDelay": 8.0,
-      "decay": 1.8,
-      "damping": 0.4,
+      "preDelay": 10.0,
+      "decay": 4.0,
+      "damping": 0.3,
       "lowDamping": 0.3,
-      "diffusion": 0.78,
-      "bandwidth": 0.82,
-      "modRate": 0.4,
-      "modDepth": 0.2,
-      "mix": 0.18,
+      "diffusion": 0.8,
+      "bandwidth": 0.85,
+      "modRate": 0.3,
+      "modDepth": 0.25,
+      "mix": 0.3,
       "enabled": true
     }
   },
@@ -233,13 +207,13 @@
       "enabled": false
     },
     "mono": {
-      "enabled": true,
+      "enabled": false,
       "legato": true
     },
     "portamento": {
-      "time": 60.0,
+      "time": 50.0,
       "legato": true,
-      "enabled": true
+      "enabled": false
     },
     "unison": {
       "voices": 4,

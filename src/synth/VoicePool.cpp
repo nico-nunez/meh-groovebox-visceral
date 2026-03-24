@@ -16,6 +16,7 @@
 #include "dsp/Wavetable.h"
 #include "synth/Types.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -514,14 +515,14 @@ float interpolatePitchInc(const WavetableOsc& osc,
 }
 
 float computeOscFMMod(osc::WavetableOsc& osc,
-                      float globalMod,
+                      float globalScale,
                       uint32_t voiceIndex,
                       osc::FMSource src,
                       osc::WavetableOscModState& modState) {
   float fm = 0.0f;
 
   for (uint8_t r = 0; r < osc.fmRouteCount; r++) {
-    float depth = std::max(0.0f, osc.fmRoutes[r].depth + globalMod);
+    float depth = osc::fmDepthCurve(osc.fmRoutes[r].depth) * globalScale;
     fm += osc::getFmInputValue(modState, voiceIndex, osc.fmRoutes[r].source, src) * depth;
   }
   return fm;
@@ -599,10 +600,10 @@ OscParams computeOscParams(VoicePool& pool, uint32_t v, uint32_t s) {
   float fm3 = pool.osc3.fmDepthMod + dest[ModDest::Osc3FMDepth][v] + lfo[ModDest::Osc3FMDepth];
   float fm4 = pool.osc4.fmDepthMod + dest[ModDest::Osc4FMDepth][v] + lfo[ModDest::Osc4FMDepth];
 
-  p.fm[0] = computeOscFMMod(pool.osc1, fm1, v, FMSource::Osc1, oscModState);
-  p.fm[1] = computeOscFMMod(pool.osc2, fm2, v, FMSource::Osc2, oscModState);
-  p.fm[2] = computeOscFMMod(pool.osc3, fm3, v, FMSource::Osc3, oscModState);
-  p.fm[3] = computeOscFMMod(pool.osc4, fm4, v, FMSource::Osc4, oscModState);
+  p.fm[0] = computeOscFMMod(pool.osc1, std::max(0.0f, fm1), v, FMSource::Osc1, oscModState);
+  p.fm[1] = computeOscFMMod(pool.osc2, std::max(0.0f, fm2), v, FMSource::Osc2, oscModState);
+  p.fm[2] = computeOscFMMod(pool.osc3, std::max(0.0f, fm3), v, FMSource::Osc3, oscModState);
+  p.fm[3] = computeOscFMMod(pool.osc4, std::max(0.0f, fm4), v, FMSource::Osc4, oscModState);
 
   // Mix
   p.mix[0] = max(0.0f, pool.osc1.mixLevel + dest[ModDest::Osc1Mix][v] + lfo[ModDest::Osc1Mix]);
