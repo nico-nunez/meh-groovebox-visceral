@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 
 namespace synth::wavetable::osc {
 namespace dsp_wt = dsp::wavetable;
@@ -103,6 +104,44 @@ float getFmInputValue(WavetableOscModState& modState,
   default:
     return 0.0f;
   }
+}
+
+void addFMRoute(WavetableOsc& osc, FMSource src, float depth) {
+  for (uint8_t r = 0; r < osc.fmRouteCount; r++) {
+    if (osc.fmRoutes[r].source == src) {
+      osc.fmRoutes[r].depth = depth;
+      return;
+    }
+  }
+  if (osc.fmRouteCount < NUM_OSCS)
+    osc.fmRoutes[osc.fmRouteCount++] = {src, depth};
+}
+
+void removeFMRoute(WavetableOsc& osc, FMSource src) {
+  for (uint8_t r = 0; r < osc.fmRouteCount; r++) {
+    if (osc.fmRoutes[r].source == src) {
+      for (uint8_t i = r; i < osc.fmRouteCount - 1; i++)
+        osc.fmRoutes[i] = osc.fmRoutes[i + 1];
+      osc.fmRouteCount--;
+      return;
+    }
+  }
+}
+
+void clearFMRoutes(WavetableOsc& osc) {
+  osc.fmRouteCount = 0;
+}
+
+void printFMRoutes(const WavetableOsc& osc, const char* carrierName) {
+  if (osc.fmRouteCount == 0) {
+    printf("%s: no routes\n", carrierName);
+    return;
+  }
+  for (uint8_t r = 0; r < osc.fmRouteCount; r++)
+    printf("  %s -> %s  depth=%.3f\n",
+           fmSourceToString(osc.fmRoutes[r].source),
+           carrierName,
+           osc.fmRoutes[r].depth);
 }
 
 float readWavetable(const WavetableOsc& osc,

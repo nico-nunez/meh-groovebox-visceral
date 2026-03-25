@@ -217,4 +217,17 @@ inline const char* modDestToString(mod_matrix::ModDest dest) {
   return "unknown";
 }
 
+inline void printRoutes(const ModMatrix& matrix) {
+  if (matrix.count == 0) {
+    printf("no mod routes\n");
+    return;
+  }
+  for (uint8_t i = 0; i < matrix.count; i++)
+    printf("  [%d] %s -> %s  amount=%.3f\n",
+           i,
+           modSrcToString(matrix.routes[i].src),
+           modDestToString(matrix.routes[i].dest),
+           matrix.routes[i].amount);
+}
+
 } // namespace synth::mod_matrix

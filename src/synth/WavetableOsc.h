@@ -119,12 +119,19 @@ inline float fmDepthCurve(float t) {
 inline float fmDepthCurveInverse(float raw) {
   return std::sqrt(raw / kFMDepthMax);
 }
+
 void resetOscModState(WavetableOscModState& modState, uint32_t voiceIndex);
 
 float getFmInputValue(WavetableOscModState& modState,
                       uint32_t voiceIndex,
                       FMSource src,
                       FMSource dest);
+
+// FM Route helpers
+void addFMRoute(WavetableOsc& osc, FMSource src, float depth);
+void removeFMRoute(WavetableOsc& osc, FMSource src);
+void clearFMRoutes(WavetableOsc& osc);
+void printFMRoutes(const WavetableOsc& osc, const char* carrierName);
 
 // ===================
 // Parsing Helpers

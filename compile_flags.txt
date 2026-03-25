@@ -6,7 +6,9 @@
 -Ilibs/device_io/include
 -Ilibs/dsp/include
 -Ilibs/json/include
+-Ilibs/lua/include
 -Ilibs/synth_io/include
+-Ilibs/linenoise
 -Wall
 -Weffc++
 -Wextra

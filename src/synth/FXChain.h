@@ -85,4 +85,14 @@ void parseFXChainCmd(std::istringstream& iss, FXChain& fxChain);
 void setFXChain(FXChain& fxChain, const FXProcessor* procs, uint8_t count);
 void clearFXChain(FXChain& fxChain);
 
+inline void printFXChain(const FXChain& chain) {
+  if (chain.length == 0) {
+    printf("fx chain: empty\n");
+    return;
+  }
+  printf("fx chain:");
+  for (uint8_t i = 0; i < chain.length; i++)
+    printf(" %s", fxProcessorToString(chain.slots[i]));
+  printf("\n");
+}
 } // namespace synth::fx_chain

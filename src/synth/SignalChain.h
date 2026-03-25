@@ -52,5 +52,16 @@ inline const char* signalProcessorToString(signal_chain::SignalProcessor proc) {
   return "unknown";
 }
 
+inline void printSigChain(const SignalChain& chain) {
+  if (chain.length == 0) {
+    printf("signal chain: empty\n");
+    return;
+  }
+  printf("signal chain:");
+  for (uint8_t i = 0; i < chain.length; i++)
+    printf(" %s", signalProcessorToString(chain.slots[i]));
+  printf("\n");
+}
+
 void parseSigChainCmd(std::istringstream& iss, SignalChain& chain);
 } // namespace synth::signal_chain

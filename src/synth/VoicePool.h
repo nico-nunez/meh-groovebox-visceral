@@ -207,4 +207,13 @@ inline WavetableOsc* getOscByName(VoicePool& pool, const std::string& name) {
   return nullptr;
 }
 
+inline LFO* getLFOByName(VoicePool& pool, const char* name) {
+  if (strcmp(name, "lfo1") == 0)
+    return &pool.lfo1;
+  if (strcmp(name, "lfo2") == 0)
+    return &pool.lfo2;
+  if (strcmp(name, "lfo3") == 0)
+    return &pool.lfo3;
+  return nullptr;
+}
 } // namespace synth::voices
