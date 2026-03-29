@@ -1,7 +1,6 @@
 #include "KeyProcessor.h"
 #include "Logger.h"
 
-#include "synth_io/Events.h"
 #include "synth_io/SynthIO.h"
 
 #include "device_io/KeyCapture.h"

@@ -1,12 +1,24 @@
 #pragma once
 
-#include "synth_io/Events.h"
-
 #include <atomic>
 #include <cstddef>
 #include <cstdio>
 
-namespace synth_io {
+namespace synth_events {
+
+struct ParamEvent {
+  uint8_t id = 0;
+  float value = 0.0f; // Normalized [0, 1]
+};
+
+struct ParamQueue;
+using hParamQueue = ParamQueue*;
+
+hParamQueue initParamQueue();
+void disposeParamQueue(hParamQueue handle);
+
+bool setParam(hParamQueue handle, uint8_t id, float value); // Lua REPL thread
+bool popParamEvent(hParamQueue handle, ParamEvent& event);  // audio thread (drain)
 
 struct ParamEventQueue {
   // NOTE(nico): SIZE value need to be power of to use bitmasking for wrapping
@@ -26,4 +38,4 @@ struct ParamEventQueue {
   void printQueue();
 };
 
-} // namespace synth_io
+} // namespace synth_events

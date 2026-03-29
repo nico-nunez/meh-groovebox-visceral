@@ -2,7 +2,6 @@
 #include "utils/InputProcessor.h"
 #include "utils/KeyProcessor.h"
 
-#include "synth_io/Events.h"
 #include "synth_io/SynthIO.h"
 
 #include "synth/Engine.h"

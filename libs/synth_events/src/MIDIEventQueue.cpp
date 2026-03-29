@@ -1,8 +1,28 @@
-#include "MIDIEventQueue.h"
+#include "synth_events/MIDIEventQueue.h"
+
 #include <cstddef>
 
-namespace synth_io {
+namespace synth_events {
 
+struct MIDIHandle {
+  MIDIEventQueue queue{};
+};
+
+hMIDIHandle initMIDIHandle() {
+  return new MIDIHandle{};
+}
+
+void disposeMIDIHandle(hMIDIHandle handle) {
+  delete handle;
+}
+
+bool pushMIDIEvent(hMIDIHandle handle, MIDIEvent event) {
+  return handle->queue.push(event);
+}
+
+bool popMIDIEvent(hMIDIHandle handle, MIDIEvent& event) {
+  return handle->queue.pop(event);
+}
 bool MIDIEventQueue::push(const MIDIEvent& event) {
   size_t currentIndex = writeIndex.load();
   size_t nextIndex = (currentIndex + 1) & WRAP;
@@ -28,4 +48,4 @@ bool MIDIEventQueue::pop(MIDIEvent& event) {
   return true;
 }
 
-} // namespace synth_io
+} // namespace synth_events

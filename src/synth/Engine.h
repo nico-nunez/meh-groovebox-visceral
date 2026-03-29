@@ -9,7 +9,6 @@
 #include "dsp/Buffers.h"
 #include "dsp/Waveforms.h"
 
-#include "synth_io/Events.h"
 #include "synth_io/SynthIO.h"
 
 #include <cstdint>

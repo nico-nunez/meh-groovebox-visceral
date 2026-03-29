@@ -1,7 +1,27 @@
-#include "ParamEventQueue.h"
+#include "synth_events/ParamEventQueue.h"
 #include <cstddef>
 
-namespace synth_io {
+namespace synth_events {
+
+struct ParamQueue {
+  ParamEventQueue queue{};
+};
+
+hParamQueue initParamQueue() {
+  return new ParamQueue{};
+}
+
+void disposeParamQueue(hParamQueue handle) {
+  delete handle;
+}
+
+bool setParam(hParamQueue handle, uint8_t id, float value) {
+  return handle->queue.push({id, value});
+}
+
+bool popParamEvent(hParamQueue handle, ParamEvent& event) {
+  return handle->queue.pop(event);
+}
 
 bool ParamEventQueue::push(const ParamEvent& event) {
   size_t currentIndex = writeIndex.load();
@@ -45,4 +65,4 @@ void ParamEventQueue::printQueue() {
   }
 }
 
-} // namespace synth_io
+} // namespace synth_events

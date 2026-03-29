@@ -7,7 +7,6 @@
 #include "synth/Preset.h"
 #include "synth/PresetApply.h"
 #include "synth/VoicePool.h"
-#include "synth_io/Events.h"
 
 #include "dsp/Buffers.h"
 

@@ -5,9 +5,10 @@
 -Ilibs/audio_io/include
 -Ilibs/device_io/include
 -Ilibs/dsp/include
+-Ilibs/synth_events/include
+-Ilibs/synth_io/include
 -Ilibs/json/include
 -Ilibs/lua/include
--Ilibs/synth_io/include
 -Ilibs/linenoise
 -Wall
 -Weffc++

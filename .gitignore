@@ -52,3 +52,4 @@ cmake_install.cmake
 # Misc
 _docs_
 og_synth
+depra
