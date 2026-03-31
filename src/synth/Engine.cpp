@@ -8,7 +8,7 @@
 #include "synth/VoicePool.h"
 
 #include "dsp/Buffers.h"
-#include "dsp/FX/FXChain.h"
+#include "dsp/fx/FXChain.h"
 
 #include <algorithm>
 #include <cassert>
@@ -16,8 +16,6 @@
 #include <cstdio>
 
 namespace synth {
-using synth_io::MIDIEvent;
-using synth_io::ParamEvent;
 
 Engine createEngine(const EngineConfig& config) {
   namespace pb = param::bindings;
@@ -55,7 +53,7 @@ void Engine::processParamEvent(const ParamEvent& event) {
   param::sync::syncDirtyParams(*this);
 }
 
-void Engine::processMIDIEvent(const synth_io::MIDIEvent& event) {
+void Engine::processMIDIEvent(const MIDIEvent& event) {
   using Type = MIDIEvent::Type;
 
   switch (event.type) {

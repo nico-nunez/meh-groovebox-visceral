@@ -11,7 +11,6 @@ CPP_SOURCES = $(shell find \
 							src \
 							libs/audio_io/src \
 							libs/device_io/src \
-							libs/synth_io/src \
 							libs/dsp/src \
 							libs/json/src \
 							-name '*.cpp')
@@ -27,7 +26,6 @@ ALL_OBJECTS = $(CPP_OBJECTS) $(MM_OBJECTS) $(C_OBJECTS)
 # Add src/ to include search path
 INCLUDES = -Isrc -Ilibs/audio_io/include -Ilibs/audio_io/src \
 					 -Ilibs/device_io/include \
-					 -Ilibs/synth_io/include \
 					 -Ilibs/dsp/include \
 					 -Ilibs/json/include \
 					 -Ilibs/lua/include \

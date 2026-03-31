@@ -1,4 +1,4 @@
-#include "dsp/FX/Distortion.h"
+#include "dsp/fx/Distortion.h"
 
 #include "dsp/Buffers.h"
 #include "dsp/Math.h"

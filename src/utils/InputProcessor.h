@@ -2,16 +2,16 @@
 
 #include <string>
 
-namespace synth_io {
+namespace app::session {
 struct SynthSession;
 using hSynthSession = SynthSession*;
-} // namespace synth_io
+} // namespace app::session
 
 namespace synth {
 struct Engine;
 
 namespace utils {
-void parseCommand(const std::string& line, Engine& engine, synth_io::hSynthSession session);
+void parseCommand(const std::string& line, Engine& engine, app::session::hSynthSession session);
 
 } // namespace utils
 

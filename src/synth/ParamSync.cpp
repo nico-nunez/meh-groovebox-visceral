@@ -1,6 +1,6 @@
 #include "ParamSync.h"
 
-#include "dsp/FX/Reverb.h"
+#include "dsp/fx/Reverb.h"
 #include "synth/Engine.h"
 #include "synth/Envelope.h"
 #include "synth/Filters.h"
@@ -9,12 +9,12 @@
 #include "synth/Unison.h"
 #include "synth/VoicePool.h"
 
-#include "dsp/FX/Chorus.h"
-#include "dsp/FX/Delay.h"
-#include "dsp/FX/Distortion.h"
-#include "dsp/FX/FXChain.h"
-#include "dsp/FX/Phaser.h"
 #include "dsp/Math.h"
+#include "dsp/fx/Chorus.h"
+#include "dsp/fx/Delay.h"
+#include "dsp/fx/Distortion.h"
+#include "dsp/fx/FXChain.h"
+#include "dsp/fx/Phaser.h"
 
 namespace synth::param::sync {
 namespace {

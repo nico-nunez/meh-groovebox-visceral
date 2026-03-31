@@ -1,4 +1,4 @@
-#include "dsp/FX/Delay.h"
+#include "dsp/fx/Delay.h"
 #include "dsp/Buffers.h"
 #include "dsp/Math.h"
 

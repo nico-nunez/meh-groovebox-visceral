@@ -1,8 +1,6 @@
 #include "KeyProcessor.h"
 #include "Logger.h"
 
-#include "synth_io/SynthIO.h"
-
 #include "device_io/KeyCapture.h"
 #include "device_io/MidiCapture.h"
 
@@ -13,39 +11,38 @@
 
 namespace synth::utils {
 namespace d_io = device_io;
-
-namespace s_io = synth_io;
+namespace evt = synth::events;
 
 // Handle MIDI device events
 static void midiCallback(d_io::MidiEvent devieEvent, void* context) {
   auto sessionPtr = static_cast<hSynthSession>(context);
 
   // Convert raw device MIDI data to user friendly event
-  s_io::MIDIEvent event{};
-  event.type = static_cast<s_io::MIDIEvent::Type>(devieEvent.type);
+  evt::MIDIEvent event{};
+  event.type = static_cast<evt::MIDIEvent::Type>(devieEvent.type);
   event.channel = devieEvent.channel;
   event.timestamp = devieEvent.timestamp;
 
   switch (event.type) {
-  case s_io::MIDIEvent::Type::NoteOn:
+  case evt::MIDIEvent::Type::NoteOn:
     event.data.noteOn = {devieEvent.data1, devieEvent.data2};
     break;
-  case s_io::MIDIEvent::Type::NoteOff:
+  case evt::MIDIEvent::Type::NoteOff:
     event.data.noteOff = {devieEvent.data1, devieEvent.data2};
     break;
-  case s_io::MIDIEvent::Type::ControlChange:
+  case evt::MIDIEvent::Type::ControlChange:
     event.data.cc = {devieEvent.data1, devieEvent.data2};
     break;
-  case s_io::MIDIEvent::Type::PitchBend:
+  case evt::MIDIEvent::Type::PitchBend:
     event.data.pitchBend = {devieEvent.pitchBendValue};
     break;
-  case s_io::MIDIEvent::Type::ProgramChange:
+  case evt::MIDIEvent::Type::ProgramChange:
     event.data.programChange = {devieEvent.data1};
     break;
-  case s_io::MIDIEvent::Type::Aftertouch:
+  case evt::MIDIEvent::Type::Aftertouch:
     event.data.aftertouch = {devieEvent.data1, devieEvent.data2};
     break;
-  case s_io::MIDIEvent::Type::ChannelPressure:
+  case evt::MIDIEvent::Type::ChannelPressure:
     event.data.channelPressure = {devieEvent.data1};
     break;
 
@@ -53,7 +50,7 @@ static void midiCallback(d_io::MidiEvent devieEvent, void* context) {
     break;
   }
 
-  s_io::pushMIDIEvent(sessionPtr, event);
+  app::session::pushMIDIEvent(sessionPtr, event);
 }
 
 // Handle keyboard events
@@ -72,11 +69,11 @@ static void keyEventCallback(device_io::KeyEvent event, void* userContext) {
     if (note == 0)
       return;
 
-    s_io::MIDIEvent midiEvent{};
-    midiEvent.type = s_io::MIDIEvent::Type::NoteOn;
+    evt::MIDIEvent midiEvent{};
+    midiEvent.type = evt::MIDIEvent::Type::NoteOn;
     midiEvent.data.noteOn = {note, 127};
 
-    s_io::pushMIDIEvent(sessionPtr, midiEvent);
+    app::session::pushMIDIEvent(sessionPtr, midiEvent);
 
     // Note "OFF" event
   } else if (event.type == device_io::KeyEventType::KeyUp) {
@@ -90,11 +87,11 @@ static void keyEventCallback(device_io::KeyEvent event, void* userContext) {
     if (note == 0)
       return;
 
-    s_io::MIDIEvent midiEvent{};
-    midiEvent.type = s_io::MIDIEvent::Type::NoteOff;
+    evt::MIDIEvent midiEvent{};
+    midiEvent.type = evt::MIDIEvent::Type::NoteOff;
     midiEvent.data.noteOff = {note, 0};
 
-    s_io::pushMIDIEvent(sessionPtr, midiEvent);
+    app::session::pushMIDIEvent(sessionPtr, midiEvent);
   }
 }
 

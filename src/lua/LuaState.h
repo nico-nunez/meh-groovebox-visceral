@@ -2,7 +2,8 @@
 
 #include "synth/Engine.h"
 #include "synth/VoicePool.h"
-#include "synth_io/SynthIO.h"
+
+#include "app/SynthSession.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -15,8 +16,8 @@ extern "C" {
 }
 
 namespace lua {
+using app::session::hSynthSession;
 using synth::Engine;
-using synth_io::hSynthSession;
 
 constexpr uint8_t MAX_PARTS = 8;
 

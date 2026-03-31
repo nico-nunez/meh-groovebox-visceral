@@ -1,8 +1,8 @@
+#include "app/SynthSession.h"
 #include "utils/InputProcessor.h"
 #include "utils/KeyProcessor.h"
 
 #include "device_io/KeyCapture.h"
-#include "synth_io/SynthIO.h"
 
 #include "synth/Engine.h"
 
@@ -13,12 +13,12 @@
 #include <iostream>
 #include <thread>
 
-static void processParamEvent(synth_io::ParamEvent event, void* myContext) {
+static void processParamEvent(synth::ParamEvent event, void* myContext) {
   auto engine = static_cast<synth::Engine*>(myContext);
   engine->processParamEvent(event);
 }
 
-static void processMIDIEvent(synth_io::MIDIEvent event, void* myContext) {
+static void processMIDIEvent(synth::MIDIEvent event, void* myContext) {
   auto engine = static_cast<synth::Engine*>(myContext);
   engine->processMIDIEvent(event);
 }
@@ -29,7 +29,7 @@ processAudioBlock(float** outputBuffer, size_t numChannels, size_t numFrames, vo
   engine->processAudioBlock(outputBuffer, numChannels, numFrames);
 }
 
-static void getUserInput(synth::Engine& engine, synth_io::hSynthSession sessionPtr) {
+static void getUserInput(synth::Engine& engine, app::session::hSynthSession sessionPtr) {
   bool isRunning = true;
   std::string input;
 
@@ -50,8 +50,12 @@ int main() {
   using synth::Engine;
   using synth::EngineConfig;
 
+  using app::session::hSynthSession;
+  using app::session::SessionConfig;
+  using app::session::SynthCallbacks;
+
   // Query hardware for actual device parameters
-  auto deviceInfo = synth_io::queryDefaultDevice();
+  auto deviceInfo = app::session::queryDefaultDevice();
   float sampleRate = static_cast<float>(deviceInfo.sampleRate);
 
   printf("Audio device: %u Hz, %u frames, %u channels\n",
@@ -65,20 +69,20 @@ int main() {
 
   Engine engine = synth::createEngine(engineConfig);
 
-  synth_io::SessionConfig sessionConfig{};
+  SessionConfig sessionConfig{};
   sessionConfig.sampleRate = deviceInfo.sampleRate;
   sessionConfig.numFrames = deviceInfo.bufferFrameSize;
   sessionConfig.numChannels = deviceInfo.numChannels;
 
-  synth_io::SynthCallbacks sessionCallbacks{};
+  SynthCallbacks sessionCallbacks{};
   sessionCallbacks.processAudioBlock = processAudioBlock;
   sessionCallbacks.processMIDIEvent = processMIDIEvent;
 
   sessionCallbacks.processParamEvent = processParamEvent;
 
-  synth_io::hSynthSession session = synth_io::initSession(sessionConfig, sessionCallbacks, &engine);
+  hSynthSession session = app::session::initSession(sessionConfig, sessionCallbacks, &engine);
 
-  synth_io::startSession(session);
+  app::session::startSession(session);
 
   auto midiSession = synth::utils::initMidiSession(session);
 
@@ -99,8 +103,8 @@ int main() {
    */
   printf("Goodbye and thanks for playing :)\n");
 
-  synth_io::stopSession(session);
-  synth_io::disposeSession(session);
+  app::session::stopSession(session);
+  app::session::disposeSession(session);
 
   return 0;
 }

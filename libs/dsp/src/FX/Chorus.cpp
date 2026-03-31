@@ -1,4 +1,4 @@
-#include "dsp/FX/Chorus.h"
+#include "dsp/fx/Chorus.h"
 
 #include "dsp/Buffers.h"
 #include "dsp/Math.h"

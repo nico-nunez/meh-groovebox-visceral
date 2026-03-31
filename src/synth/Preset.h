@@ -11,7 +11,7 @@
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
-#include "dsp/FX/FXChain.h"
+#include "dsp/fx/FXChain.h"
 
 #include <cstdint>
 #include <string>

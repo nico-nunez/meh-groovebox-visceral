@@ -1,11 +1,17 @@
 #pragma once
 
-#include "EventIO.h"
+#include "synth/events/EventQueues.h"
+#include "synth/events/Events.h"
 
 #include <cstddef>
 #include <cstdint>
 
-namespace synth_io {
+namespace app::session {
+using synth::events::MIDIEvent;
+using synth::events::MIDIEventQueue;
+using synth::events::ParamEvent;
+using synth::events::ParamEventQueue;
+
 struct SynthSession;
 using hSynthSession = SynthSession*;
 
@@ -63,4 +69,4 @@ bool pushMIDIEvent(hSynthSession sessionPtr, MIDIEvent event);
 // ==== Parameter Event Handlers ====
 bool setParam(hSynthSession sessionPtr, uint8_t id, float value);
 
-} // namespace synth_io
+} // namespace app::session

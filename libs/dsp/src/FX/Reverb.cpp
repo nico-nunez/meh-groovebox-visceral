@@ -1,4 +1,4 @@
-#include "dsp/FX/Reverb.h"
+#include "dsp/fx/Reverb.h"
 #include "dsp/Buffers.h"
 #include "dsp/Math.h"
 

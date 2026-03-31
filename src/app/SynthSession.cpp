@@ -1,4 +1,4 @@
-#include "synth_io/SynthIO.h"
+#include "app/SynthSession.h"
 
 #include "audio_io/AudioIO.h"
 #include "audio_io/AudioIOTypes.h"
@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 
-namespace synth_io {
+namespace app::session {
 using AudioBuffer = audio_io::AudioBuffer;
 using hAudioSession = audio_io::hAudioSession;
 
@@ -121,4 +121,4 @@ bool setParam(hSynthSession sessionPtr, uint8_t id, float value) {
   return sessionPtr->paramEventQueue.push({id, value});
 }
 
-} // namespace synth_io
+} // namespace app::session

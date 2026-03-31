@@ -1,4 +1,4 @@
-#include "dsp/FX/Phaser.h"
+#include "dsp/fx/Phaser.h"
 #include "dsp/Buffers.h"
 #include "dsp/Math.h"
 

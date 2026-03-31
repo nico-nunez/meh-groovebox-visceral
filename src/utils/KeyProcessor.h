@@ -1,18 +1,14 @@
 #pragma once
 
+#include "app/SynthSession.h"
+
+#include "device_io/MidiCapture.h"
+
 #include <cstdint>
 
-namespace device_io {
-struct MidiSession;
-}
-namespace synth_io {
-struct MidiEventQueue;
-struct SynthSession;
-} // namespace synth_io
-
 namespace synth::utils {
-using hMidiSession = device_io::MidiSession*;
-using hSynthSession = synth_io::SynthSession*;
+using app::session::hSynthSession;
+using device_io::hMidiSession;
 
 hMidiSession initMidiSession(hSynthSession);
 

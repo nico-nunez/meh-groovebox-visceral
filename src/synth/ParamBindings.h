@@ -5,8 +5,8 @@
 #include "synth/VoicePool.h"
 #include "synth/WavetableOsc.h"
 
-#include "dsp/FX/Distortion.h"
-#include "dsp/FX/FXChain.h"
+#include "dsp/fx/Distortion.h"
+#include "dsp/fx/FXChain.h"
 
 #include <cstddef>
 #include <cstdint>

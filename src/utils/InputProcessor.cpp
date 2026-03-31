@@ -12,8 +12,9 @@
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
-#include "dsp/FX/FXChain.h"
-#include "synth_io/SynthIO.h"
+#include "app/SynthSession.h"
+
+#include "dsp/fx/FXChain.h"
 
 #include <cctype>
 #include <cstdint>
@@ -25,8 +26,6 @@
 #include <string>
 
 namespace synth::utils {
-namespace s_io = synth_io;
-
 namespace mm = mod_matrix;
 namespace pb = param::bindings;
 namespace osc = wavetable::osc;
@@ -37,7 +36,7 @@ namespace {
 // Parse input string and update param value
 int setInputParam(const std::string& paramName,
                   std::istringstream& iss,
-                  s_io::hSynthSession session) {
+                  app::session::hSynthSession session) {
   float paramValue;
 
   auto paramID = pb::getParamIDByName(paramName.c_str());
@@ -78,7 +77,7 @@ int setInputParam(const std::string& paramName,
    * denormalized.  May consider normalizing in the future, but seems
    * pointless at this time.
    */
-  if (!s_io::setParam(session, static_cast<uint8_t>(paramID), paramValue)) {
+  if (!app::session::setParam(session, static_cast<uint8_t>(paramID), paramValue)) {
     printf("Warning: Param queue full, event dropped\n");
     return 2;
   }
@@ -198,7 +197,7 @@ void parseFMCmd(std::istringstream& iss, voices::VoicePool& pool) {
 }
 } // namespace
 
-void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession session) {
+void parseCommand(const std::string& line, Engine& engine, app::session::hSynthSession session) {
   using synth::wavetable::banks::getBankByName;
 
   std::istringstream iss(line);

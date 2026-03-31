@@ -5,8 +5,8 @@
 #include "synth/Preset.h"
 #include "synth/Tempo.h"
 
-#include "dsp/FX/Distortion.h"
-#include "dsp/FX/FXChain.h"
+#include "dsp/fx/Distortion.h"
+#include "dsp/fx/FXChain.h"
 #include "json/Json.h"
 
 #include <cstdint>

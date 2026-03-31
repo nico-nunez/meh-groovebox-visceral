@@ -13,8 +13,10 @@
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
+#include "app/SynthSession.h"
+
 #include "device_io/KeyCapture.h"
-#include "dsp/FX/FXChain.h"
+#include "dsp/fx/FXChain.h"
 
 #include <cstdio>
 
@@ -121,7 +123,7 @@ int paramGroupNewIndex(lua_State* L) {
   else
     value = (float)luaL_checknumber(L, 3);
 
-  synth_io::setParam(ctx->sessions[ctx->currentPart], static_cast<uint8_t>(paramID), value);
+  app::session::setParam(ctx->sessions[ctx->currentPart], static_cast<uint8_t>(paramID), value);
   printf("OK\n");
 
   return 0;

@@ -3,18 +3,17 @@
 #include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
 #include "synth/VoicePool.h"
+#include "synth/events/Events.h"
 
 #include "dsp/Buffers.h"
-#include "dsp/FX/FXChain.h"
 #include "dsp/Waveforms.h"
-
-#include "synth_io/SynthIO.h"
+#include "dsp/fx/FXChain.h"
 
 #include <cstdint>
 
 namespace synth {
-using synth_io::MIDIEvent;
-using synth_io::ParamEvent;
+using events::MIDIEvent;
+using events::ParamEvent;
 
 using dsp::fx::chain::FXChain;
 using voices::VoicePool;
@@ -27,15 +26,20 @@ using param::UpdateGroup;
 using param::UpdateGroupFlags;
 using param::bindings::ParamRouter;
 
+// --- Constants ---
+inline constexpr uint32_t DEFAULT_SAMPLE_RATE = 48000;
+inline constexpr uint32_t DEFAULT_FRAMES = 512;
+inline constexpr uint16_t DEFAULT_CHANNELS = 2;
+
 struct EngineConfig {
-  uint32_t numFrames = synth_io::DEFAULT_FRAMES;
-  float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
+  uint32_t numFrames = DEFAULT_FRAMES;
+  float sampleRate = DEFAULT_SAMPLE_RATE;
 };
 
 struct Engine {
-  uint32_t numFrames = synth_io::DEFAULT_FRAMES;
+  uint32_t numFrames = DEFAULT_FRAMES;
 
-  float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
+  float sampleRate = DEFAULT_SAMPLE_RATE;
   float invSampleRate = 1.0f / sampleRate;
 
   float bpm;
