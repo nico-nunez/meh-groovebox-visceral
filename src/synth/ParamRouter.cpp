@@ -1,4 +1,4 @@
-#include "ParamBindings.h"
+#include "ParamRouter.h"
 
 #include "synth/Envelope.h"
 #include "synth/Filters.h"
@@ -18,10 +18,9 @@
 
 #include <cmath>
 #include <cstddef>
-#include <cstdio>
 #include <cstring>
 
-namespace synth::param::bindings {
+namespace synth::param::router {
 using voices::VoicePool;
 using wavetable::osc::WavetableOsc;
 
@@ -243,7 +242,7 @@ void initParamRouter(ParamRouter& router, voices::VoicePool& pool, float& bpm) {
   initMIDIBindings(router);
 }
 
-void initFXParamBindings(ParamRouter& router, dsp::fx::chain::FXChain& fxChain) {
+void initFXParamRouter(ParamRouter& router, dsp::fx::chain::FXChain& fxChain) {
   bindDistortion(router, fxChain.distortion);
   bindChorus(router, fxChain.chorus);
   bindDelay(router, fxChain.delay);
@@ -384,36 +383,4 @@ void setParamValue(ParamRouter& router, ParamID id, float value) {
   }
 }
 
-ParamID getParamIDByName(const char* name) {
-  for (size_t i = 0; i < PARAM_DEF_COUNT; i++) {
-    if (strcmp(PARAM_DEFS[i].name, name) == 0) {
-      return static_cast<ParamID>(i);
-    }
-  }
-  return ParamID::UNKNOWN;
-}
-
-// ParamID → String (for 'get' commands, help text, errors)
-const char* getParamName(ParamID id) {
-  if (id >= 0 && id < PARAM_COUNT - 1)
-    return param::PARAM_DEFS[id].name;
-  return nullptr;
-}
-
-// Print parameter options
-void printParamList(const char* optionalParam) {
-  if (optionalParam != nullptr) {
-    printf("Available parameters for: %s\n", optionalParam);
-    for (const auto& def : PARAM_DEFS) {
-      if (strstr(def.name, optionalParam) != NULL)
-        printf("  %s\n", def.name);
-    }
-  } else {
-    printf("Available parameters:\n");
-    for (const auto& def : PARAM_DEFS) {
-      printf("  %s\n", def.name);
-    }
-  }
-}
-
-} // namespace synth::param::bindings
+} // namespace synth::param::router

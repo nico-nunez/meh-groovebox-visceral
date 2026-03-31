@@ -1,7 +1,7 @@
 #pragma once
 
-#include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
+#include "synth/ParamRouter.h"
 #include "synth/VoicePool.h"
 #include "synth/events/Events.h"
 
@@ -24,7 +24,7 @@ using dsp::waveforms::WaveformType;
 using param::ParamID;
 using param::UpdateGroup;
 using param::UpdateGroupFlags;
-using param::bindings::ParamRouter;
+using param::router::ParamRouter;
 
 // --- Constants ---
 inline constexpr uint32_t DEFAULT_SAMPLE_RATE = 48000;

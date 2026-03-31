@@ -4,14 +4,15 @@
 #include "synth/Filters.h"
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
-#include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
+#include "synth/ParamRouter.h"
 #include "synth/PresetCmd.h"
 #include "synth/SignalChain.h"
 #include "synth/VoicePool.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
+#include "app/ParamLookup.h"
 #include "app/SynthSession.h"
 
 #include "dsp/fx/FXChain.h"
@@ -27,8 +28,9 @@
 
 namespace synth::utils {
 namespace mm = mod_matrix;
-namespace pb = param::bindings;
 namespace osc = wavetable::osc;
+
+namespace pl = app::param_lookup;
 
 // ==== Internal Helpers ====
 namespace {
@@ -39,7 +41,7 @@ int setInputParam(const std::string& paramName,
                   app::session::hSynthSession session) {
   float paramValue;
 
-  auto paramID = pb::getParamIDByName(paramName.c_str());
+  auto paramID = pl::getParamIDByName(paramName.c_str());
   if (paramID == param::PARAM_COUNT) {
     printf("Error: Unknown parameter '%s'\n", paramName.c_str());
     return 1;
@@ -372,13 +374,13 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       return;
     }
 
-    auto paramID = pb::getParamIDByName(paramName.c_str());
+    auto paramID = pl::getParamIDByName(paramName.c_str());
     if (paramID == param::PARAM_COUNT) {
       printf("Error: Unknown parameter '%s'\n", paramName.c_str());
       return;
     }
 
-    float rawValue = pb::getParamValueByID(engine.paramRouter, paramID);
+    float rawValue = param::router::getParamValueByID(engine.paramRouter, paramID);
 
     printf("%s = %.2f\n", paramName.c_str(), rawValue);
 
@@ -388,7 +390,7 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
     std::string optionalParam;
     iss >> optionalParam;
 
-    pb::printParamList(optionalParam.empty() ? nullptr : optionalParam.c_str());
+    pl::printParamList(optionalParam.empty() ? nullptr : optionalParam.c_str());
 
     // ==== FM Routes =====
   } else if (cmd == "fm") {

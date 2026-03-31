@@ -4,8 +4,8 @@
 #include "synth/LFO.h"
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
-#include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
+#include "synth/ParamRouter.h"
 #include "synth/PresetApply.h"
 #include "synth/PresetIO.h"
 #include "synth/SignalChain.h"
@@ -13,6 +13,7 @@
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
+#include "app/ParamLookup.h"
 #include "app/SynthSession.h"
 
 #include "device_io/KeyCapture.h"
@@ -21,8 +22,8 @@
 #include <cstdio>
 
 namespace lua::bindings {
-
-namespace pb = synth::param::bindings;
+namespace pl = app::param_lookup;
+namespace pr = synth::param::router;
 
 namespace voices = synth::voices;
 
@@ -111,7 +112,7 @@ int paramGroupNewIndex(lua_State* L) {
   char fullName[64];
   snprintf(fullName, sizeof(fullName), "%s.%s", group, key);
 
-  auto paramID = pb::getParamIDByName(fullName);
+  auto paramID = pl::getParamIDByName(fullName);
   if (paramID == synth::param::PARAM_COUNT) {
     luaL_error(L, "unknown param: %s.%s", group, key);
     return 0;
@@ -137,7 +138,7 @@ int paramGroupIndex(lua_State* L) {
   char fullName[64];
   snprintf(fullName, sizeof(fullName), "%s.%s", group, key);
 
-  auto paramID = pb::getParamIDByName(fullName);
+  auto paramID = pl::getParamIDByName(fullName);
   if (paramID == synth::param::PARAM_COUNT) {
     lua_pushnil(L);
     return 1;
@@ -147,7 +148,7 @@ int paramGroupIndex(lua_State* L) {
   auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
   lua_pop(L, 1);
 
-  float value = pb::getParamValueByID(ctx->engines[ctx->currentPart]->paramRouter, paramID);
+  float value = pr::getParamValueByID(ctx->engines[ctx->currentPart]->paramRouter, paramID);
   lua_pushnumber(L, value);
   return 1;
 }
@@ -572,7 +573,7 @@ int l_params(lua_State* L) {
 
   for (int i = 0; i < synth::param::PARAM_COUNT; i++) {
     auto id = static_cast<synth::param::ParamID>(i);
-    float val = pb::getParamValueByID(engine->paramRouter, id);
+    float val = pr::getParamValueByID(engine->paramRouter, id);
     printf("%-35s %g\n", synth::param::PARAM_DEFS[i].name, val);
   }
   return 0;

@@ -2,9 +2,9 @@
 
 #include "synth/Engine.h"
 #include "synth/ModMatrix.h"
-#include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
 #include "synth/ParamRanges.h"
+#include "synth/ParamRouter.h"
 #include "synth/ParamSync.h"
 #include "synth/SignalChain.h"
 #include "synth/WavetableBanks.h"
@@ -16,8 +16,6 @@
 #include <cstdio>
 
 namespace synth::preset {
-
-namespace pb = param::bindings;
 
 namespace osc = wavetable::osc;
 namespace banks = wavetable::banks;
@@ -86,7 +84,7 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
   // ==== All bound params in one loop ====
   for (int i = 0; i < param::PARAM_COUNT - 1; i++) {
     auto id = static_cast<param::ParamID>(i);
-    pb::setParamValue(router, id, preset.paramValues[i]);
+    param::router::setParamValue(router, id, preset.paramValues[i]);
   }
 
   // ==== Enum fields — direct resolution, no string parsing ====
@@ -166,7 +164,7 @@ Preset capturePreset(const Engine& engine) {
   // ==== All bound params ====
   for (int i = 0; i < param::PARAM_COUNT - 1; i++) {
     auto id = static_cast<param::ParamID>(i);
-    p.paramValues[i] = pb::getParamValueByID(router, id);
+    p.paramValues[i] = param::router::getParamValueByID(router, id);
   }
 
   // ==== Enum fields — read directly from engine ====

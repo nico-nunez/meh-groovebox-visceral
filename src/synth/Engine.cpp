@@ -1,6 +1,5 @@
 #include "Engine.h"
 
-#include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
 #include "synth/ParamSync.h"
 #include "synth/Preset.h"
@@ -18,7 +17,6 @@
 namespace synth {
 
 Engine createEngine(const EngineConfig& config) {
-  namespace pb = param::bindings;
 
   Engine engine{};
 
@@ -31,8 +29,8 @@ Engine createEngine(const EngineConfig& config) {
 
   voices::initVoicePool(engine.voicePool);
 
-  pb::initParamRouter(engine.paramRouter, engine.voicePool, engine.bpm);
-  pb::initFXParamBindings(engine.paramRouter, engine.fxChain);
+  param::router::initParamRouter(engine.paramRouter, engine.voicePool, engine.bpm);
+  param::router::initFXParamRouter(engine.paramRouter, engine.fxChain);
 
   dsp::fx::chain::initFXChain(engine.fxChain, engine.bpm, engine.sampleRate);
 
@@ -43,7 +41,7 @@ Engine createEngine(const EngineConfig& config) {
 }
 
 void Engine::processParamEvent(const ParamEvent& event) {
-  using param::bindings::setParamValue;
+  using param::router::setParamValue;
 
   auto id = static_cast<param::ParamID>(event.id);
 
@@ -73,7 +71,7 @@ void Engine::processMIDIEvent(const MIDIEvent& event) {
     break;
 
   case Type::ControlChange: {
-    using param::bindings::handleMIDICC;
+    using param::router::handleMIDICC;
 
     ParamID id =
         handleMIDICC(paramRouter, voicePool, event.data.cc.number, event.data.cc.value, sampleRate);

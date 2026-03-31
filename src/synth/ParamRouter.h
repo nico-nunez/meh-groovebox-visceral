@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace synth::param::bindings {
+namespace synth::param::router {
 using dsp::fx::chain::FXChain;
 using dsp::fx::distortion::DistortionType;
 
@@ -37,7 +37,7 @@ struct ParamRouter {
 // ==== API ====
 void initParamRouter(ParamRouter& router, voices::VoicePool& pool, float& bpm);
 
-void initFXParamBindings(ParamRouter& router, FXChain& fxChain);
+void initFXParamRouter(ParamRouter& router, FXChain& fxChain);
 
 ParamID handleMIDICC(ParamRouter& router,
                      voices::VoicePool& pool,
@@ -48,10 +48,4 @@ ParamID handleMIDICC(ParamRouter& router,
 float getParamValueByID(const ParamRouter& router, ParamID id);
 void setParamValue(ParamRouter& router, ParamID id, float value);
 
-// String parsing helpers
-ParamID getParamIDByName(const char* paramName);
-const char* getParamName(ParamID id);
-
-void printParamList(const char* optionalParam);
-
-} // namespace synth::param::bindings
+} // namespace synth::param::router
