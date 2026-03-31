@@ -3,7 +3,6 @@
 #include "dsp/FX/Reverb.h"
 #include "synth/Engine.h"
 #include "synth/Envelope.h"
-#include "synth/FXChain.h"
 #include "synth/Filters.h"
 #include "synth/ParamDefs.h"
 #include "synth/Saturator.h"
@@ -13,12 +12,13 @@
 #include "dsp/FX/Chorus.h"
 #include "dsp/FX/Delay.h"
 #include "dsp/FX/Distortion.h"
+#include "dsp/FX/FXChain.h"
 #include "dsp/FX/Phaser.h"
 #include "dsp/Math.h"
 
 namespace synth::param::sync {
 namespace {
-using fx_chain::FXChain;
+using dsp::fx::chain::FXChain;
 using voices::VoicePool;
 
 namespace dist = dsp::fx::distortion;
@@ -148,7 +148,7 @@ void syncDirtyParams(Engine& engine) {
   auto& pool = engine.voicePool;
   auto& fxChain = engine.fxChain;
 
-  auto const bpm = engine.tempo.bpm;
+  auto const bpm = engine.bpm;
   auto const sampleRate = engine.sampleRate;
   auto const invSampleRate = engine.invSampleRate;
 

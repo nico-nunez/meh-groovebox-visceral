@@ -52,6 +52,7 @@ void runLuaREPL(Engine& engine, hSynthSession session) {
     linenoiseFree(line);
 
     if (luaL_loadstring(L, buffer.c_str()) == LUA_OK) {
+      buffer.pop_back(); // remove \n (newline)
       linenoiseHistoryAdd(buffer.c_str());
       linenoiseHistorySave(histPath);
 

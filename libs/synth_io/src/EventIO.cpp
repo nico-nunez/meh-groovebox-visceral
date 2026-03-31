@@ -1,27 +1,41 @@
-#include "synth_events/ParamEventQueue.h"
-#include <cstddef>
+#include "synth_io/EventIO.h"
 
-namespace synth_events {
+#include <cstdio>
 
-struct ParamQueue {
-  ParamEventQueue queue{};
-};
+namespace synth_io {
 
-hParamQueue initParamQueue() {
-  return new ParamQueue{};
+// ========================
+// MIDI Event Queue
+// ========================
+
+bool MIDIEventQueue::push(const MIDIEvent& event) {
+  size_t currentIndex = writeIndex.load();
+  size_t nextIndex = (currentIndex + 1) & WRAP;
+
+  if (nextIndex == readIndex.load())
+    return false;
+
+  queue[currentIndex] = event;
+  writeIndex.store(nextIndex);
+
+  return true;
 }
 
-void disposeParamQueue(hParamQueue handle) {
-  delete handle;
+bool MIDIEventQueue::pop(MIDIEvent& event) {
+  size_t currentIndex = readIndex.load();
+
+  if (currentIndex == writeIndex.load())
+    return false;
+
+  event = queue[currentIndex];
+  readIndex.store((currentIndex + 1) & WRAP);
+
+  return true;
 }
 
-bool setParam(hParamQueue handle, uint8_t id, float value) {
-  return handle->queue.push({id, value});
-}
-
-bool popParamEvent(hParamQueue handle, ParamEvent& event) {
-  return handle->queue.pop(event);
-}
+// ========================
+// Param Event Queue
+// ========================
 
 bool ParamEventQueue::push(const ParamEvent& event) {
   size_t currentIndex = writeIndex.load();
@@ -65,4 +79,4 @@ void ParamEventQueue::printQueue() {
   }
 }
 
-} // namespace synth_events
+} // namespace synth_io

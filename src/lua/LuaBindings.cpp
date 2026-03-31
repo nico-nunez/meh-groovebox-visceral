@@ -1,6 +1,6 @@
 #include "LuaState.h"
+#include "lua.h"
 
-#include "synth/FXChain.h"
 #include "synth/LFO.h"
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
@@ -13,16 +13,28 @@
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
+#include "device_io/KeyCapture.h"
+#include "dsp/FX/FXChain.h"
+
+#include <cstdio>
+
 namespace lua::bindings {
+
 namespace pb = synth::param::bindings;
+
 namespace voices = synth::voices;
+
 namespace banks = synth::wavetable::banks;
 namespace osc = synth::wavetable::osc;
+
 namespace noise = synth::noise;
+
 namespace mm = synth::mod_matrix;
-namespace preset = synth::preset;
-namespace fx = synth::fx_chain;
 namespace sc = synth::signal_chain;
+
+namespace preset = synth::preset;
+
+namespace fx = dsp::fx::chain;
 
 namespace {
 
@@ -58,6 +70,7 @@ int paramGroupNewIndex(lua_State* L) {
         return 0;
       }
       o->bank = bank;
+      printf("OK\n");
     }
     return 0;
   }
@@ -78,6 +91,7 @@ int paramGroupNewIndex(lua_State* L) {
         return 0;
       }
       osc::addFMRoute(*carrier, src, 1.0f);
+      printf("OK\n");
     }
     return 0;
   }
@@ -86,6 +100,8 @@ int paramGroupNewIndex(lua_State* L) {
   if (strcmp(group, "noise") == 0 && strcmp(key, "type") == 0) {
     const char* typeName = luaL_checkstring(L, 3);
     engine->voicePool.noise.type = noise::parseNoiseType(typeName);
+    printf("OK\n");
+
     return 0;
   }
 
@@ -106,6 +122,8 @@ int paramGroupNewIndex(lua_State* L) {
     value = (float)luaL_checknumber(L, 3);
 
   synth_io::setParam(ctx->sessions[ctx->currentPart], static_cast<uint8_t>(paramID), value);
+  printf("OK\n");
+
   return 0;
 }
 
@@ -569,6 +587,12 @@ int l_select(lua_State* L) {
   return 0;
 }
 
+int l_quit(lua_State*) {
+  device_io::terminateKeyCaptureLoop();
+  printf("Goodbye\n");
+  return 0;
+}
+
 } // anonymous namespace
 
 void registerSynthBindings(lua_State* L, Engine& engine, hSynthSession session) {
@@ -622,6 +646,8 @@ void registerSynthBindings(lua_State* L, Engine& engine, hSynthSession session) 
   lua_setglobal(L, "params");
   lua_pushcfunction(L, l_select);
   lua_setglobal(L, "select");
+  lua_pushcfunction(L, l_quit);
+  lua_setglobal(L, "quit");
 }
 
 } // namespace lua::bindings

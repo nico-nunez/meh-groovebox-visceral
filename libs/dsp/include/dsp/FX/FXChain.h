@@ -1,22 +1,23 @@
 #pragma once
 
+#include "Chorus.h"
+#include "Delay.h"
+#include "Distortion.h"
+#include "Phaser.h"
+#include "Reverb.h"
+
 #include "dsp/Buffers.h"
-#include "dsp/FX/Chorus.h"
-#include "dsp/FX/Delay.h"
-#include "dsp/FX/Distortion.h"
-#include "dsp/FX/Phaser.h"
-#include "dsp/FX/Reverb.h"
 
 #include <cstdint>
 #include <sstream>
 
-namespace synth::fx_chain {
+namespace dsp::fx::chain {
 
-using dsp::fx::chorus::ChorusFX;
-using dsp::fx::delay::DelayFX;
-using dsp::fx::distortion::DistortionFX;
-using dsp::fx::phaser::PhaserFX;
-using dsp::fx::reverb::ReverbFX;
+using chorus::ChorusFX;
+using delay::DelayFX;
+using distortion::DistortionFX;
+using phaser::PhaserFX;
+using reverb::ReverbFX;
 
 using dsp::buffers::StereoBuffer;
 
@@ -95,4 +96,4 @@ inline void printFXChain(const FXChain& chain) {
     printf(" %s", fxProcessorToString(chain.slots[i]));
   printf("\n");
 }
-} // namespace synth::fx_chain
+} // namespace dsp::fx::chain

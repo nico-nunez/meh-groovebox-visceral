@@ -1,12 +1,12 @@
 #include "PresetSerializer.h"
 
-#include "synth/FXChain.h"
 #include "synth/ModMatrix.h"
 #include "synth/ParamDefs.h"
 #include "synth/Preset.h"
 #include "synth/Tempo.h"
 
 #include "dsp/FX/Distortion.h"
+#include "dsp/FX/FXChain.h"
 #include "json/Json.h"
 
 #include <cstdint>
@@ -345,10 +345,10 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
     }
   }
 
-  if (root.has("tempo") && root["tempo"].has("bpm")) {
+  if (root.has("bpm")) {
     auto& def = param::PARAM_DEFS[param::ParamID::BPM];
     p.paramValues[param::BPM] =
-        clampWarnFloat(root["tempo"]["bpm"].asFloat(), def.min, def.max, "bpm", result.warnings);
+        clampWarnFloat(root["bpm"].asFloat(), def.min, def.max, "bpm", result.warnings);
   }
 
   // All numeric (X-macro) params
@@ -605,7 +605,7 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
 
   // FX chain
   {
-    using namespace fx_chain;
+    using namespace dsp::fx::chain;
     using namespace dsp::fx;
 
     const auto& chain = root["fxChain"];

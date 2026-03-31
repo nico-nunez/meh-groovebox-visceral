@@ -1,6 +1,5 @@
 #include "Engine.h"
 
-#include "synth/FXChain.h"
 #include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
 #include "synth/ParamSync.h"
@@ -9,6 +8,7 @@
 #include "synth/VoicePool.h"
 
 #include "dsp/Buffers.h"
+#include "dsp/FX/FXChain.h"
 
 #include <algorithm>
 #include <cassert>
@@ -33,10 +33,10 @@ Engine createEngine(const EngineConfig& config) {
 
   voices::initVoicePool(engine.voicePool);
 
-  pb::initParamRouter(engine.paramRouter, engine.voicePool, engine.tempo);
+  pb::initParamRouter(engine.paramRouter, engine.voicePool, engine.bpm);
   pb::initFXParamBindings(engine.paramRouter, engine.fxChain);
 
-  fx_chain::initFXChain(engine.fxChain, engine.tempo.bpm, engine.sampleRate);
+  dsp::fx::chain::initFXChain(engine.fxChain, engine.bpm, engine.sampleRate);
 
   auto initPreset = preset::createInitPreset();
   preset::applyPreset(initPreset, engine);
@@ -120,7 +120,7 @@ void Engine::processAudioBlock(float** outputBuffer, size_t numChannels, size_t 
     offset += blockSize;
   }
 
-  fx_chain::processFXChain(fxChain, poolBuffer, numFrames);
+  dsp::fx::chain::processFXChain(fxChain, poolBuffer, numFrames);
 
   for (size_t frame = 0; frame < numFrames; frame++) {
     if (numChannels == 0)

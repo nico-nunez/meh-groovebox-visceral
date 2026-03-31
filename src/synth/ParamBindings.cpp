@@ -1,7 +1,5 @@
 #include "ParamBindings.h"
 
-#include "dsp/FX/Distortion.h"
-#include "dsp/FX/Reverb.h"
 #include "synth/Envelope.h"
 #include "synth/Filters.h"
 #include "synth/LFO.h"
@@ -9,11 +7,14 @@
 #include "synth/Noise.h"
 #include "synth/ParamDefs.h"
 #include "synth/Saturator.h"
-#include "synth/Tempo.h"
 #include "synth/Types.h"
 #include "synth/Unison.h"
 #include "synth/VoicePool.h"
 #include "synth/WavetableOsc.h"
+
+#include "dsp/FX/Distortion.h"
+#include "dsp/FX/FXChain.h"
+#include "dsp/FX/Reverb.h"
 
 #include <cmath>
 #include <cstddef>
@@ -212,7 +213,7 @@ void bindReverb(ParamRouter& r, dsp::fx::reverb::ReverbFX& rv) {
 
 // ==== APIs ====
 
-void initParamRouter(ParamRouter& router, voices::VoicePool& pool, tempo::TempoState& tempo) {
+void initParamRouter(ParamRouter& router, voices::VoicePool& pool, float& bpm) {
 
   bindOscillator(router.paramBindings, OSC_PARAM_IDS[0], pool.osc1);
   bindOscillator(router.paramBindings, OSC_PARAM_IDS[1], pool.osc2);
@@ -237,12 +238,12 @@ void initParamRouter(ParamRouter& router, voices::VoicePool& pool, tempo::TempoS
 
   router.paramBindings[PITCH_BEND_RANGE] = makeFloatBinding(&pool.pitchBend.range);
   router.paramBindings[MASTER_GAIN] = makeFloatBinding(&pool.masterGain);
-  router.paramBindings[BPM] = makeFloatBinding(&tempo.bpm);
+  router.paramBindings[BPM] = makeFloatBinding(&bpm);
 
   initMIDIBindings(router);
 }
 
-void initFXParamBindings(ParamRouter& router, fx_chain::FXChain& fxChain) {
+void initFXParamBindings(ParamRouter& router, dsp::fx::chain::FXChain& fxChain) {
   bindDistortion(router, fxChain.distortion);
   bindChorus(router, fxChain.chorus);
   bindDelay(router, fxChain.delay);

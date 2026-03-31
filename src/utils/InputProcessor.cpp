@@ -1,7 +1,6 @@
 #include "InputProcessor.h"
 
 #include "synth/Engine.h"
-#include "synth/FXChain.h"
 #include "synth/Filters.h"
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
@@ -13,6 +12,7 @@
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
+#include "dsp/FX/FXChain.h"
 #include "synth_io/SynthIO.h"
 
 #include <cctype>
@@ -401,7 +401,7 @@ void parseCommand(const std::string& line, Engine& engine, s_io::hSynthSession s
 
     // ==== FX Chain =====
   } else if (cmd == "fx") {
-    fx_chain::parseFXChainCmd(iss, engine.fxChain);
+    dsp::fx::chain::parseFXChainCmd(iss, engine.fxChain);
 
     // ==== Signal Chain =====
   } else if (cmd == "signal") {

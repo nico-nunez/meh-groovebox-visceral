@@ -2,10 +2,13 @@
 
 #include <atomic>
 #include <cstddef>
-#include <cstdio>
+#include <cstdint>
 
-namespace synth_events {
+namespace synth_io {
 
+// ========================
+// MIDI Event Queue
+// ========================
 struct MIDIEvent {
   enum class Type : uint8_t {
     NoteOn,
@@ -51,15 +54,6 @@ struct MIDIEvent {
   } data;
 };
 
-struct MIDIHandle;
-using hMIDIHandle = MIDIHandle*;
-
-hMIDIHandle initMIDIHandle();
-void disposeMIDIHandle(hMIDIHandle handle);
-
-bool pushMIDIEvent(hMIDIHandle handle, MIDIEvent event); // CoreMIDI thread
-bool popMIDIEvent(hMIDIHandle handle, MIDIEvent& event); // audio thread (drain)
-
 struct MIDIEventQueue {
   // NOTE(nico): SIZE value need to be power of to use bitmasking for wrapping
   // Alternative is modulo (%) which is more expensive
@@ -75,4 +69,31 @@ struct MIDIEventQueue {
   bool pop(MIDIEvent& event);
 };
 
-} // namespace synth_events
+// ========================
+// Param Event Queue
+// ========================
+
+struct ParamEvent {
+  uint8_t id = 0;
+  float value = 0.0f; // Normalized [0, 1]
+};
+
+struct ParamEventQueue {
+  // NOTE(nico): SIZE value need to be power of to use bitmasking for wrapping
+  // Alternative is modulo (%) which is more expensive
+  static constexpr size_t SIZE{256};
+  static constexpr size_t WRAP{SIZE - 1};
+
+  ParamEvent queue[SIZE];
+
+  std::atomic<size_t> readIndex{0};
+  std::atomic<size_t> writeIndex{0};
+
+  bool push(const ParamEvent& event);
+  bool pop(ParamEvent& event);
+
+  void printEvent(ParamEvent& event);
+  void printQueue();
+};
+
+} // namespace synth_io

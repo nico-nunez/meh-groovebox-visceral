@@ -1,7 +1,7 @@
-#include "lua/LuaREPL.h"
 #include "utils/InputProcessor.h"
 #include "utils/KeyProcessor.h"
 
+#include "device_io/KeyCapture.h"
 #include "synth_io/SynthIO.h"
 
 #include "synth/Engine.h"
@@ -10,6 +10,7 @@
 #include <csignal>
 #include <cstdio>
 #include <functional>
+#include <iostream>
 #include <thread>
 
 static void processParamEvent(synth_io::ParamEvent event, void* myContext) {
@@ -28,22 +29,22 @@ processAudioBlock(float** outputBuffer, size_t numChannels, size_t numFrames, vo
   engine->processAudioBlock(outputBuffer, numChannels, numFrames);
 }
 
-// static void getUserInput(synth::Engine& engine, synth_io::hSynthSession sessionPtr) {
-//   bool isRunning = true;
-//   std::string input;
-//
-//   while (isRunning) {
-//     printf(">");
-//     std::getline(std::cin, input);
-//
-//     synth::utils::parseCommand(input, engine, sessionPtr);
-//
-//     if (input == "quit") {
-//       device_io::terminateKeyCaptureLoop();
-//       isRunning = false;
-//     }
-//   }
-// }
+static void getUserInput(synth::Engine& engine, synth_io::hSynthSession sessionPtr) {
+  bool isRunning = true;
+  std::string input;
+
+  while (isRunning) {
+    printf(">");
+    std::getline(std::cin, input);
+
+    synth::utils::parseCommand(input, engine, sessionPtr);
+
+    if (input == "quit") {
+      device_io::terminateKeyCaptureLoop();
+      isRunning = false;
+    }
+  }
+}
 
 int main() {
   using synth::Engine;
@@ -81,7 +82,7 @@ int main() {
 
   auto midiSession = synth::utils::initMidiSession(session);
 
-  std::thread terminalWorker(lua::repl::runLuaREPL, std::ref(engine), session);
+  std::thread terminalWorker(getUserInput, std::ref(engine), session);
   terminalWorker.detach();
 
   synth::utils::startKeyInputCapture(session, midiSession);

@@ -9,6 +9,9 @@
 #include "synth/SignalChain.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
+
+#include "dsp/FX/FXChain.h"
+
 #include <cstdint>
 #include <cstdio>
 
@@ -138,7 +141,7 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
 
   // ==== FX chain ordering ====
   engine.fxChain.length = preset.fxChainLength;
-  for (uint8_t i = 0; i < fx_chain::MAX_EFFECT_SLOTS; i++)
+  for (uint8_t i = 0; i < dsp::fx::chain::MAX_EFFECT_SLOTS; i++)
     engine.fxChain.slots[i] = preset.fxChain[i];
 
   engine.dirtyFlags.markAll();
@@ -201,7 +204,7 @@ Preset capturePreset(const Engine& engine) {
 
   // ==== FX chain ordering ====
   p.fxChainLength = engine.fxChain.length;
-  for (uint8_t i = 0; i < fx_chain::MAX_EFFECT_SLOTS; i++)
+  for (uint8_t i = 0; i < dsp::fx::chain::MAX_EFFECT_SLOTS; i++)
     p.fxChain[i] = engine.fxChain.slots[i];
 
   // ==== Delay subdivision ====

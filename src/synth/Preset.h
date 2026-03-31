@@ -1,7 +1,6 @@
 // Preset.h
 #pragma once
 
-#include "synth/FXChain.h"
 #include "synth/Filters.h"
 #include "synth/ModMatrix.h"
 #include "synth/Noise.h"
@@ -11,6 +10,8 @@
 #include "synth/Types.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
+
+#include "dsp/FX/FXChain.h"
 
 #include <cstdint>
 #include <string>
@@ -25,7 +26,8 @@ using noise::NoiseType;
 using filters::SVFMode;
 using signal_chain::SignalProcessor;
 
-using fx_chain::FXProcessor;
+using dsp::fx::chain::FXProcessor;
+
 using tempo::Subdivision;
 
 inline constexpr uint32_t CURRENT_PRESET_VERSION = 1;
@@ -92,7 +94,7 @@ struct Preset {
   Subdivision delaySubdivision = Subdivision::Quarter;
   // Non-param subsystems
 
-  FXProcessor fxChain[fx_chain::MAX_EFFECT_SLOTS] = {
+  FXProcessor fxChain[dsp::fx::chain::MAX_EFFECT_SLOTS] = {
       FXProcessor::Distortion,
       FXProcessor::Chorus,
       FXProcessor::Phaser,

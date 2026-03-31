@@ -1,7 +1,6 @@
 #pragma once
 
-#include "synth_events/MIDIEventQueue.h"
-#include "synth_events/ParamEventQueue.h"
+#include "EventIO.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -9,9 +8,6 @@
 namespace synth_io {
 struct SynthSession;
 using hSynthSession = SynthSession*;
-
-using MIDIEvent = synth_events::MIDIEvent;
-using ParamEvent = synth_events::ParamEvent;
 
 // --- Constants ---
 inline constexpr uint32_t DEFAULT_SAMPLE_RATE = 48000;

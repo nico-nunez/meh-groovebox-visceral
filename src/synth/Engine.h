@@ -1,12 +1,11 @@
 #pragma once
 
-#include "synth/FXChain.h"
 #include "synth/ParamBindings.h"
 #include "synth/ParamDefs.h"
-#include "synth/Tempo.h"
 #include "synth/VoicePool.h"
 
 #include "dsp/Buffers.h"
+#include "dsp/FX/FXChain.h"
 #include "dsp/Waveforms.h"
 
 #include "synth_io/SynthIO.h"
@@ -17,8 +16,7 @@ namespace synth {
 using synth_io::MIDIEvent;
 using synth_io::ParamEvent;
 
-using fx_chain::FXChain;
-using tempo::TempoState;
+using dsp::fx::chain::FXChain;
 using voices::VoicePool;
 
 using dsp::buffers::StereoBuffer;
@@ -40,7 +38,7 @@ struct Engine {
   float sampleRate = synth_io::DEFAULT_SAMPLE_RATE;
   float invSampleRate = 1.0f / sampleRate;
 
-  TempoState tempo;
+  float bpm;
 
   VoicePool voicePool;
 

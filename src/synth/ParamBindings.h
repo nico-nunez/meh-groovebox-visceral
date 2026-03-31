@@ -1,18 +1,20 @@
 #pragma once
 
-#include "dsp/FX/Distortion.h"
-#include "synth/FXChain.h"
 #include "synth/Filters.h"
 #include "synth/ParamDefs.h"
-#include "synth/Tempo.h"
 #include "synth/VoicePool.h"
 #include "synth/WavetableOsc.h"
+
+#include "dsp/FX/Distortion.h"
+#include "dsp/FX/FXChain.h"
 
 #include <cstddef>
 #include <cstdint>
 
 namespace synth::param::bindings {
+using dsp::fx::chain::FXChain;
 using dsp::fx::distortion::DistortionType;
+
 using filters::SVFMode;
 using wavetable::osc::PhaseMode;
 
@@ -33,9 +35,9 @@ struct ParamRouter {
 };
 
 // ==== API ====
-void initParamRouter(ParamRouter& router, voices::VoicePool& pool, tempo::TempoState& tempo);
+void initParamRouter(ParamRouter& router, voices::VoicePool& pool, float& bpm);
 
-void initFXParamBindings(ParamRouter& router, fx_chain::FXChain& fxChain);
+void initFXParamBindings(ParamRouter& router, FXChain& fxChain);
 
 ParamID handleMIDICC(ParamRouter& router,
                      voices::VoicePool& pool,

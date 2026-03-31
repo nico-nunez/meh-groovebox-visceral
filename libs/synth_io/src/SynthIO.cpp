@@ -1,8 +1,5 @@
 #include "synth_io/SynthIO.h"
 
-#include "synth_events/MIDIEventQueue.h"
-#include "synth_events/ParamEventQueue.h"
-
 #include "audio_io/AudioIO.h"
 #include "audio_io/AudioIOTypes.h"
 #include "audio_io/AudioIOTypesFwd.h"
@@ -27,8 +24,8 @@ DeviceInfo queryDefaultDevice() {
 // =============================
 // TODO: use handles instead of actual queues
 struct SynthSession {
-  synth_events::MIDIEventQueue midiEventQueue{};
-  synth_events::ParamEventQueue paramEventQueue{};
+  MIDIEventQueue midiEventQueue{};
+  ParamEventQueue paramEventQueue{};
 
   AudioBufferHandler processAudioBlock;
 

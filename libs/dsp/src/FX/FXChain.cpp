@@ -1,13 +1,8 @@
-#include "FXChain.h"
+#include "dsp/FX/FXChain.h"
 
-#include "dsp/Buffers.h"
-#include "dsp/FX/Chorus.h"
-#include "dsp/FX/Delay.h"
-#include "dsp/FX/Distortion.h"
-#include "dsp/FX/Phaser.h"
 #include <algorithm>
 
-namespace synth::fx_chain {
+namespace dsp::fx::chain {
 using namespace dsp::fx;
 using dsp::buffers::StereoBuffer;
 
@@ -134,4 +129,4 @@ void parseFXChainCmd(std::istringstream& iss, FXChain& fxChain) {
   }
 }
 
-} // namespace synth::fx_chain
+} // namespace dsp::fx::chain
