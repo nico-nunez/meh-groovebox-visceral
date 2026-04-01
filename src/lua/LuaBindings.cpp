@@ -124,7 +124,8 @@ int paramGroupNewIndex(lua_State* L) {
   else
     value = (float)luaL_checknumber(L, 3);
 
-  app::session::setParam(ctx->sessions[ctx->currentPart], static_cast<uint8_t>(paramID), value);
+  app::session::pushParamEvent(ctx->sessions[ctx->currentPart],
+                               {static_cast<uint8_t>(paramID), value});
   printf("OK\n");
 
   return 0;

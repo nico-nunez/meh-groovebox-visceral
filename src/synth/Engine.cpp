@@ -101,6 +101,114 @@ void Engine::processMIDIEvent(const MIDIEvent& event) {
   }
 }
 
+namespace banks = wavetable::banks;
+namespace osc = wavetable::osc;
+namespace mm = mod_matrix;
+namespace sc = signal_chain;
+namespace fx = dsp::fx::chain;
+
+void Engine::processEngineEvent(const EngineEvent& event) {
+  switch (event.type) {
+
+  case EngineEvent::Type::SetOscBank: {
+    auto* o = voices::getOscByIndex(voicePool, event.data.setOscBank.oscIndex);
+    if (!o)
+      return;
+    o->bank = banks::getBankByID(static_cast<banks::BankID>(event.data.setOscBank.bankId));
+    return;
+  }
+
+  case EngineEvent::Type::SetLFOBank: {
+    auto* lfo = voices::getLFOByIndex(voicePool, event.data.setLFOBank.lfoIndex);
+    if (!lfo)
+      return;
+    if (event.data.setLFOBank.bankId == banks::BankID::SampleAndHold)
+      lfo->bank = nullptr; // SAH uses nullptr as sentinel — no wavetable to scan
+    else
+      lfo->bank = banks::getBankByID(static_cast<banks::BankID>(event.data.setLFOBank.bankId));
+    return;
+  }
+
+  case EngineEvent::Type::SetNoiseType: {
+    voicePool.noise.type = static_cast<noise::NoiseType>(event.data.setNoiseType.noiseType);
+    return;
+  }
+
+  case EngineEvent::Type::AddFMRoute: {
+    auto* carrier = voices::getOscByIndex(voicePool, event.data.addFMRoute.carrierIndex);
+    if (!carrier)
+      return;
+    osc::addFMRoute(*carrier,
+                    static_cast<osc::FMSource>(event.data.addFMRoute.source),
+                    event.data.addFMRoute.depth);
+    return;
+  }
+
+  case EngineEvent::Type::RemoveFMRoute: {
+    auto* carrier = voices::getOscByIndex(voicePool, event.data.removeFMRoute.carrierIndex);
+    if (!carrier)
+      return;
+    osc::removeFMRoute(*carrier, static_cast<osc::FMSource>(event.data.removeFMRoute.source));
+    return;
+  }
+
+  case EngineEvent::Type::ClearFMRoutes: {
+    auto* carrier = voices::getOscByIndex(voicePool, event.data.clearFMRoutes.carrierIndex);
+    if (!carrier)
+      return;
+    osc::clearFMRoutes(*carrier);
+    return;
+  }
+
+  case EngineEvent::Type::AddModRoute: {
+    mm::addRoute(voicePool.modMatrix,
+                 static_cast<mm::ModSrc>(event.data.addModRoute.source),
+                 static_cast<mm::ModDest>(event.data.addModRoute.destination),
+                 event.data.addModRoute.amount);
+    return;
+  }
+
+  case EngineEvent::Type::RemoveModRoute: {
+    mm::removeRoute(voicePool.modMatrix, event.data.removeModRoute.routeIndex);
+    return;
+  }
+
+  case EngineEvent::Type::ClearModRoutes: {
+    mm::clearRoutes(voicePool.modMatrix);
+    return;
+  }
+
+  case EngineEvent::Type::SetSignalChain: {
+    sc::SignalProcessor procs[sc::MAX_CHAIN_SLOTS];
+    uint8_t count = event.data.setSignalChain.count;
+    for (uint8_t i = 0; i < count; ++i)
+      procs[i] = static_cast<sc::SignalProcessor>(event.data.setSignalChain.processors[i]);
+    sc::setSigChain(voicePool.signalChain, procs, count);
+    return;
+  }
+
+  case EngineEvent::Type::SetFXChain: {
+    fx::FXProcessor procs[fx::MAX_EFFECT_SLOTS];
+    uint8_t count = event.data.setFXChain.count;
+    for (uint8_t i = 0; i < count; ++i)
+      procs[i] = static_cast<fx::FXProcessor>(event.data.setFXChain.processors[i]);
+    fx::setFXChain(fxChain, procs, count);
+    return;
+  }
+
+  case EngineEvent::Type::ApplyPreset: {
+    if (!event.data.applyPreset.preset)
+      return;
+    preset::applyPreset(*event.data.applyPreset.preset, *this);
+    return;
+  }
+
+  case EngineEvent::Type::Panic:
+    voices::panicVoicePool(voicePool);
+    return;
+  }
+}
+
 /* NOTE: Use internal Engine block size to allow processing of
  * expensive calculation that need to occur more often than once per audio
  * buffer block but NOT on every sample either.  E.g. Modulation

@@ -4,7 +4,6 @@
 #include "audio_io/AudioIOTypes.h"
 #include "audio_io/AudioIOTypesFwd.h"
 
-#include <cstdint>
 #include <cstdio>
 
 namespace app::session {
@@ -14,6 +13,7 @@ using hAudioSession = audio_io::hAudioSession;
 // ==========================
 // Audio Device Negotiation
 // ==========================
+
 DeviceInfo queryDefaultDevice() {
   auto info = audio_io::queryDefaultDevice();
   return {info.sampleRate, info.bufferFrameSize, info.numChannels};
@@ -22,15 +22,17 @@ DeviceInfo queryDefaultDevice() {
 // =============================
 // Synth Session Initialization
 // =============================
-// TODO: use handles instead of actual queues
+
 struct SynthSession {
   MIDIEventQueue midiEventQueue{};
   ParamEventQueue paramEventQueue{};
+  EngineEventQueue engineEventQueue{};
 
   AudioBufferHandler processAudioBlock;
 
   MIDIEventHandler processMIDIEvent;
   ParamEventHandler processParamEvent;
+  EngineEventHandler processEngineEvent;
 
   hAudioSession audioSession;
   void* userContext;
@@ -42,18 +44,23 @@ static void audioCallback(AudioBuffer buffer, void* context) {
 
   // Drain MIDI Events
   if (ctx->processMIDIEvent) {
-    MIDIEvent midiEvent;
-    while (ctx->midiEventQueue.pop(midiEvent)) {
-      ctx->processMIDIEvent(midiEvent, ctx->userContext);
-    }
+    MIDIEvent evt;
+    while (ctx->midiEventQueue.pop(evt))
+      ctx->processMIDIEvent(evt, ctx->userContext);
   }
 
-  // Drain Param Events
+  // Drain Param Events (scalar)
   if (ctx->processParamEvent) {
-    ParamEvent paramEvent;
-    while (ctx->paramEventQueue.pop(paramEvent)) {
-      ctx->processParamEvent(paramEvent, ctx->userContext);
-    }
+    ParamEvent evt;
+    while (ctx->paramEventQueue.pop(evt))
+      ctx->processParamEvent(evt, ctx->userContext);
+  }
+
+  // Drain Engine Events (non-scalar params)
+  if (ctx->processEngineEvent) {
+    EngineEvent evt;
+    while (ctx->engineEventQueue.pop(evt))
+      ctx->processEngineEvent(evt, ctx->userContext);
   }
 
   // Fill Audio Block
@@ -110,15 +117,19 @@ int disposeSession(hSynthSession sessionPtr) {
   return 0;
 }
 
-// ==== MIDI Event Handler ====
-bool pushMIDIEvent(hSynthSession sessionPtr, MIDIEvent event) {
-  return sessionPtr->midiEventQueue.push(event);
+// ==== Event Handlers ====
+// TODO(nico): replicate emplace_back() to reduce copy;
+
+bool pushMIDIEvent(hSynthSession sessionPtr, MIDIEvent evt) {
+  return sessionPtr->midiEventQueue.push(evt);
 };
 
-// ==== Parameter Event Handlers ====
-bool setParam(hSynthSession sessionPtr, uint8_t id, float value) {
-  // TODO(nico): replicate emplace_back() to reduce copy;
-  return sessionPtr->paramEventQueue.push({id, value});
+bool pushParamEvent(hSynthSession sessionPtr, ParamEvent evt) {
+  return sessionPtr->paramEventQueue.push(evt);
+}
+
+bool pushEngineEvent(hSynthSession sessionPtr, EngineEvent evt) {
+  return sessionPtr->engineEventQueue.push(evt);
 }
 
 } // namespace app::session

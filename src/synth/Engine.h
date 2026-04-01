@@ -12,6 +12,7 @@
 #include <cstdint>
 
 namespace synth {
+using events::EngineEvent;
 using events::MIDIEvent;
 using events::ParamEvent;
 
@@ -58,6 +59,8 @@ struct Engine {
 
   void processMIDIEvent(const MIDIEvent& event);
   void processParamEvent(const ParamEvent& event);
+  void processEngineEvent(const EngineEvent& event);
+
   void processAudioBlock(float** outputBuffer, size_t numChannels, size_t numFrames);
 };
 

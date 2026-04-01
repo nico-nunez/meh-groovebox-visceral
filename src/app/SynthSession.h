@@ -7,6 +7,8 @@
 #include <cstdint>
 
 namespace app::session {
+using synth::events::EngineEvent;
+using synth::events::EngineEventQueue;
 using synth::events::MIDIEvent;
 using synth::events::MIDIEventQueue;
 using synth::events::ParamEvent;
@@ -41,16 +43,18 @@ struct SessionConfig {
 };
 
 typedef void (*MIDIEventHandler)(MIDIEvent midiEvent, void* userContext);
+typedef void (*ParamEventHandler)(ParamEvent paramEvent, void* userContext);
+typedef void (*EngineEventHandler)(EngineEvent event, void* userContext);
+
 typedef void (*AudioBufferHandler)(float** outputBuffer,
                                    size_t numChannels,
                                    size_t numFrames,
                                    void* userContext);
 
-typedef void (*ParamEventHandler)(ParamEvent paramEvent, void* userContext);
-
 struct SynthCallbacks {
   MIDIEventHandler processMIDIEvent = nullptr;
   ParamEventHandler processParamEvent = nullptr;
+  EngineEventHandler processEngineEvent = nullptr;
   AudioBufferHandler processAudioBlock = nullptr;
 };
 
@@ -63,10 +67,9 @@ int startSession(hSynthSession sessionPtr);
 int stopSession(hSynthSession sessionPtr);
 int disposeSession(hSynthSession sessionPtr);
 
-// ==== MIDI Event Handler ====
-bool pushMIDIEvent(hSynthSession sessionPtr, MIDIEvent event);
-
-// ==== Parameter Event Handlers ====
-bool setParam(hSynthSession sessionPtr, uint8_t id, float value);
+// ==== Event Handlers ====
+bool pushMIDIEvent(hSynthSession sessionPtr, MIDIEvent evt);
+bool pushParamEvent(hSynthSession sessionPtr, ParamEvent evt);
+bool pushEngineEvent(hSynthSession sessionPtr, EngineEvent evt);
 
 } // namespace app::session

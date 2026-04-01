@@ -207,6 +207,21 @@ inline WavetableOsc* getOscByName(VoicePool& pool, const std::string& name) {
   return nullptr;
 }
 
+inline WavetableOsc* getOscByIndex(VoicePool& pool, uint8_t index) {
+  switch (index) {
+  case 0:
+    return &pool.osc1;
+  case 1:
+    return &pool.osc2;
+  case 2:
+    return &pool.osc3;
+  case 3:
+    return &pool.osc4;
+  default:
+    return nullptr;
+  }
+}
+
 inline LFO* getLFOByName(VoicePool& pool, const char* name) {
   if (strcmp(name, "lfo1") == 0)
     return &pool.lfo1;
@@ -215,5 +230,18 @@ inline LFO* getLFOByName(VoicePool& pool, const char* name) {
   if (strcmp(name, "lfo3") == 0)
     return &pool.lfo3;
   return nullptr;
+}
+
+inline LFO* getLFOByIndex(VoicePool& pool, uint8_t index) {
+  switch (index) {
+  case 0:
+    return &pool.lfo1;
+  case 1:
+    return &pool.lfo2;
+  case 2:
+    return &pool.lfo3;
+  default:
+    return nullptr;
+  }
 }
 } // namespace synth::voices

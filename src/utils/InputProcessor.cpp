@@ -79,7 +79,7 @@ int setInputParam(const std::string& paramName,
    * denormalized.  May consider normalizing in the future, but seems
    * pointless at this time.
    */
-  if (!app::session::setParam(session, static_cast<uint8_t>(paramID), paramValue)) {
+  if (!app::session::pushParamEvent(session, {static_cast<uint8_t>(paramID), paramValue})) {
     printf("Warning: Param queue full, event dropped\n");
     return 2;
   }

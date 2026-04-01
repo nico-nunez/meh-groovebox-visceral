@@ -13,14 +13,19 @@
 #include <iostream>
 #include <thread>
 
+static void processMIDIEvent(synth::MIDIEvent event, void* myContext) {
+  auto engine = static_cast<synth::Engine*>(myContext);
+  engine->processMIDIEvent(event);
+}
+
 static void processParamEvent(synth::ParamEvent event, void* myContext) {
   auto engine = static_cast<synth::Engine*>(myContext);
   engine->processParamEvent(event);
 }
 
-static void processMIDIEvent(synth::MIDIEvent event, void* myContext) {
-  auto engine = static_cast<synth::Engine*>(myContext);
-  engine->processMIDIEvent(event);
+static void processEngineEvent(synth::EngineEvent event, void* ctx) {
+  auto* engine = static_cast<synth::Engine*>(ctx);
+  engine->processEngineEvent(event);
 }
 
 static void
@@ -75,10 +80,10 @@ int main() {
   sessionConfig.numChannels = deviceInfo.numChannels;
 
   SynthCallbacks sessionCallbacks{};
-  sessionCallbacks.processAudioBlock = processAudioBlock;
   sessionCallbacks.processMIDIEvent = processMIDIEvent;
-
   sessionCallbacks.processParamEvent = processParamEvent;
+  sessionCallbacks.processEngineEvent = processEngineEvent;
+  sessionCallbacks.processAudioBlock = processAudioBlock;
 
   hSynthSession session = app::session::initSession(sessionConfig, sessionCallbacks, &engine);
 

@@ -1,5 +1,10 @@
 #pragma once
 
+#include "synth/Preset.h"
+#include "synth/SignalChain.h"
+
+#include "dsp/fx/FXChain.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -81,6 +86,8 @@ struct EngineEvent {
     ClearModRoutes,
 
     SetSignalChain,
+    SetFXChain,
+
     ApplyPreset,
     Panic,
   };
@@ -132,12 +139,17 @@ struct EngineEvent {
     } clearModRoutes;
 
     struct {
-      uint8_t processors[8]; // or synth::fx_chain::MAX_FX_CHAIN
+      uint8_t processors[signal_chain::MAX_CHAIN_SLOTS];
       uint8_t count;
     } setSignalChain;
 
     struct {
-      uint16_t presetSlot; // or a handle/id into app-owned preset storage
+      uint8_t processors[dsp::fx::chain::MAX_EFFECT_SLOTS];
+      uint8_t count;
+    } setFXChain;
+
+    struct {
+      const preset::Preset* preset;
     } applyPreset;
 
     struct {
