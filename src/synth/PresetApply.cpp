@@ -90,7 +90,9 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
   // ==== Enum fields — direct resolution, no string parsing ====
   osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
   for (int i = 0; i < NUM_OSCS; i++) {
-    oscs[i]->bank = banks::getBankByID(preset.oscBanks[i]);
+    oscs[i]->bankID = preset.oscBanks[i];
+    oscs[i]->bankPtr = banks::getBankByID(preset.oscBanks[i]);
+
     oscs[i]->fmRouteCount = preset.oscFmRouteCounts[i];
     for (uint8_t r = 0; r < preset.oscFmRouteCounts[i]; r++)
       oscs[i]->fmRoutes[r] = preset.oscFmRoutes[i][r];
@@ -103,7 +105,8 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
 
   lfo::LFO* lfos[] = {&pool.lfo1, &pool.lfo2, &pool.lfo3};
   for (int i = 0; i < NUM_LFOS; i++) {
-    lfos[i]->bank = wavetable::banks::getBankByID(preset.lfoBanks[i]);
+    lfos[i]->bankID = preset.lfoBanks[i];
+    lfos[i]->bankPtr = banks::getBankByID(preset.lfoBanks[i]);
     lfos[i]->subdivision = preset.lfoSubdivisions[i];
   }
 
@@ -170,7 +173,7 @@ Preset capturePreset(const Engine& engine) {
   // ==== Enum fields — read directly from engine ====
   const osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
   for (int i = 0; i < NUM_OSCS; i++) {
-    p.oscBanks[i] = oscs[i]->bank ? banks::parseBankID(oscs[i]->bank->name) : BankID::Sine;
+    p.oscBanks[i] = oscs[i]->bankID;
     p.oscFmRouteCounts[i] = oscs[i]->fmRouteCount;
     for (uint8_t r = 0; r < oscs[i]->fmRouteCount; r++)
       p.oscFmRoutes[i][r] = oscs[i]->fmRoutes[r];
@@ -181,7 +184,7 @@ Preset capturePreset(const Engine& engine) {
 
   const lfo::LFO* lfos[] = {&pool.lfo1, &pool.lfo2, &pool.lfo3};
   for (int i = 0; i < NUM_LFOS; i++) {
-    p.lfoBanks[i] = lfos[i]->bank ? banks::parseBankID(lfos[i]->bank->name) : BankID::SampleAndHold;
+    p.lfoBanks[i] = lfos[i]->bankID;
     p.lfoSubdivisions[i] = lfos[i]->subdivision;
   }
 
@@ -236,6 +239,7 @@ void printPreset(const Preset& p) {
       break;
 
     case param::ParamType::Int8:
+    case param::ParamType::OscBank:
     case param::ParamType::PhaseMode:
     case param::ParamType::FilterMode:
     case param::ParamType::DistortionType:

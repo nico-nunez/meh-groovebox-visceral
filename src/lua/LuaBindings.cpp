@@ -60,7 +60,7 @@ int paramGroupNewIndex(lua_State* L) {
         luaL_error(L, "unknown lfo: %s", group);
         return 0;
       }
-      lfo->bank = strcmp(bankName, "sah") == 0 ? nullptr : banks::getBankByName(bankName);
+      lfo->bankPtr = strcmp(bankName, "sah") == 0 ? nullptr : banks::getBankByName(bankName);
     } else {
       auto* o = voices::getOscByName(engine->voicePool, group);
       if (!o) {
@@ -72,7 +72,7 @@ int paramGroupNewIndex(lua_State* L) {
         luaL_error(L, "unknown bank: %s", bankName);
         return 0;
       }
-      o->bank = bank;
+      o->bankPtr = bank;
       printf("OK\n");
     }
     return 0;

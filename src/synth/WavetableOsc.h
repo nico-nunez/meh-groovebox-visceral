@@ -1,6 +1,7 @@
 #pragma once
 
 #include "synth/Types.h"
+#include "synth/WavetableBanks.h"
 
 #include "dsp/Wavetable.h"
 
@@ -10,6 +11,7 @@
 
 namespace synth::wavetable::osc {
 
+using banks::BankID;
 using dsp::wavetable::WavetableBank;
 
 enum PhaseMode : uint8_t {
@@ -41,7 +43,9 @@ struct WavetableOsc {
   float phaseIncrements[MAX_VOICES]; // cycles per sample (freq / sampleRate)
 
   // ==== Global settings for all voices in oscillator ====
-  const WavetableBank* bank = nullptr;
+  BankID bankID = BankID::Sine;
+  const WavetableBank* bankPtr = nullptr;
+
   float mixLevel = 1.0f;
   int8_t octaveOffset = 0;
   float detuneAmount = 0.0f;

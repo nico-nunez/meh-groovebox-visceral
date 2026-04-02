@@ -6,6 +6,7 @@
 
 // This defines the "shape" of your 12 oscillator parameters
 #define OSC_PARAMS(X, N)                                                                           \
+  X(OSC##N##_BANK_ID, "osc" #N ".bank", OscBank, 0.0f, 4.0f, 0.0f, OscBank)                        \
   X(OSC##N##_MIX_LEVEL, "osc" #N ".mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                       \
   X(OSC##N##_DETUNE, "osc" #N ".detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                 \
   X(OSC##N##_OCTAVE, "osc" #N ".octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                      \
@@ -20,6 +21,7 @@
   X(OSC##N##_ENABLED, "osc" #N ".enabled", Bool, 0.0f, 1.0f, 1.0f, OscEnable)
 
 #define LFO_PARAMS(X, N)                                                                           \
+  X(LFO##N##_BANK_ID, "lfo" #N ".bank", OscBank, 0.0f, 5.0, 0.0f, LFOBank)                         \
   X(LFO##N##_RATE, "lfo" #N ".rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                            \
   X(LFO##N##_AMPLITUDE, "lfo" #N ".amplitude", Float, 0.0f, 1.0f, 1.0f, None)                      \
   X(LFO##N##_RETRIGGER, "lfo" #N ".retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                       \
@@ -154,6 +156,7 @@ namespace synth::param {
 enum UpdateGroup {
   None = 0,
 
+  OscBank,          // update bank
   OscFreqFixed,     // recalc fixedPhaseInc = fixedFreqHz / sampleRate
   OscEnable,        // recalc oscMixGain
                     //
@@ -177,6 +180,7 @@ enum UpdateGroup {
   UnisonDerived, // recalc detune offsets, pan, gain comp
   UnisonSpread,  // recalc pan positions only
 
+  LFOBank,      // update lfo bank
   LFOTempoSync, // lfo.tempoSync or lfo.subdivision changed
   LFORate,      // lfo.rate changed — update effectiveRate when !tempoSync
   LFOFadeIn,    // lfo.delayMs or lfo.attackMs changed — recompute sample counts
@@ -217,6 +221,7 @@ enum class ParamType : uint8_t {
   Float,
   Int8,
   Bool,
+  OscBank,
   FilterMode,
   DistortionType,
   PhaseMode,
@@ -269,8 +274,8 @@ inline float clampParam(ParamID id, float value) {
 }
 
 struct OscParamIDs {
-  ParamID mixLevel, detune, octave, scanPos, phaseMode, randomRange, resetPhase, fmDepth, ratio,
-      fixed, fixedFreq, enabled;
+  ParamID bankID, mixLevel, detune, octave, scanPos, phaseMode, randomRange, resetPhase, fmDepth,
+      ratio, fixed, fixedFreq, enabled;
 };
 
 struct EnvParamIDs {
@@ -278,12 +283,13 @@ struct EnvParamIDs {
 };
 
 struct LFOParamIDs {
-  ParamID rate, amplitude, retrigger, tempoSync, delay, attack;
+  ParamID bankID, rate, amplitude, retrigger, tempoSync, delay, attack;
 };
 
 // One bundle per instance, order matches the ParamID enum layout.
 inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
-    {OSC1_MIX_LEVEL,
+    {OSC1_BANK_ID,
+     OSC1_MIX_LEVEL,
      OSC1_DETUNE,
      OSC1_OCTAVE,
      OSC1_SCAN_POS,
@@ -296,7 +302,8 @@ inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
      OSC1_FIXED_FREQ,
      OSC1_ENABLED},
 
-    {OSC2_MIX_LEVEL,
+    {OSC2_BANK_ID,
+     OSC2_MIX_LEVEL,
      OSC2_DETUNE,
      OSC2_OCTAVE,
      OSC2_SCAN_POS,
@@ -309,7 +316,8 @@ inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
      OSC2_FIXED_FREQ,
      OSC2_ENABLED},
 
-    {OSC3_MIX_LEVEL,
+    {OSC3_BANK_ID,
+     OSC3_MIX_LEVEL,
      OSC3_DETUNE,
      OSC3_OCTAVE,
      OSC3_SCAN_POS,
@@ -322,7 +330,8 @@ inline constexpr OscParamIDs OSC_PARAM_IDS[4] = {
      OSC3_FIXED_FREQ,
      OSC3_ENABLED},
 
-    {OSC4_MIX_LEVEL,
+    {OSC4_BANK_ID,
+     OSC4_MIX_LEVEL,
      OSC4_DETUNE,
      OSC4_OCTAVE,
      OSC4_SCAN_POS,
@@ -361,9 +370,29 @@ inline constexpr EnvParamIDs ENV_PARAM_IDS[3] = {
 };
 
 inline constexpr LFOParamIDs LFO_PARAM_IDS[3] = {
-    {LFO1_RATE, LFO1_AMPLITUDE, LFO1_RETRIGGER, LFO1_TEMPO_SYNC, LFO1_DELAY, LFO1_ATTACK},
-    {LFO2_RATE, LFO2_AMPLITUDE, LFO2_RETRIGGER, LFO2_TEMPO_SYNC, LFO2_DELAY, LFO2_ATTACK},
-    {LFO3_RATE, LFO3_AMPLITUDE, LFO3_RETRIGGER, LFO3_TEMPO_SYNC, LFO3_DELAY, LFO3_ATTACK},
+    {LFO1_BANK_ID,
+     LFO1_RATE,
+     LFO1_AMPLITUDE,
+     LFO1_RETRIGGER,
+     LFO1_TEMPO_SYNC,
+     LFO1_DELAY,
+     LFO1_ATTACK},
+
+    {LFO2_BANK_ID,
+     LFO2_RATE,
+     LFO2_AMPLITUDE,
+     LFO2_RETRIGGER,
+     LFO2_TEMPO_SYNC,
+     LFO2_DELAY,
+     LFO2_ATTACK},
+
+    {LFO3_BANK_ID,
+     LFO3_RATE,
+     LFO3_AMPLITUDE,
+     LFO3_RETRIGGER,
+     LFO3_TEMPO_SYNC,
+     LFO3_DELAY,
+     LFO3_ATTACK},
 };
 
 } // namespace synth::param

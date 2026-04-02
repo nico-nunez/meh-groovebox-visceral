@@ -15,17 +15,30 @@
 #include "dsp/fx/Distortion.h"
 #include "dsp/fx/FXChain.h"
 #include "dsp/fx/Phaser.h"
+#include "synth/WavetableBanks.h"
 
 namespace synth::param::sync {
 namespace {
 using dsp::fx::chain::FXChain;
 using voices::VoicePool;
 
+namespace osc = wavetable::osc;
+namespace banks = wavetable::banks;
+
 namespace dist = dsp::fx::distortion;
 namespace chorus = dsp::fx::chorus;
 namespace phaser = dsp::fx::phaser;
 namespace delay = dsp::fx::delay;
 namespace reverb = dsp::fx::reverb;
+
+void updateOscBanks(VoicePool& pool) {
+  for (osc::WavetableOsc* osc : {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4}) {
+    auto bankName = banks::bankIDToString(osc->bankID);
+
+    if (bankName != osc->bankPtr->name)
+      osc->bankPtr = banks::getBankByID(osc->bankID);
+  }
+}
 
 void updateOscMixGain(VoicePool& pool) {
   int count = pool.osc1.enabled + pool.osc2.enabled + pool.osc3.enabled + pool.osc4.enabled +
@@ -95,6 +108,17 @@ void updateUnisonSpread(unison::UnisonState& uni) {
   unison::updatePanPositions(uni);
 }
 
+void updateLFOBanks(VoicePool& pool) {
+  using namespace banks;
+
+  for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
+    auto bankName = bankIDToString(lfo->bankID);
+
+    if (bankName != lfo->bankPtr->name)
+      lfo->bankPtr = lfo->bankID == BankID::SampleAndHold ? nullptr : getBankByID(lfo->bankID);
+  }
+}
+
 void updateLFOEffectiveRates(VoicePool& pool, const float bpm) {
   for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
     lfo->effectiveRate =
@@ -156,6 +180,8 @@ void syncDirtyParams(Engine& engine) {
     return;
 
   // ==== Oscillators ====
+  if (flags.isSet(UpdateGroup::OscBank))
+    updateOscBanks(pool);
   if (flags.isSet(UpdateGroup::OscEnable))
     updateOscMixGain(pool);
   if (flags.isSet(UpdateGroup::OscFreqFixed))
@@ -194,6 +220,8 @@ void syncDirtyParams(Engine& engine) {
     updateUnisonSpread(pool.unison);
 
   // ==== LFOs ====
+  if (flags.isSet(UpdateGroup::LFOBank))
+    updateLFOBanks(pool);
   if (flags.isSet(UpdateGroup::LFORate) || flags.isSet(UpdateGroup::LFOTempoSync))
     updateLFOEffectiveRates(engine.voicePool, bpm);
 

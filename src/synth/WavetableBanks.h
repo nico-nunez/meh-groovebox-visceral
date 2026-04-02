@@ -8,6 +8,8 @@ using dsp::wavetable::WavetableBank;
 enum BankID { Sine = 0, Saw, Square, Triangle, SineToSaw, SampleAndHold, Unknown, COUNT };
 inline constexpr const char* UNKNOWN_BANK = "unknown";
 
+inline constexpr int MAX_BANKS = COUNT - 1;
+
 void initFactoryBanks();
 
 void registerBank(BankID id, WavetableBank* bank);

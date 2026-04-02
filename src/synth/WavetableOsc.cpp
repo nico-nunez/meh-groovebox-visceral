@@ -149,9 +149,9 @@ float readWavetable(const WavetableOsc& osc,
                     float mipF,
                     float effectiveScanPos,
                     float fmPhaseOffset) {
-  if (!osc.enabled || osc.bank == nullptr)
+  if (!osc.enabled || osc.bankPtr == nullptr)
     return 0.0f;
-  return dsp_wt::readWavetable(osc.bank,
+  return dsp_wt::readWavetable(osc.bankPtr,
                                osc.phases[voiceIndex],
                                mipF,
                                effectiveScanPos,
@@ -164,9 +164,9 @@ float processOsc(WavetableOsc& osc,
                  float effectiveScanPos,
                  float fmPhaseOffset,
                  float pitchIncrement) {
-  if (!osc.enabled || osc.bank == nullptr)
+  if (!osc.enabled || osc.bankPtr == nullptr)
     return 0.0f;
-  return dsp_wt::processWavetableOsc(osc.bank,
+  return dsp_wt::processWavetableOsc(osc.bankPtr,
                                      osc.phases[voiceIndex],
                                      mipF,
                                      effectiveScanPos,

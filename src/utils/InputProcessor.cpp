@@ -221,7 +221,7 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       auto* bank = getBankByName(value.c_str());
 
       if (bank)
-        engine.voicePool.osc1.bank = bank;
+        engine.voicePool.osc1.bankPtr = bank;
       else
         printf("unknown bank: %s\n", value.c_str());
 
@@ -234,7 +234,7 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       auto* bank = synth::wavetable::banks::getBankByName(value.c_str());
 
       if (bank)
-        engine.voicePool.osc2.bank = bank;
+        engine.voicePool.osc2.bankPtr = bank;
       else
         printf("unknown bank: %s\n", value.c_str());
 
@@ -247,7 +247,7 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       auto* bank = getBankByName(value.c_str());
 
       if (bank)
-        engine.voicePool.osc3.bank = bank;
+        engine.voicePool.osc3.bankPtr = bank;
       else
         printf("unknown bank: %s\n", value.c_str());
 
@@ -260,7 +260,7 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       auto* bank = getBankByName(value.c_str());
 
       if (bank)
-        engine.voicePool.osc4.bank = bank;
+        engine.voicePool.osc4.bankPtr = bank;
       else
         printf("unknown bank: %s\n", value.c_str());
 
@@ -293,11 +293,11 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       std::string value;
       iss >> value;
       if (value == "sah")
-        engine.voicePool.lfo1.bank = nullptr; // S&H sentinel
+        engine.voicePool.lfo1.bankPtr = nullptr; // S&H sentinel
       else {
         auto* bank = getBankByName(value.c_str());
         if (bank)
-          engine.voicePool.lfo1.bank = bank;
+          engine.voicePool.lfo1.bankPtr = bank;
         else
           printf("unknown bank: %s\n", value.c_str());
       }
@@ -308,11 +308,11 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       std::string value;
       iss >> value;
       if (value == "sah")
-        engine.voicePool.lfo2.bank = nullptr; // S&H sentinel
+        engine.voicePool.lfo2.bankPtr = nullptr; // S&H sentinel
       else {
         auto* bank = getBankByName(value.c_str());
         if (bank)
-          engine.voicePool.lfo2.bank = bank;
+          engine.voicePool.lfo2.bankPtr = bank;
         else
           printf("unknown bank: %s\n", value.c_str());
       }
@@ -323,11 +323,11 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       std::string value;
       iss >> value;
       if (value == "sah")
-        engine.voicePool.lfo3.bank = nullptr; // S&H sentinel
+        engine.voicePool.lfo3.bankPtr = nullptr; // S&H sentinel
       else {
         auto* bank = getBankByName(value.c_str());
         if (bank)
-          engine.voicePool.lfo3.bank = bank;
+          engine.voicePool.lfo3.bankPtr = bank;
         else
           printf("unknown bank: %s\n", value.c_str());
       }
@@ -346,29 +346,29 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
 
     // Direct-handled params — bypass binding system and event queue
     if (paramName == "osc1.bank") {
-      if (engine.voicePool.osc1.bank)
-        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc1.bank->name);
+      if (engine.voicePool.osc1.bankPtr)
+        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc1.bankPtr->name);
       else
         printf("%s bank is null\n", paramName.c_str());
       return;
     }
     if (paramName == "osc2.bank") {
-      if (engine.voicePool.osc2.bank)
-        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc2.bank->name);
+      if (engine.voicePool.osc2.bankPtr)
+        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc2.bankPtr->name);
       else
         printf("%s bank is null\n", paramName.c_str());
       return;
     }
     if (paramName == "osc3.bank") {
-      if (engine.voicePool.osc3.bank)
-        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc3.bank->name);
+      if (engine.voicePool.osc3.bankPtr)
+        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc3.bankPtr->name);
       else
         printf("%s bank is null\n", paramName.c_str());
       return;
     }
     if (paramName == "osc4.bank") {
-      if (engine.voicePool.osc4.bank)
-        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc4.bank->name);
+      if (engine.voicePool.osc4.bankPtr)
+        printf("%s = %s\n", paramName.c_str(), engine.voicePool.osc4.bankPtr->name);
       else
         printf("%s bank is null\n", paramName.c_str());
       return;

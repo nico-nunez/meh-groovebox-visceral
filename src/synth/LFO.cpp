@@ -29,7 +29,7 @@ float advanceLFO(LFO& lfo, float invSampleRate, float effectiveRate, float effec
   }
 
   // S&H: null bank is the sentinel — see Sample and Hold
-  if (lfo.bank == nullptr) {
+  if (lfo.bankPtr == nullptr) {
     if (wrapped)
       lfo.shHeld = dsp::math::randNoiseValue();
     return fadeScale * effectiveAmplitude * lfo.shHeld;
@@ -37,6 +37,6 @@ float advanceLFO(LFO& lfo, float invSampleRate, float effectiveRate, float effec
 
   float tablePhase = lfo.phase * dsp::wavetable::TABLE_SIZE_F;
   return fadeScale * effectiveAmplitude *
-         dsp::wavetable::readTable(lfo.bank->frames[0].mips[0], tablePhase);
+         dsp::wavetable::readTable(lfo.bankPtr->frames[0].mips[0], tablePhase);
 }
 } // namespace synth::lfo

@@ -54,6 +54,12 @@ ParamBinding makeFilterModeBinding(SVFMode* ptr) {
   return b;
 }
 
+ParamBinding makeOscBankBinding(BankID* ptr) {
+  ParamBinding b;
+  b.oscBankPtr = ptr;
+  return b;
+}
+
 ParamBinding makeDistortionTypeBinding(dist::DistortionType* ptr) {
   ParamBinding b;
   b.distortionTypePtr = ptr;
@@ -67,6 +73,7 @@ ParamBinding makePhaseModeBinding(wavetable::osc::PhaseMode* ptr) {
 }
 
 void bindOscillator(ParamBinding* bindings, const OscParamIDs& ids, WavetableOsc& osc) {
+  bindings[ids.bankID] = makeOscBankBinding(&osc.bankID);
   bindings[ids.mixLevel] = makeFloatBinding(&osc.mixLevel);
   bindings[ids.detune] = makeFloatBinding(&osc.detuneAmount);
   bindings[ids.octave] = makeInt8Binding(&osc.octaveOffset);
@@ -111,6 +118,7 @@ void bindSaturator(ParamBinding* bindings, saturator::Saturator& saturator) {
 
 // LFO Binding
 void bindLFO(ParamBinding* bindings, LFOParamIDs ids, lfo::LFO& lfo) {
+  bindings[ids.bankID] = makeOscBankBinding(&lfo.bankID);
   bindings[ids.rate] = makeFloatBinding(&lfo.rate);
   bindings[ids.amplitude] = makeFloatBinding(&lfo.amplitude);
   bindings[ids.retrigger] = makeBoolBinding(&lfo.retrigger);
@@ -336,6 +344,9 @@ float getParamValueByID(const ParamRouter& router, ParamID id) {
   case ParamType::Bool:
     return *binding.boolPtr ? 1.0f : 0.0f;
 
+  case ParamType::OscBank:
+    return static_cast<float>(*binding.oscBankPtr);
+
   case ParamType::FilterMode:
     return static_cast<float>(*binding.svfModePtr);
 
@@ -364,19 +375,28 @@ void setParamValue(ParamRouter& router, ParamID id, float value) {
   case ParamType::Float:
     *binding.floatPtr = value;
     break;
+
   case ParamType::Int8:
     *binding.int8Ptr = static_cast<int8_t>(std::round(value));
     break;
+
   case ParamType::Bool:
     *binding.boolPtr = value >= 0.5f;
     break;
+
+  case ParamType::OscBank:
+    *binding.oscBankPtr = static_cast<BankID>(static_cast<int>(std::round(value)));
+    break;
+
   case ParamType::FilterMode:
     *binding.svfModePtr = static_cast<SVFMode>(static_cast<int>(std::round(value)));
     break;
+
   case ParamType::DistortionType:
     *binding.distortionTypePtr =
         static_cast<dist::DistortionType>(static_cast<int>(std::round(value)));
     break;
+
   case ParamType::PhaseMode:
     *binding.phaseModePtr = static_cast<PhaseMode>(static_cast<int>(std::round(value)));
     break;

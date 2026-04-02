@@ -7,11 +7,15 @@
 namespace synth::lfo {
 using mod_matrix::ModDest;
 using Subdivision = tempo::Subdivision;
+
+using BankID = wavetable::banks::BankID;
 using WavetableBank = wavetable::banks::WavetableBank;
 
 struct LFO {
   // null = S&H mode; set to getBankByID(BankID::Sine) at init
-  const WavetableBank* bank = nullptr;
+  BankID bankID = BankID::Sine;
+  const WavetableBank* bankPtr = nullptr;
+
   float phase = 0.0f;     // normalized [0.0, 1.0)
   float rate = 1.0f;      // Hz, no DSP ceiling; UI default range [0.0, 20.0]
   float amplitude = 1.0f; // output range [-amplitude, +amplitude]

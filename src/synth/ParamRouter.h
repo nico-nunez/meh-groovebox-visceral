@@ -3,6 +3,7 @@
 #include "synth/Filters.h"
 #include "synth/ParamDefs.h"
 #include "synth/VoicePool.h"
+#include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
 #include "dsp/fx/Distortion.h"
@@ -16,6 +17,7 @@ using dsp::fx::chain::FXChain;
 using dsp::fx::distortion::DistortionType;
 
 using filters::SVFMode;
+using wavetable::banks::BankID;
 using wavetable::osc::PhaseMode;
 
 struct ParamBinding {
@@ -23,6 +25,7 @@ struct ParamBinding {
     float* floatPtr;
     int8_t* int8Ptr;
     bool* boolPtr;
+    BankID* oscBankPtr;
     SVFMode* svfModePtr;
     DistortionType* distortionTypePtr;
     PhaseMode* phaseModePtr;

@@ -669,10 +669,13 @@ void processOscsUnison(VoicePool& pool,
 
       // DSP layer called directly — needs sub-voice phase refs.
       // processWavetableOsc advances phase internally.
-      outs[o] =
-          active[o]
-              ? dsp_wt::processWavetableOsc(oscs[o]->bank, phase, mip, p.scan[o], p.fm[o], pitchInc)
-              : 0.0f;
+      outs[o] = active[o] ? dsp_wt::processWavetableOsc(oscs[o]->bankPtr,
+                                                        phase,
+                                                        mip,
+                                                        p.scan[o],
+                                                        p.fm[o],
+                                                        pitchInc)
+                          : 0.0f;
       fmFb[o] += outs[o];
     }
 
@@ -785,10 +788,10 @@ void processVoices(VoicePool& pool, StereoBuffer output, size_t numSamples, floa
   auto& lfoContribs = pool.lfoModState.contribs;
 
   const bool activeOscs[4] = {
-      pool.osc1.enabled && pool.osc1.bank != nullptr,
-      pool.osc2.enabled && pool.osc2.bank != nullptr,
-      pool.osc3.enabled && pool.osc3.bank != nullptr,
-      pool.osc4.enabled && pool.osc4.bank != nullptr,
+      pool.osc1.enabled && pool.osc1.bankPtr != nullptr,
+      pool.osc2.enabled && pool.osc2.bankPtr != nullptr,
+      pool.osc3.enabled && pool.osc3.bankPtr != nullptr,
+      pool.osc4.enabled && pool.osc4.bankPtr != nullptr,
   };
 
   // ==== Set and process Mod Matrix values (block-rate) ====

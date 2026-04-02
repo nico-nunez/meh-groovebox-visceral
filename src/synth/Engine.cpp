@@ -101,20 +101,20 @@ void Engine::processMIDIEvent(const MIDIEvent& event) {
   }
 }
 
-namespace banks = wavetable::banks;
-namespace osc = wavetable::osc;
-namespace mm = mod_matrix;
-namespace sc = signal_chain;
-namespace fx = dsp::fx::chain;
-
 void Engine::processEngineEvent(const EngineEvent& event) {
+  namespace banks = wavetable::banks;
+  namespace osc = wavetable::osc;
+  namespace mm = mod_matrix;
+  namespace sc = signal_chain;
+  namespace fx = dsp::fx::chain;
+
   switch (event.type) {
 
   case EngineEvent::Type::SetOscBank: {
-    auto* o = voices::getOscByIndex(voicePool, event.data.setOscBank.oscIndex);
-    if (!o)
+    auto* osc = voices::getOscByIndex(voicePool, event.data.setOscBank.oscIndex);
+    if (!osc)
       return;
-    o->bank = banks::getBankByID(static_cast<banks::BankID>(event.data.setOscBank.bankId));
+    osc->bankPtr = banks::getBankByID(static_cast<banks::BankID>(event.data.setOscBank.bankId));
     return;
   }
 
@@ -123,9 +123,9 @@ void Engine::processEngineEvent(const EngineEvent& event) {
     if (!lfo)
       return;
     if (event.data.setLFOBank.bankId == banks::BankID::SampleAndHold)
-      lfo->bank = nullptr; // SAH uses nullptr as sentinel — no wavetable to scan
+      lfo->bankPtr = nullptr; // SAH uses nullptr as sentinel — no wavetable to scan
     else
-      lfo->bank = banks::getBankByID(static_cast<banks::BankID>(event.data.setLFOBank.bankId));
+      lfo->bankPtr = banks::getBankByID(static_cast<banks::BankID>(event.data.setLFOBank.bankId));
     return;
   }
 
