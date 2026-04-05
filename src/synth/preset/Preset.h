@@ -1,16 +1,11 @@
-// Preset.h
 #pragma once
 
-#include "synth/Filters.h"
 #include "synth/ModMatrix.h"
-#include "synth/Noise.h"
-#include "synth/ParamDefs.h"
 #include "synth/SignalChain.h"
-#include "synth/Tempo.h"
-#include "synth/Types.h"
-#include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
+#include "synth/params/ParamDefs.h"
 
+#include "dsp/Tempo.h"
 #include "dsp/fx/FXChain.h"
 
 #include <cstdint>
@@ -18,17 +13,13 @@
 
 namespace synth::preset {
 
-using wavetable::banks::BankID;
 using wavetable::osc::FMRoute;
 
-using noise::NoiseType;
-
-using filters::SVFMode;
 using signal_chain::SignalProcessor;
 
 using dsp::fx::chain::FXProcessor;
 
-using tempo::Subdivision;
+using dsp::tempo::Subdivision;
 
 inline constexpr uint32_t CURRENT_PRESET_VERSION = 1;
 
@@ -64,35 +55,18 @@ struct Preset {
   uint32_t version = CURRENT_PRESET_VERSION;
   PresetMetadata metadata;
 
-  // All bound params, indexed by ParamID.
   // Defaults filled from PARAM_DEFS[].defaultVal.
   float paramValues[param::PARAM_COUNT];
-
-  // Enum fields — the serializer converts these to/from JSON strings at the boundary.
-  // Internally everything speaks enum; no strings in the data model.
-  BankID oscBanks[NUM_OSCS] = {}; // BankID(0) = Sine
 
   FMRoute oscFmRoutes[NUM_OSCS][NUM_OSCS] = {};
   uint8_t oscFmRouteCounts[NUM_OSCS] = {};
 
-  NoiseType noiseType = NoiseType::White;
-
-  BankID lfoBanks[NUM_LFOS] = {}; // BankID(0) = Sine
-  Subdivision lfoSubdivisions[NUM_LFOS] = {Subdivision::Quarter,
-                                           Subdivision::Quarter,
-                                           Subdivision::Quarter};
-
   ModRoutePreset modMatrix[mod_matrix::MAX_MOD_ROUTES]{};
   uint8_t modMatrixCount = 0;
 
-  SVFMode svfMode = SVFMode::LP;
   SignalProcessor signalChain[signal_chain::MAX_CHAIN_SLOTS] = {SignalProcessor::SVF,
                                                                 SignalProcessor::Ladder,
                                                                 SignalProcessor::Saturator};
-
-  // ==== Effects ====
-  Subdivision delaySubdivision = Subdivision::Quarter;
-  // Non-param subsystems
 
   FXProcessor fxChain[dsp::fx::chain::MAX_EFFECT_SLOTS] = {
       FXProcessor::Distortion,

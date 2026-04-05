@@ -1,6 +1,8 @@
 #pragma once
 
-#include "synth/Engine.h"
+namespace synth {
+struct Engine;
+}
 
 namespace synth::param::sync {
 

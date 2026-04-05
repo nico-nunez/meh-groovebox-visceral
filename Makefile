@@ -13,13 +13,12 @@ CPP_SOURCES = $(shell find \
 							libs/device_io/src \
 							libs/dsp/src \
 							libs/json/src \
+							libs/imgui \
 							-name '*.cpp')
-MM_SOURCES = $(shell find libs/device_io/src -name '*.mm')
 C_SOURCES = $(shell find libs/lua/src libs/linenoise -name '*.c')
 
 # Object files (in build directory)
 CPP_OBJECTS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(CPP_SOURCES))
-MM_OBJECTS = $(patsubst %.mm,$(BUILD_DIR)/%.o,$(MM_SOURCES))
 C_OBJECTS  = $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_SOURCES))
 ALL_OBJECTS = $(CPP_OBJECTS) $(MM_OBJECTS) $(C_OBJECTS)
 
@@ -29,17 +28,20 @@ INCLUDES = -Isrc -Ilibs/audio_io/include -Ilibs/audio_io/src \
 					 -Ilibs/dsp/include \
 					 -Ilibs/json/include \
 					 -Ilibs/lua/include \
-					 -Ilibs/linenoise
+					 -Ilibs/linenoise \
+					 -Ilibs/imgui \
+           -Ilibs/imgui/backends \
+           -Ilibs/glfw/include
 
-LDFLAGS = -framework CoreAudio \
-					-framework AudioToolbox \
-					-framework ApplicationServices \
-					-framework Cocoa \
+LDFLAGS = -framework AudioToolbox \
+					-framework CoreAudio \
+					-framework CoreFoundation \
 					-framework CoreMIDI \
-					-framework CoreFoundation
-
-# Objective-C++ flags (subset of warnings, some don't apply well to ObjC++)
-OBJCXX_FLAGS = -std=c++17 -fobjc-arc -Wall -Wextra -Werror
+					-framework OpenGL \
+					-framework Cocoa \
+          -framework ApplicationServices \
+          -framework IOKit \
+					-Llibs/glfw/lib -lglfw3
 
 OLD ?= 0
 debug: CXXFLAGS = $(DEBUG_FLAGS) -DOLD=$(OLD)
@@ -56,11 +58,6 @@ $(TARGET): $(ALL_OBJECTS)
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
-
-# Compile Objective-C++ sources
-$(BUILD_DIR)/%.o: %.mm
-	@mkdir -p $(dir $@)
-	$(CXX) -xobjective-c++ $(OBJCXX_FLAGS) $(INCLUDES) -c $< -o $@
 
 # Compile C sources
 $(BUILD_DIR)/%.o: %.c

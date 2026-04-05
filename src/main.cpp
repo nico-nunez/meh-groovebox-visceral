@@ -2,8 +2,6 @@
 #include "utils/InputProcessor.h"
 #include "utils/KeyProcessor.h"
 
-#include "device_io/KeyCapture.h"
-
 #include "synth/Engine.h"
 
 #include <audio_io/AudioIO.h>
@@ -45,7 +43,7 @@ static void getUserInput(synth::Engine& engine, app::session::hSynthSession sess
     synth::utils::parseCommand(input, engine, sessionPtr);
 
     if (input == "quit") {
-      device_io::terminateKeyCaptureLoop();
+      synth::utils::requestQuit();
       isRunning = false;
     }
   }
@@ -88,24 +86,13 @@ int main() {
   hSynthSession session = app::session::initSession(sessionConfig, sessionCallbacks, &engine);
 
   app::session::startSession(session);
-
   auto midiSession = synth::utils::initMidiSession(session);
 
   std::thread terminalWorker(getUserInput, std::ref(engine), session);
   terminalWorker.detach();
 
-  synth::utils::startKeyInputCapture(session, midiSession);
+  synth::utils::startGLFWLoop(session, midiSession);
 
-  /* This currently unreachable on MacOS due to `terminal:nil` being called
-   * in `stopKeyCaptureLoop()` and immediately exits app.
-   *
-   * This can be updated to `stop:nil`, along with a "dummy-event" to simply
-   * stop the loop and allow this to be reachable
-   *
-   * Currently this is fine since the OS cleans up when the app exits anyways.
-   * However, if anything non-cleanup needs to occur (like auto-save) then
-   * changes need to be made.
-   */
   printf("Goodbye and thanks for playing :)\n");
 
   app::session::stopSession(session);

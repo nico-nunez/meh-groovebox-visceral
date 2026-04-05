@@ -1,7 +1,7 @@
 #pragma once
 
-#include "synth/Preset.h"
 #include "synth/SignalChain.h"
+#include "synth/preset/Preset.h"
 
 #include "dsp/fx/FXChain.h"
 
@@ -73,8 +73,6 @@ struct ParamEvent {
 
 struct EngineEvent {
   enum class Type : uint8_t {
-    SetOscBank,
-    SetLFOBank,
     SetNoiseType,
 
     AddFMRoute,
@@ -95,16 +93,6 @@ struct EngineEvent {
   Type type{};
 
   union {
-    struct {
-      uint8_t oscIndex; // 0..3
-      uint8_t bankId;   // app resolves name -> id before enqueue
-    } setOscBank;
-
-    struct {
-      uint8_t lfoIndex; // 0..2
-      uint8_t bankId;   // special case like SAH can still be represented by an id
-    } setLFOBank;
-
     struct {
       uint8_t noiseType;
     } setNoiseType;

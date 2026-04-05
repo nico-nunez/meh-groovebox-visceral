@@ -1,12 +1,13 @@
 #pragma once
 
 #include "synth/ModMatrix.h"
-#include "synth/Tempo.h"
 #include "synth/WavetableBanks.h"
 
+#include "dsp/Tempo.h"
+
 namespace synth::lfo {
+using dsp::tempo::Subdivision;
 using mod_matrix::ModDest;
-using Subdivision = tempo::Subdivision;
 
 using BankID = wavetable::banks::BankID;
 using WavetableBank = wavetable::banks::WavetableBank;
@@ -34,9 +35,9 @@ struct LFO {
   float attackTimer = 0.0f; // samples remaining in attack ramp
 
   // Tempo Sync
-  bool tempoSync = false;
   Subdivision subdivision = Subdivision::Quarter;
   float effectiveRate = 1.0f; // precomputed; hot path reads this
+  bool tempoSync = false;
 };
 
 struct LFOModState {

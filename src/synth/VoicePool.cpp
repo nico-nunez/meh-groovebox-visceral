@@ -4,10 +4,11 @@
 #include "LFO.h"
 #include "MonoMode.h"
 #include "Noise.h"
-#include "ParamRanges.h"
 #include "Unison.h"
 #include "WavetableBanks.h"
 #include "WavetableOsc.h"
+
+#include "params/ParamRanges.h"
 
 #include "dsp/Buffers.h"
 #include "dsp/Filters.h"

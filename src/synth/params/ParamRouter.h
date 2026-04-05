@@ -1,11 +1,14 @@
 #pragma once
 
+#include "ParamDefs.h"
+
 #include "synth/Filters.h"
-#include "synth/ParamDefs.h"
+#include "synth/Noise.h"
 #include "synth/VoicePool.h"
 #include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 
+#include "dsp/Tempo.h"
 #include "dsp/fx/Distortion.h"
 #include "dsp/fx/FXChain.h"
 
@@ -16,7 +19,9 @@ namespace synth::param::router {
 using dsp::fx::chain::FXChain;
 using dsp::fx::distortion::DistortionType;
 
+using dsp::tempo::Subdivision;
 using filters::SVFMode;
+using noise::NoiseType;
 using wavetable::banks::BankID;
 using wavetable::osc::PhaseMode;
 
@@ -26,9 +31,11 @@ struct ParamBinding {
     int8_t* int8Ptr;
     bool* boolPtr;
     BankID* oscBankPtr;
+    PhaseMode* phaseModePtr;
+    NoiseType* noiseType;
     SVFMode* svfModePtr;
     DistortionType* distortionTypePtr;
-    PhaseMode* phaseModePtr;
+    Subdivision* subdivision;
   };
 };
 

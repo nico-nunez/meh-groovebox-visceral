@@ -2,13 +2,12 @@
 
 #include "synth/Engine.h"
 #include "synth/ModMatrix.h"
-#include "synth/ParamDefs.h"
-#include "synth/ParamRanges.h"
-#include "synth/ParamRouter.h"
-#include "synth/ParamSync.h"
 #include "synth/SignalChain.h"
-#include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
+#include "synth/params/ParamDefs.h"
+#include "synth/params/ParamRanges.h"
+#include "synth/params/ParamRouter.h"
+#include "synth/params/ParamSync.h"
 
 #include "dsp/fx/FXChain.h"
 
@@ -18,7 +17,6 @@
 namespace synth::preset {
 
 namespace osc = wavetable::osc;
-namespace banks = wavetable::banks;
 
 // ============================================================
 // Helpers (anonymous)
@@ -90,24 +88,9 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
   // ==== Enum fields — direct resolution, no string parsing ====
   osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
   for (int i = 0; i < NUM_OSCS; i++) {
-    oscs[i]->bankID = preset.oscBanks[i];
-    oscs[i]->bankPtr = banks::getBankByID(preset.oscBanks[i]);
-
     oscs[i]->fmRouteCount = preset.oscFmRouteCounts[i];
     for (uint8_t r = 0; r < preset.oscFmRouteCounts[i]; r++)
       oscs[i]->fmRoutes[r] = preset.oscFmRoutes[i][r];
-  }
-
-  pool.noise.type = preset.noiseType;
-
-  // SVF mode: paramValues[SVF_MODE] (set above via param loop) is authoritative.
-  // preset.svfMode keeps the enum in sync for capturePreset round-trips.
-
-  lfo::LFO* lfos[] = {&pool.lfo1, &pool.lfo2, &pool.lfo3};
-  for (int i = 0; i < NUM_LFOS; i++) {
-    lfos[i]->bankID = preset.lfoBanks[i];
-    lfos[i]->bankPtr = banks::getBankByID(preset.lfoBanks[i]);
-    lfos[i]->subdivision = preset.lfoSubdivisions[i];
   }
 
   // ==== Mod matrix: rebuild from scratch ====
@@ -137,8 +120,6 @@ ApplyResult applyPreset(const Preset& preset, Engine& engine) {
     if (preset.signalChain[i] != signal_chain::SignalProcessor::None)
       pool.signalChain.length++;
   }
-
-  engine.fxChain.delay.subdivision = preset.delaySubdivision;
 
   // ==== FX chain ordering ====
   engine.fxChain.length = preset.fxChainLength;
@@ -173,19 +154,9 @@ Preset capturePreset(const Engine& engine) {
   // ==== Enum fields — read directly from engine ====
   const osc::WavetableOsc* oscs[] = {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4};
   for (int i = 0; i < NUM_OSCS; i++) {
-    p.oscBanks[i] = oscs[i]->bankID;
     p.oscFmRouteCounts[i] = oscs[i]->fmRouteCount;
     for (uint8_t r = 0; r < oscs[i]->fmRouteCount; r++)
       p.oscFmRoutes[i][r] = oscs[i]->fmRoutes[r];
-  }
-
-  p.noiseType = pool.noise.type;
-  p.svfMode = pool.svf.mode;
-
-  const lfo::LFO* lfos[] = {&pool.lfo1, &pool.lfo2, &pool.lfo3};
-  for (int i = 0; i < NUM_LFOS; i++) {
-    p.lfoBanks[i] = lfos[i]->bankID;
-    p.lfoSubdivisions[i] = lfos[i]->subdivision;
   }
 
   // ==== Mod matrix ====
@@ -207,9 +178,6 @@ Preset capturePreset(const Engine& engine) {
   p.fxChainLength = engine.fxChain.length;
   for (uint8_t i = 0; i < dsp::fx::chain::MAX_EFFECT_SLOTS; i++)
     p.fxChain[i] = engine.fxChain.slots[i];
-
-  // ==== Delay subdivision ====
-  p.delaySubdivision = engine.fxChain.delay.subdivision;
 
   return p;
 }
@@ -238,11 +206,14 @@ void printPreset(const Preset& p) {
       printf("  %-28s %s\n", def.name, v >= 0.5f ? "true" : "false");
       break;
 
+    // TODO: print enum strings
     case param::ParamType::Int8:
-    case param::ParamType::OscBank:
+    case param::ParamType::OscBankID:
     case param::ParamType::PhaseMode:
+    case param::ParamType::NoiseType:
     case param::ParamType::FilterMode:
     case param::ParamType::DistortionType:
+    case param::ParamType::Subdivision:
       printf("  %-28s %d\n", def.name, static_cast<int>(v));
       break;
     }
@@ -252,7 +223,6 @@ void printPreset(const Preset& p) {
   printf("[Enum Fields]\n");
   const char* oscKeys[] = {"osc1", "osc2", "osc3", "osc4"};
   for (int i = 0; i < NUM_OSCS; i++) {
-    printf("  %s.bank  %s\n", oscKeys[i], banks::bankIDToString(p.oscBanks[i]));
     if (p.oscFmRouteCounts[i] == 0) {
       printf("  %s.fmRoutes  (none)\n", oscKeys[i]);
     } else {
@@ -263,13 +233,6 @@ void printPreset(const Preset& p) {
                osc::fmSourceToString(p.oscFmRoutes[i][r].source),
                p.oscFmRoutes[i][r].depth);
     }
-  }
-  printf("  noise.type              %s\n", noise::noiseTypeToString(p.noiseType));
-  printf("  svf.mode (enum)         %s\n", filters::svfModeToString(p.svfMode));
-
-  const char* lfoKeys[] = {"lfo1", "lfo2", "lfo3"};
-  for (int i = 0; i < NUM_LFOS; i++) {
-    printf("  %s.bank     %s\n", lfoKeys[i], banks::bankIDToString(p.lfoBanks[i]));
   }
 
   // --- Mod Matrix ---

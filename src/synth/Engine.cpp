@@ -1,10 +1,10 @@
 #include "Engine.h"
 
-#include "synth/ParamDefs.h"
-#include "synth/ParamSync.h"
-#include "synth/Preset.h"
-#include "synth/PresetApply.h"
 #include "synth/VoicePool.h"
+#include "synth/params/ParamDefs.h"
+#include "synth/params/ParamSync.h"
+#include "synth/preset/Preset.h"
+#include "synth/preset/PresetApply.h"
 
 #include "dsp/Buffers.h"
 #include "dsp/fx/FXChain.h"
@@ -41,14 +41,14 @@ Engine createEngine(const EngineConfig& config) {
 }
 
 void Engine::processParamEvent(const ParamEvent& event) {
-  using param::router::setParamValue;
+  using namespace param;
 
-  auto id = static_cast<param::ParamID>(event.id);
+  auto id = static_cast<ParamID>(event.id);
 
-  setParamValue(paramRouter, id, event.value);
+  router::setParamValue(paramRouter, id, event.value);
 
   dirtyFlags.mark(param::getParamDef(id).updateGroup);
-  param::sync::syncDirtyParams(*this);
+  sync::syncDirtyParams(*this);
 }
 
 void Engine::processMIDIEvent(const MIDIEvent& event) {
@@ -102,32 +102,12 @@ void Engine::processMIDIEvent(const MIDIEvent& event) {
 }
 
 void Engine::processEngineEvent(const EngineEvent& event) {
-  namespace banks = wavetable::banks;
   namespace osc = wavetable::osc;
   namespace mm = mod_matrix;
   namespace sc = signal_chain;
   namespace fx = dsp::fx::chain;
 
   switch (event.type) {
-
-  case EngineEvent::Type::SetOscBank: {
-    auto* osc = voices::getOscByIndex(voicePool, event.data.setOscBank.oscIndex);
-    if (!osc)
-      return;
-    osc->bankPtr = banks::getBankByID(static_cast<banks::BankID>(event.data.setOscBank.bankId));
-    return;
-  }
-
-  case EngineEvent::Type::SetLFOBank: {
-    auto* lfo = voices::getLFOByIndex(voicePool, event.data.setLFOBank.lfoIndex);
-    if (!lfo)
-      return;
-    if (event.data.setLFOBank.bankId == banks::BankID::SampleAndHold)
-      lfo->bankPtr = nullptr; // SAH uses nullptr as sentinel — no wavetable to scan
-    else
-      lfo->bankPtr = banks::getBankByID(static_cast<banks::BankID>(event.data.setLFOBank.bankId));
-    return;
-  }
 
   case EngineEvent::Type::SetNoiseType: {
     voicePool.noise.type = static_cast<noise::NoiseType>(event.data.setNoiseType.noiseType);

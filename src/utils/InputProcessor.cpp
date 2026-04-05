@@ -1,18 +1,15 @@
 #include "InputProcessor.h"
 
 #include "synth/Engine.h"
-#include "synth/Filters.h"
+#include "synth/EngineTypes.h"
 #include "synth/ModMatrix.h"
-#include "synth/Noise.h"
-#include "synth/ParamDefs.h"
-#include "synth/ParamRouter.h"
-#include "synth/PresetCmd.h"
 #include "synth/SignalChain.h"
 #include "synth/VoicePool.h"
-#include "synth/WavetableBanks.h"
-#include "synth/WavetableOsc.h"
+#include "synth/params/ParamDefs.h"
+#include "synth/params/ParamRouter.h"
+#include "synth/params/ParamUtils.h"
+#include "synth/preset/PresetCmd.h"
 
-#include "app/ParamLookup.h"
 #include "app/SynthSession.h"
 
 #include "dsp/fx/FXChain.h"
@@ -27,10 +24,9 @@
 #include <string>
 
 namespace synth::utils {
+namespace p = param;
 namespace mm = mod_matrix;
 namespace osc = wavetable::osc;
-
-namespace pl = app::param_lookup;
 
 // ==== Internal Helpers ====
 namespace {
@@ -41,13 +37,14 @@ int setInputParam(const std::string& paramName,
                   app::session::hSynthSession session) {
   float paramValue;
 
-  auto paramID = pl::getParamIDByName(paramName.c_str());
-  if (paramID == param::PARAM_COUNT) {
+  auto paramID = p::utils::getParamIDByName(paramName.c_str());
+  if (paramID == p::PARAM_COUNT) {
     printf("Error: Unknown parameter '%s'\n", paramName.c_str());
     return 1;
   }
 
-  auto& paramDef = param::getParamDef(paramID);
+  auto& paramDef = p::getParamDef(paramID);
+
   switch (paramDef.type) {
 
   // Enable/Disable Item
@@ -56,20 +53,87 @@ int setInputParam(const std::string& paramName,
     iss >> value;
 
     paramValue = strcasecmp(value.c_str(), "true") == 0 ? 1.0f : 0.0f;
+    break;
+  }
 
-  } break;
+  case param::ParamType::OscBankID: {
+    std::string value;
+    iss >> value;
 
-  // Set SVF Mode
+    auto id = p::utils::parseBankID(value.c_str());
+    if (id == types::BankID::Unknown) {
+      printf("Unknown bank: %s\n", value.c_str());
+      return 10;
+    }
+    paramValue = static_cast<float>(id);
+    break;
+  }
+
+  case param::ParamType::PhaseMode: {
+    std::string value;
+    iss >> value;
+
+    auto mode = p::utils::parsePhaseMode(value.c_str());
+    if (mode == types::PhaseMode::Unknown) {
+      printf("Unknown phase mode: %s\n", value.c_str());
+      return 10;
+    }
+    paramValue = static_cast<float>(mode);
+    break;
+  }
+
+  case param::ParamType::NoiseType: {
+    std::string value;
+    iss >> value;
+
+    auto noiseType = p::utils::parseNoiseType(value.c_str());
+    if (noiseType == types::NoiseType::Unknown) {
+      printf("Unknown noise type: %s\n", value.c_str());
+      return 10;
+    }
+    paramValue = static_cast<float>(noiseType);
+    break;
+  }
+
   case param::ParamType::FilterMode: {
     std::string value;
     iss >> value;
 
-    auto filterMode = filters::parseSVFMode(value.c_str());
-    paramValue = static_cast<float>(filterMode);
+    auto mode = p::utils::parseSVFMode(value.c_str());
+    if (mode == types::SVFMode::Unknown) {
+      printf("Unknown svf mode: %s\n", value.c_str());
+      return 10;
+    }
+    paramValue = static_cast<float>(mode);
+    break;
+  }
 
-  } break;
+  case param::ParamType::DistortionType: {
+    std::string value;
+    iss >> value;
 
-  // Treat all other params values as floats (denormalized)
+    auto dist = p::utils::parseDistortionType(value.c_str());
+    if (dist == types::DistortionType::Unknown) {
+      printf("Unknown distortion type: %s\n", value.c_str());
+      return 10;
+    }
+    paramValue = static_cast<float>(dist);
+    break;
+  }
+
+  case param::ParamType::Subdivision: {
+    std::string value;
+    iss >> value;
+
+    auto sub = p::utils::parseSubdivision(value.c_str());
+    if (sub == types::Subdivision::Unknown) {
+      printf("Unknown subdivision value: %s\n", value.c_str());
+      return 10;
+    }
+    paramValue = static_cast<float>(sub);
+    break;
+  }
+    // Treat all other params values as floats (denormalized)
   default:
     iss >> paramValue;
   }
@@ -213,60 +277,6 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
     std::string paramName;
     iss >> paramName;
 
-    // Direct-handled params — bypass binding system and event queue
-    if (paramName == "osc1.bank") {
-      std::string value;
-      iss >> value;
-
-      auto* bank = getBankByName(value.c_str());
-
-      if (bank)
-        engine.voicePool.osc1.bankPtr = bank;
-      else
-        printf("unknown bank: %s\n", value.c_str());
-
-      return;
-    }
-    if (paramName == "osc2.bank") {
-      std::string value;
-      iss >> value;
-
-      auto* bank = synth::wavetable::banks::getBankByName(value.c_str());
-
-      if (bank)
-        engine.voicePool.osc2.bankPtr = bank;
-      else
-        printf("unknown bank: %s\n", value.c_str());
-
-      return;
-    }
-    if (paramName == "osc3.bank") {
-      std::string value;
-      iss >> value;
-
-      auto* bank = getBankByName(value.c_str());
-
-      if (bank)
-        engine.voicePool.osc3.bankPtr = bank;
-      else
-        printf("unknown bank: %s\n", value.c_str());
-
-      return;
-    }
-    if (paramName == "osc4.bank") {
-      std::string value;
-      iss >> value;
-
-      auto* bank = getBankByName(value.c_str());
-
-      if (bank)
-        engine.voicePool.osc4.bankPtr = bank;
-      else
-        printf("unknown bank: %s\n", value.c_str());
-
-      return;
-    }
-
     if (paramName == "osc1.fmSource" || paramName == "osc2.fmSource" ||
         paramName == "osc3.fmSource" || paramName == "osc4.fmSource") {
       std::string value;
@@ -278,58 +288,6 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       } else {
         osc->fmRoutes[0] = {src, 1.0f};
         osc->fmRouteCount = 1;
-      }
-      return;
-    }
-
-    if (paramName == "noise.type") {
-      std::string value;
-      iss >> value;
-      engine.voicePool.noise.type = noise::parseNoiseType(value.c_str());
-      return;
-    }
-
-    if (paramName == "lfo1.bank") {
-      std::string value;
-      iss >> value;
-      if (value == "sah")
-        engine.voicePool.lfo1.bankPtr = nullptr; // S&H sentinel
-      else {
-        auto* bank = getBankByName(value.c_str());
-        if (bank)
-          engine.voicePool.lfo1.bankPtr = bank;
-        else
-          printf("unknown bank: %s\n", value.c_str());
-      }
-      return;
-    }
-
-    if (paramName == "lfo2.bank") {
-      std::string value;
-      iss >> value;
-      if (value == "sah")
-        engine.voicePool.lfo2.bankPtr = nullptr; // S&H sentinel
-      else {
-        auto* bank = getBankByName(value.c_str());
-        if (bank)
-          engine.voicePool.lfo2.bankPtr = bank;
-        else
-          printf("unknown bank: %s\n", value.c_str());
-      }
-      return;
-    }
-
-    if (paramName == "lfo3.bank") {
-      std::string value;
-      iss >> value;
-      if (value == "sah")
-        engine.voicePool.lfo3.bankPtr = nullptr; // S&H sentinel
-      else {
-        auto* bank = getBankByName(value.c_str());
-        if (bank)
-          engine.voicePool.lfo3.bankPtr = bank;
-        else
-          printf("unknown bank: %s\n", value.c_str());
       }
       return;
     }
@@ -374,7 +332,7 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
       return;
     }
 
-    auto paramID = pl::getParamIDByName(paramName.c_str());
+    auto paramID = p::utils::getParamIDByName(paramName.c_str());
     if (paramID == param::PARAM_COUNT) {
       printf("Error: Unknown parameter '%s'\n", paramName.c_str());
       return;
@@ -390,7 +348,7 @@ void parseCommand(const std::string& line, Engine& engine, app::session::hSynthS
     std::string optionalParam;
     iss >> optionalParam;
 
-    pl::printParamList(optionalParam.empty() ? nullptr : optionalParam.c_str());
+    p::utils::printParamList(optionalParam.empty() ? nullptr : optionalParam.c_str());
 
     // ==== FM Routes =====
   } else if (cmd == "fm") {

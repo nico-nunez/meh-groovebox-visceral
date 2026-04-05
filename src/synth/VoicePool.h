@@ -6,12 +6,12 @@
 #include "synth/ModMatrix.h"
 #include "synth/MonoMode.h"
 #include "synth/Noise.h"
-#include "synth/ParamRanges.h"
 #include "synth/Saturator.h"
 #include "synth/SignalChain.h"
 #include "synth/Types.h"
 #include "synth/Unison.h"
 #include "synth/WavetableOsc.h"
+#include "synth/params/ParamRanges.h"
 
 #include "dsp/Buffers.h"
 

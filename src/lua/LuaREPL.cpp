@@ -2,8 +2,8 @@
 
 #include "LuaBindings.h"
 
-#include "device_io/KeyCapture.h"
 #include "linenoise.h"
+#include "utils/KeyProcessor.h"
 
 namespace lua::repl {
 static lua_State* gL = nullptr; // for completion callback
@@ -74,7 +74,7 @@ void runLuaREPL(Engine& engine, hSynthSession session) {
   }
 
   gL = nullptr;
-  device_io::terminateKeyCaptureLoop();
+  synth::utils::requestQuit();
   lua_close(L);
 }
 

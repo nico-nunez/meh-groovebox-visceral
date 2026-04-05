@@ -1,11 +1,13 @@
 #include "PresetCmd.h"
+#include "Preset.h"
+#include "PresetApply.h"
+#include "PresetIO.h"
+#include "PresetSerializer.h"
 
-#include "synth/ParamDefs.h"
-#include "synth/Preset.h"
-#include "synth/PresetApply.h"
-#include "synth/PresetIO.h"
-#include "synth/PresetSerializer.h"
+#include "synth/Engine.h"
 #include "synth/WavetableBanks.h"
+#include "synth/params/ParamDefs.h"
+
 #include <cstdint>
 
 namespace synth::preset {
@@ -138,13 +140,21 @@ void processPresetCmd(std::istringstream& iss, Engine& engine) {
     int oscCount = osc1Enabled + osc2Enabled + osc3Enabled + osc4Enabled;
     printf("Oscs:     %d enabled", oscCount);
     if (osc1Enabled)
-      printf(" (1:%s", bankIDToString(p.oscBanks[0]));
+      printf(" (1:%s",
+             bankIDToString(
+                 static_cast<wavetable::banks::BankID>(getPresetValue(p, ParamID::OSC1_BANK_ID))));
     if (osc2Enabled)
-      printf(" 2:%s", bankIDToString(p.oscBanks[1]));
+      printf(" (2:%s",
+             bankIDToString(
+                 static_cast<wavetable::banks::BankID>(getPresetValue(p, ParamID::OSC2_BANK_ID))));
     if (osc3Enabled)
-      printf(" 3:%s", bankIDToString(p.oscBanks[2]));
+      printf(" (3:%s",
+             bankIDToString(
+                 static_cast<wavetable::banks::BankID>(getPresetValue(p, ParamID::OSC3_BANK_ID))));
     if (osc4Enabled)
-      printf(" 4:%s", bankIDToString(p.oscBanks[3]));
+      printf(" (4:%s",
+             bankIDToString(
+                 static_cast<wavetable::banks::BankID>(getPresetValue(p, ParamID::OSC4_BANK_ID))));
     if (oscCount > 0)
       printf(")");
     printf("\n");

@@ -8,6 +8,9 @@
 -Ilibs/json/include
 -Ilibs/lua/include
 -Ilibs/linenoise
+-Ilibs/imgui
+-Ilibs/imgui/backends
+-Ilibs/glfw/include
 -Wall
 -Weffc++
 -Wextra

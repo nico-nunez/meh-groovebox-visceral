@@ -31,12 +31,16 @@ void registerBank(BankID id, WavetableBank* bank) {
 // TODO(nico-nunez): deregiter is needed once wav importing is implemented
 
 WavetableBank* getBankByID(BankID id) {
+  const auto idInt = static_cast<int>(id);
+  if (idInt < 0 || idInt >= s_registryCount)
+    return nullptr;
+
   return s_registry[id];
 }
 
 WavetableBank* getBankByName(const char* name) {
   for (int i = 0; i < s_registryCount; i++) {
-    if (std::strcmp(s_registry[i]->name, name) == 0)
+    if (s_registry[i] && std::strcmp(s_registry[i]->name, name) == 0)
       return s_registry[i];
   }
   return nullptr;
@@ -61,7 +65,7 @@ BankID parseBankID(const char* name) {
     return BankID::SampleAndHold;
 
   for (int i = 0; i < s_registryCount; i++)
-    if (std::strcmp(s_registry[i]->name, name) == 0)
+    if (s_registry[i] && std::strcmp(s_registry[i]->name, name) == 0)
       return static_cast<BankID>(i);
 
   return BankID::Unknown;

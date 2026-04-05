@@ -1,6 +1,6 @@
 #pragma once
 
-#include "synth/Preset.h"
+#include "Preset.h"
 
 #include <string>
 #include <vector>

@@ -1,6 +1,5 @@
 #include "PresetIO.h"
-
-#include "synth/PresetSerializer.h"
+#include "PresetSerializer.h"
 
 #include <cstdlib>
 #include <dirent.h>

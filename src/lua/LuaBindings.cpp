@@ -1,36 +1,33 @@
 #include "LuaState.h"
+#include "lauxlib.h"
 #include "lua.h"
 
-#include "synth/LFO.h"
+#include "synth/EngineTypes.h"
 #include "synth/ModMatrix.h"
-#include "synth/Noise.h"
-#include "synth/ParamDefs.h"
-#include "synth/ParamRouter.h"
-#include "synth/PresetApply.h"
-#include "synth/PresetIO.h"
 #include "synth/SignalChain.h"
 #include "synth/VoicePool.h"
-#include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
+#include "synth/params/ParamDefs.h"
+#include "synth/params/ParamRouter.h"
+#include "synth/params/ParamUtils.h"
+#include "synth/preset/PresetApply.h"
+#include "synth/preset/PresetIO.h"
 
-#include "app/ParamLookup.h"
+#include "utils/KeyProcessor.h"
+
 #include "app/SynthSession.h"
 
-#include "device_io/KeyCapture.h"
 #include "dsp/fx/FXChain.h"
 
 #include <cstdio>
 
 namespace lua::bindings {
-namespace pl = app::param_lookup;
-namespace pr = synth::param::router;
+namespace param = synth::param;
+namespace pr = param::router;
 
 namespace voices = synth::voices;
 
-namespace banks = synth::wavetable::banks;
 namespace osc = synth::wavetable::osc;
-
-namespace noise = synth::noise;
 
 namespace mm = synth::mod_matrix;
 namespace sc = synth::signal_chain;
@@ -50,33 +47,6 @@ int paramGroupNewIndex(lua_State* L) {
   auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
   lua_pop(L, 1);
   Engine* engine = ctx->engines[ctx->currentPart];
-
-  // Special case: osc*.bank / lfo*.bank — WavetableBank pointer, not in PARAM_DEFS
-  if (strcmp(key, "bank") == 0) {
-    const char* bankName = luaL_checkstring(L, 3);
-    if (strncmp(group, "lfo", 3) == 0) {
-      auto* lfo = voices::getLFOByName(engine->voicePool, group);
-      if (!lfo) {
-        luaL_error(L, "unknown lfo: %s", group);
-        return 0;
-      }
-      lfo->bankPtr = strcmp(bankName, "sah") == 0 ? nullptr : banks::getBankByName(bankName);
-    } else {
-      auto* o = voices::getOscByName(engine->voicePool, group);
-      if (!o) {
-        luaL_error(L, "unknown osc: %s", group);
-        return 0;
-      }
-      auto* bank = banks::getBankByName(bankName);
-      if (!bank) {
-        luaL_error(L, "unknown bank: %s", bankName);
-        return 0;
-      }
-      o->bankPtr = bank;
-      printf("OK\n");
-    }
-    return 0;
-  }
 
   // Special case: osc*.fmSource — shorthand for clearFMRoutes + single addFMRoute at depth 1.0
   if (strcmp(key, "fmSource") == 0) {
@@ -99,33 +69,107 @@ int paramGroupNewIndex(lua_State* L) {
     return 0;
   }
 
-  // Special case: noise.type — NoiseType enum, not in PARAM_DEFS
-  if (strcmp(group, "noise") == 0 && strcmp(key, "type") == 0) {
-    const char* typeName = luaL_checkstring(L, 3);
-    engine->voicePool.noise.type = noise::parseNoiseType(typeName);
-    printf("OK\n");
-
-    return 0;
-  }
-
   // Normal param path — float / bool / enum → SPSC queue
   char fullName[64];
   snprintf(fullName, sizeof(fullName), "%s.%s", group, key);
 
-  auto paramID = pl::getParamIDByName(fullName);
-  if (paramID == synth::param::PARAM_COUNT) {
+  auto paramID = param::utils::getParamIDByName(fullName);
+  if (paramID == param::PARAM_COUNT) {
     luaL_error(L, "unknown param: %s.%s", group, key);
     return 0;
   }
 
-  float value;
-  if (lua_isboolean(L, 3))
-    value = lua_toboolean(L, 3) ? 1.0f : 0.0f;
-  else
-    value = (float)luaL_checknumber(L, 3);
+  auto paramDef = param::getParamDef(paramID);
+
+  float paramVal;
+
+  switch (paramDef.type) {
+  case param::ParamType::Float:
+  case param::ParamType::Int8: {
+    paramVal = static_cast<float>(luaL_checknumber(L, 3));
+    break;
+  }
+
+  // Enable/Disable Item
+  case param::ParamType::Bool:
+    paramVal = lua_toboolean(L, 3) ? 1.0f : 0.0f;
+    break;
+
+  case param::ParamType::OscBankID: {
+    auto inputVal = luaL_checkstring(L, 3);
+    auto id = param::utils::parseBankID(inputVal);
+
+    if (id == synth::types::BankID::Unknown) {
+      printf("Unknown bank: %s\n", inputVal);
+      return 10;
+    }
+    paramVal = static_cast<float>(id);
+    break;
+  }
+
+  case param::ParamType::PhaseMode: {
+    auto inputVal = luaL_checkstring(L, 3);
+    auto mode = param::utils::parsePhaseMode(inputVal);
+
+    if (mode == synth::types::PhaseMode::Unknown) {
+      printf("Unknown phase mode: %s\n", inputVal);
+      return 10;
+    }
+    paramVal = static_cast<float>(mode);
+    break;
+  }
+
+  case param::ParamType::NoiseType: {
+    auto inputVal = luaL_checkstring(L, 3);
+    auto noiseType = param::utils::parseNoiseType(inputVal);
+
+    if (noiseType == synth::types::NoiseType::Unknown) {
+      printf("Unknown noise type: %s\n", inputVal);
+      return 10;
+    }
+    paramVal = static_cast<float>(noiseType);
+    break;
+  }
+
+  case param::ParamType::FilterMode: {
+    auto inputVal = luaL_checkstring(L, 3);
+    auto mode = param::utils::parseSVFMode(inputVal);
+
+    if (mode == synth::types::SVFMode::Unknown) {
+      printf("Unknown svf mode: %s\n", inputVal);
+      return 10;
+    }
+    paramVal = static_cast<float>(mode);
+    break;
+  }
+
+  case param::ParamType::DistortionType: {
+    auto inputVal = luaL_checkstring(L, 3);
+    auto dist = param::utils::parseDistortionType(inputVal);
+
+    if (dist == synth::types::DistortionType::Unknown) {
+      printf("Unknown distortion type: %s\n", inputVal);
+      return 10;
+    }
+    paramVal = static_cast<float>(dist);
+    break;
+  }
+
+  case param::ParamType::Subdivision: {
+    auto inputVal = luaL_checkstring(L, 3);
+    auto sub = param::utils::parseSubdivision(inputVal);
+
+    if (sub == synth::types::Subdivision::Unknown) {
+      printf("Unknown subdivision value: %s\n", inputVal);
+      return 10;
+    }
+    paramVal = static_cast<float>(sub);
+    break;
+  }
+  }
 
   app::session::pushParamEvent(ctx->sessions[ctx->currentPart],
-                               {static_cast<uint8_t>(paramID), value});
+                               {static_cast<uint8_t>(paramID), paramVal});
   printf("OK\n");
 
   return 0;
@@ -139,7 +183,7 @@ int paramGroupIndex(lua_State* L) {
   char fullName[64];
   snprintf(fullName, sizeof(fullName), "%s.%s", group, key);
 
-  auto paramID = pl::getParamIDByName(fullName);
+  auto paramID = param::utils::getParamIDByName(fullName);
   if (paramID == synth::param::PARAM_COUNT) {
     lua_pushnil(L);
     return 1;
@@ -592,7 +636,7 @@ int l_select(lua_State* L) {
 }
 
 int l_quit(lua_State*) {
-  device_io::terminateKeyCaptureLoop();
+  synth::utils::requestQuit();
   printf("Goodbye\n");
   return 0;
 }

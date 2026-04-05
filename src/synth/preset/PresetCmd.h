@@ -1,8 +1,10 @@
 #pragma once
 
-#include "synth/Engine.h"
-
 #include <sstream>
+
+namespace synth {
+struct Engine;
+}
 
 namespace synth::preset {
 // ============================================================

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "synth/ParamDefs.h"
-#include "synth/ParamRouter.h"
 #include "synth/VoicePool.h"
 #include "synth/events/Events.h"
+#include "synth/params/ParamDefs.h"
+#include "synth/params/ParamRouter.h"
 
 #include "dsp/Buffers.h"
 #include "dsp/Waveforms.h"

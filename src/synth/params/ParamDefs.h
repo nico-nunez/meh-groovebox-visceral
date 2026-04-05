@@ -6,7 +6,7 @@
 
 // This defines the "shape" of your 12 oscillator parameters
 #define OSC_PARAMS(X, N)                                                                           \
-  X(OSC##N##_BANK_ID, "osc" #N ".bank", OscBank, 0.0f, 4.0f, 0.0f, OscBank)                        \
+  X(OSC##N##_BANK_ID, "osc" #N ".bank", OscBankID, 0.0f, 4.0f, 0.0f, OscBank)                      \
   X(OSC##N##_MIX_LEVEL, "osc" #N ".mixLevel", Float, 0.0f, 4.0f, 1.0f, None)                       \
   X(OSC##N##_DETUNE, "osc" #N ".detuneAmount", Float, -100.0f, 100.0f, 0.0f, None)                 \
   X(OSC##N##_OCTAVE, "osc" #N ".octaveOffset", Int8, -2.0f, 2.0f, 0.0f, None)                      \
@@ -21,12 +21,13 @@
   X(OSC##N##_ENABLED, "osc" #N ".enabled", Bool, 0.0f, 1.0f, 1.0f, OscEnable)
 
 #define LFO_PARAMS(X, N)                                                                           \
-  X(LFO##N##_BANK_ID, "lfo" #N ".bank", OscBank, 0.0f, 5.0, 0.0f, LFOBank)                         \
+  X(LFO##N##_BANK_ID, "lfo" #N ".bank", OscBankID, 0.0f, 5.0, 0.0f, LFOBank)                       \
   X(LFO##N##_RATE, "lfo" #N ".rate", Float, 0.0f, 20.0f, 1.0f, LFORate)                            \
   X(LFO##N##_AMPLITUDE, "lfo" #N ".amplitude", Float, 0.0f, 1.0f, 1.0f, None)                      \
   X(LFO##N##_RETRIGGER, "lfo" #N ".retrigger", Bool, 0.0f, 1.0f, 0.0f, None)                       \
   X(LFO##N##_DELAY, "lfo" #N ".delayMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                    \
   X(LFO##N##_ATTACK, "lfo" #N ".attackMs", Float, 0.0f, 5000.0f, 0.0f, LFOFadeIn)                  \
+  X(LFO##N##_SUBDIVISION, "lfo" #N ".subdivision", Subdivision, 0.0f, 14.0f, 2.0f, LFOTempoSync)   \
   X(LFO##N##_TEMPO_SYNC, "lfo" #N ".tempoSync", Bool, 0.0f, 1.0f, 0.0f, LFOTempoSync)
 
 // X(enumId,           name,               type,       min,     max,      default, updateGroup)
@@ -41,6 +42,7 @@
   LFO_PARAMS(X, 3)                                                                                 \
                                                                                                    \
   /* ==== Noise ==== */                                                                            \
+  X(NOISE_TYPE, "noise.type", NoiseType, 0.0f, 1.0f, 0.0f, None)                                   \
   X(NOISE_MIX_LEVEL, "noise.mixLevel", Float, 0.0f, 1.0f, 0.0f, None)                              \
   X(NOISE_ENABLED, "noise.enabled", Bool, 0.0f, 1.0f, 0.0f, OscEnable)                             \
                                                                                                    \
@@ -129,6 +131,7 @@
                                                                                                    \
   /* ==== Delay ==== */                                                                            \
   X(FX_DELAY_TIME, "fx.delay.time", Float, 0.01f, 4.0f, 0.5f, DelayDerived)                        \
+  X(FX_DELAY_SUBDIVISION, "fx.delay.subdivision", Subdivision, 0.0f, 14.0f, 2.0f, DelayDerived)    \
   X(FX_DELAY_TEMPO_SYNC, "fx.delay.tempoSync", Bool, 0.0f, 1.0f, 1.0f, DelayDerived)               \
   X(FX_DELAY_FEEDBACK, "fx.delay.feedback", Float, 0.0f, 0.99f, 0.4f, None)                        \
   X(FX_DELAY_DAMPING, "fx.delay.damping", Float, 0.0f, 1.0f, 0.0f, DelayDamping)                   \
@@ -150,6 +153,29 @@
   X(FX_REVERB_ENABLED, "fx.reverb.enabled", Bool, 0.0f, 1.0f, 0.0f, None)
 
 namespace synth::param {
+// ================
+// Params
+// ================
+enum class ParamType : uint8_t {
+  Float,
+  Int8,
+  Bool,
+  OscBankID,
+  NoiseType,
+  FilterMode,
+  DistortionType,
+  PhaseMode,
+  Subdivision,
+};
+
+enum ParamID {
+#define X(id, ...) id,
+  PARAM_LIST
+#undef X
+      UNKNOWN,
+  PARAM_COUNT,
+};
+
 // ===================
 // Update Groups
 // ===================
@@ -214,19 +240,9 @@ struct UpdateGroupFlags {
   bool any() const { return flagBits != 0; }
 };
 
-// ================
-// Params
-// ================
-enum class ParamType : uint8_t {
-  Float,
-  Int8,
-  Bool,
-  OscBank,
-  FilterMode,
-  DistortionType,
-  PhaseMode,
-};
-
+// =================
+// Param Defs
+// =================
 struct ParamDef {
   const char* name; // canonical name: "osc1.mixLevel"
   ParamType type;
@@ -236,16 +252,6 @@ struct ParamDef {
   UpdateGroup updateGroup;
 };
 
-enum ParamID {
-#define X(id, ...) id,
-  PARAM_LIST
-#undef X
-      UNKNOWN,
-  PARAM_COUNT,
-};
-
-// One row per ParamID. Order MUST match the enum.
-// This is enforced by static_assert at the bottom.
 inline constexpr ParamDef PARAM_DEFS[] = {
 #define X(id, name, type, min, max, def, group)                                                    \
   {name, ParamType::type, min, max, def, UpdateGroup::group},
@@ -254,11 +260,12 @@ inline constexpr ParamDef PARAM_DEFS[] = {
 };
 
 inline constexpr size_t PARAM_DEF_COUNT = sizeof(PARAM_DEFS) / sizeof(PARAM_DEFS[0]);
-
 static_assert(PARAM_DEF_COUNT == PARAM_COUNT - 1,
               "PARAM_DEFS must have one entry per ParamID (excluding UNKNOWN)");
 
-// ==== Lookup helpers ====
+// ================
+// Helpers
+// ================
 inline const ParamDef& getParamDef(ParamID id) {
   return PARAM_DEFS[static_cast<int>(id)];
 }
@@ -283,7 +290,7 @@ struct EnvParamIDs {
 };
 
 struct LFOParamIDs {
-  ParamID bankID, rate, amplitude, retrigger, tempoSync, delay, attack;
+  ParamID bankID, rate, amplitude, retrigger, delay, attack, subdivision, tempoSync;
 };
 
 // One bundle per instance, order matches the ParamID enum layout.
@@ -372,6 +379,7 @@ inline constexpr EnvParamIDs ENV_PARAM_IDS[3] = {
 inline constexpr LFOParamIDs LFO_PARAM_IDS[3] = {
     {LFO1_BANK_ID,
      LFO1_RATE,
+     LFO1_SUBDIVISION,
      LFO1_AMPLITUDE,
      LFO1_RETRIGGER,
      LFO1_TEMPO_SYNC,
@@ -380,6 +388,7 @@ inline constexpr LFOParamIDs LFO_PARAM_IDS[3] = {
 
     {LFO2_BANK_ID,
      LFO2_RATE,
+     LFO2_SUBDIVISION,
      LFO2_AMPLITUDE,
      LFO2_RETRIGGER,
      LFO2_TEMPO_SYNC,
@@ -388,6 +397,7 @@ inline constexpr LFOParamIDs LFO_PARAM_IDS[3] = {
 
     {LFO3_BANK_ID,
      LFO3_RATE,
+     LFO3_SUBDIVISION,
      LFO3_AMPLITUDE,
      LFO3_RETRIGGER,
      LFO3_TEMPO_SYNC,

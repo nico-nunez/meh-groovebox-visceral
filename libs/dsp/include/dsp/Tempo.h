@@ -26,6 +26,7 @@ enum class Subdivision : uint8_t {
   QuarterTriplet,   // 2/3 beat
   EighthTriplet,    // 1/3 beat
   SixteenthTriplet, // 1/6 beat
+  Unknown,
 };
 
 // Beat fractions indexed by Subdivision ordinal
@@ -87,8 +88,9 @@ inline const char* subdivisionToString(Subdivision s) {
     return "1/8t";
   case Subdivision::SixteenthTriplet:
     return "1/16t";
+  default:
+    return "1/4"; // unreachable
   }
-  return "1/4"; // unreachable
 }
 
 inline Subdivision parseSubdivision(const char* str) {
@@ -122,7 +124,11 @@ inline Subdivision parseSubdivision(const char* str) {
     return Subdivision::EighthTriplet;
   if (std::strcmp(str, "1/16t") == 0)
     return Subdivision::SixteenthTriplet;
-  return Subdivision::Quarter; // unknown — caller should warn
+  return Subdivision::Unknown; // unknown — caller should warn
+}
+
+inline float calcEffectiveRate(Subdivision sub, float bpm) {
+  return 1.0f / dsp::tempo::subdivisionPeriodSeconds(sub, bpm);
 }
 
 } // namespace dsp::tempo

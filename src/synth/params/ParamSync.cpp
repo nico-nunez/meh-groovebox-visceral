@@ -1,21 +1,22 @@
 #include "ParamSync.h"
+#include "ParamDefs.h"
 
-#include "dsp/fx/Reverb.h"
 #include "synth/Engine.h"
 #include "synth/Envelope.h"
 #include "synth/Filters.h"
-#include "synth/ParamDefs.h"
 #include "synth/Saturator.h"
 #include "synth/Unison.h"
 #include "synth/VoicePool.h"
+#include "synth/WavetableBanks.h"
 
 #include "dsp/Math.h"
+#include "dsp/Tempo.h"
 #include "dsp/fx/Chorus.h"
 #include "dsp/fx/Delay.h"
 #include "dsp/fx/Distortion.h"
 #include "dsp/fx/FXChain.h"
 #include "dsp/fx/Phaser.h"
-#include "synth/WavetableBanks.h"
+#include "dsp/fx/Reverb.h"
 
 namespace synth::param::sync {
 namespace {
@@ -33,10 +34,9 @@ namespace reverb = dsp::fx::reverb;
 
 void updateOscBanks(VoicePool& pool) {
   for (osc::WavetableOsc* osc : {&pool.osc1, &pool.osc2, &pool.osc3, &pool.osc4}) {
-    auto bankName = banks::bankIDToString(osc->bankID);
-
-    if (bankName != osc->bankPtr->name)
-      osc->bankPtr = banks::getBankByID(osc->bankID);
+    auto* bank = banks::getBankByID(osc->bankID);
+    if (osc->bankPtr != bank)
+      osc->bankPtr = bank;
   }
 }
 
@@ -110,19 +110,17 @@ void updateUnisonSpread(unison::UnisonState& uni) {
 
 void updateLFOBanks(VoicePool& pool) {
   using namespace banks;
-
   for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
-    auto bankName = bankIDToString(lfo->bankID);
-
-    if (bankName != lfo->bankPtr->name)
-      lfo->bankPtr = lfo->bankID == BankID::SampleAndHold ? nullptr : getBankByID(lfo->bankID);
+    auto* bank = getBankByID(lfo->bankID);
+    if (lfo->bankPtr != bank)
+      lfo->bankPtr = bank;
   }
 }
 
 void updateLFOEffectiveRates(VoicePool& pool, const float bpm) {
   for (lfo::LFO* lfo : {&pool.lfo1, &pool.lfo2, &pool.lfo3}) {
     lfo->effectiveRate =
-        lfo->tempoSync ? tempo::calcEffectiveRate(lfo->subdivision, bpm) : lfo->rate;
+        lfo->tempoSync ? dsp::tempo::calcEffectiveRate(lfo->subdivision, bpm) : lfo->rate;
   }
 }
 

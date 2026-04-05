@@ -1,9 +1,13 @@
 #include "PresetSerializer.h"
+#include "Preset.h"
 
+#include "dsp/Tempo.h"
+#include "synth/Filters.h"
 #include "synth/ModMatrix.h"
-#include "synth/ParamDefs.h"
-#include "synth/Preset.h"
-#include "synth/Tempo.h"
+#include "synth/Noise.h"
+#include "synth/WavetableBanks.h"
+#include "synth/WavetableOsc.h"
+#include "synth/params/ParamDefs.h"
 
 #include "dsp/fx/Distortion.h"
 #include "dsp/fx/FXChain.h"
@@ -17,6 +21,7 @@ namespace synth::preset {
 
 namespace osc = wavetable::osc;
 namespace banks = wavetable::banks;
+namespace dist = dsp::fx::distortion;
 
 using JsonValue = json::Value;
 
@@ -25,13 +30,6 @@ using JsonValue = json::Value;
 // ============================================================
 
 namespace {
-
-static constexpr param::ParamID phaseModeIDs[NUM_OSCS] = {
-    param::OSC1_PHASE_MODE,
-    param::OSC2_PHASE_MODE,
-    param::OSC3_PHASE_MODE,
-    param::OSC4_PHASE_MODE,
-};
 
 struct JsonGroup {
   const char* prefix; // param name prefix, e.g. "osc1." (deserialized)
@@ -178,7 +176,7 @@ std::string serializePreset(const Preset& p) {
 
   root.getOrCreate("tempo").set("bpm", JsonValue::number(p.paramValues[param::BPM]));
 
-  // All numeric (X-macro) params
+  // ==== All numeric (X-macro) params ====
   for (int i = 0; i < param::PARAM_COUNT - 1; i++) {
     if (i == param::ParamID::BPM || i == param::ParamID::MASTER_GAIN)
       continue;
@@ -193,6 +191,7 @@ std::string serializePreset(const Preset& p) {
     JsonValue& target = getOrCreateJsonTarget(root, group);
     const char* fieldName = def.name + strlen(group->prefix);
 
+    //  ==== ParamType Conversions ====
     switch (def.type) {
     case param::ParamType::Float:
       target.set(fieldName, JsonValue::number(value));
@@ -206,6 +205,42 @@ std::string serializePreset(const Preset& p) {
       target.set(fieldName, JsonValue::boolean(value >= 0.5f));
       break;
 
+    case param::ParamType::OscBankID:
+      target.set(fieldName,
+                 JsonValue::string(
+                     banks::bankIDToString(static_cast<banks::BankID>(std::round(value)))));
+      break;
+
+    case param::ParamType::PhaseMode:
+      target.set(fieldName,
+                 JsonValue::string(
+                     osc::phaseModeToString(static_cast<osc::PhaseMode>(std::round(value)))));
+      break;
+
+    case param::ParamType::NoiseType:
+      target.set(fieldName,
+                 JsonValue::string(
+                     noise::noiseTypeToString(static_cast<noise::NoiseType>(std::round(value)))));
+      break;
+
+    case param::ParamType::FilterMode:
+      target.set(fieldName,
+                 JsonValue::string(
+                     filters::svfModeToString(static_cast<filters::SVFMode>(std::round(value)))));
+      break;
+
+    case param::ParamType::DistortionType:
+      target.set(fieldName,
+                 JsonValue::string(dist::distortionTypeToString(
+                     static_cast<dist::DistortionType>(std::round(value)))));
+      break;
+
+    case param::ParamType::Subdivision:
+      target.set(fieldName,
+                 JsonValue::string(dsp::tempo::subdivisionToString(
+                     static_cast<dsp::tempo::Subdivision>(std::round(value)))));
+      break;
+
     default:
       break;
     }
@@ -214,11 +249,6 @@ std::string serializePreset(const Preset& p) {
   // Enum fields: convert to strings and insert into the JSON objects
   for (int i = 0; i < NUM_OSCS; i++) {
     auto& oscObj = root.getOrCreate("oscillators").getOrCreate(OSC_KEYS[i]);
-    oscObj.set("bank", JsonValue::string(banks::bankIDToString(p.oscBanks[i])));
-
-    oscObj.set("phaseMode",
-               JsonValue::string(osc::phaseModeToString(
-                   static_cast<osc::PhaseMode>(std::round(p.paramValues[phaseModeIDs[i]])))));
 
     // FM Routes
     auto routesArr = JsonValue::array();
@@ -229,27 +259,6 @@ std::string serializePreset(const Preset& p) {
       routesArr.push(std::move(routeObj));
     }
     oscObj.set("fmRoutes", std::move(routesArr));
-  }
-
-  root.getOrCreate("oscillators")
-      .getOrCreate("noise")
-      .set("type", JsonValue::string(noise::noiseTypeToString(p.noiseType)));
-
-  // SVF mode: overwrite the int written by the param loop with the string form
-  root.getOrCreate("filters").getOrCreate("svf").set("mode",
-                                                     JsonValue::string(
-                                                         filters::svfModeToString(p.svfMode)));
-
-  for (int i = 0; i < NUM_LFOS; i++) {
-    root.getOrCreate("lfos")
-        .getOrCreate(LFO_KEYS[i])
-        .set("bank", JsonValue::string(banks::bankIDToString(p.lfoBanks[i])));
-  }
-
-  for (int i = 0; i < NUM_LFOS; i++) {
-    root.getOrCreate("lfos")
-        .getOrCreate(LFO_KEYS[i])
-        .set("subdivision", JsonValue::string(tempo::subdivisionToString(p.lfoSubdivisions[i])));
   }
 
   // Mod matrix: create array of mappings
@@ -279,8 +288,6 @@ std::string serializePreset(const Preset& p) {
 
   // FX chain
   {
-    namespace dist = dsp::fx::distortion;
-
     auto arr = JsonValue::array();
     for (uint8_t i = 0; i < p.fxChainLength; i++) {
       if (p.fxChain[i] == FXProcessor::None)
@@ -288,13 +295,6 @@ std::string serializePreset(const Preset& p) {
       arr.push(JsonValue::string(fxProcessorToString(p.fxChain[i])));
     }
     root.set("fxChain", std::move(arr));
-
-    // handle enum
-    root.getOrCreate("fx")
-        .getOrCreate("distortion")
-        .set("type",
-             JsonValue::string(dist::distortionTypeToString(static_cast<dist::DistortionType>(
-                 static_cast<uint8_t>(std::round(p.paramValues[param::FX_DISTORTION_TYPE]))))));
   }
 
   return json::serialize(root);
@@ -374,6 +374,9 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
       continue;
     }
 
+    // =======================
+    // Parse by param types
+    // =======================
     switch (def.type) {
     case param::ParamType::Float:
       p.paramValues[i] =
@@ -392,6 +395,70 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
       p.paramValues[i] = jsonObj[fieldName].asBool() ? 1.0f : 0.0f;
       break;
 
+    // ======== Enums ========
+    case param::ParamType::OscBankID: {
+      auto id = banks::parseBankID(jsonObj[fieldName].asString().c_str());
+      if (id == banks::BankID::Unknown) {
+        result.warnings.push_back("osc*.bankID: unknown, using sine");
+        id = banks::BankID::Sine;
+      }
+
+      p.paramValues[i] = static_cast<float>(id);
+      break;
+    }
+
+    case param::ParamType::PhaseMode: {
+      auto mode = osc::parsePhaseMode(jsonObj[fieldName].asString().c_str());
+      if (mode == osc::PhaseMode::Unknown) {
+        result.warnings.push_back("osc*.phaseMode: unknown, using reset");
+        mode = osc::PhaseMode::Reset;
+      }
+      p.paramValues[i] = static_cast<float>(mode);
+      break;
+    }
+
+    case param::ParamType::NoiseType: {
+      auto noiseType = noise::parseNoiseType(jsonObj[fieldName].asString().c_str());
+      if (noiseType == noise::NoiseType::Unknown) {
+        result.warnings.push_back("noise.type: unknown, using white");
+        noiseType = noise::NoiseType::White;
+      }
+      p.paramValues[i] = static_cast<float>(noiseType);
+      break;
+    }
+
+    case param::ParamType::FilterMode: {
+      auto mode = filters::parseSVFMode(jsonObj[fieldName].asString().c_str());
+      if (mode == filters::SVFMode::Unknown) {
+        result.warnings.push_back("svf.mode: unknown, using lp");
+        mode = filters::SVFMode::LP;
+      }
+      p.paramValues[i] = static_cast<float>(mode);
+      break;
+    }
+
+    case param::ParamType::DistortionType: {
+      namespace dist = dsp::fx::distortion;
+
+      auto distType = dist::parseDistortionType(jsonObj[fieldName].asString().c_str());
+      if (distType == dist::DistortionType::Unknown) {
+        result.warnings.push_back("distortion.type: unknown, using soft");
+        distType = dist::DistortionType::Soft;
+      }
+      p.paramValues[i] = static_cast<float>(distType);
+      break;
+    }
+
+    case param::ParamType::Subdivision: {
+      auto sub = dsp::tempo::parseSubdivision(jsonObj[fieldName].asString().c_str());
+      if (sub == dsp::tempo::Subdivision::Unknown) {
+        result.warnings.push_back("*.subdivision: unknown, using quarter");
+        sub = dsp::tempo::Subdivision::Quarter;
+      }
+      p.paramValues[i] = static_cast<float>(sub);
+      break;
+    }
+
     default:
       break;
     }
@@ -404,25 +471,6 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
       const auto& oscObj = root["oscillators"][OSC_KEYS[i]];
       if (!oscObj.isObject())
         continue;
-
-      if (oscObj.has("bank")) {
-        auto id = banks::parseBankID(oscObj["bank"].asString().c_str());
-        if (id == BankID::Unknown) {
-          result.warnings.push_back(std::string(OSC_KEYS[i]) + ".bank: unknown, using sine");
-          id = BankID::Sine;
-        }
-        p.oscBanks[i] = id;
-      }
-
-      if (oscObj.has("phaseMode")) {
-        auto pm = osc::parsePhaseMode(oscObj["phaseMode"].asString().c_str());
-        if (pm == osc::PhaseMode::Unknown) {
-          result.warnings.push_back(std::string(OSC_KEYS[i]) +
-                                    ".phaseMode: unknown, using [reset]");
-          pm = osc::PhaseMode::Reset;
-        }
-        p.paramValues[phaseModeIDs[i]] = static_cast<float>(pm);
-      }
 
       // Parse FM Routes
       if (oscObj.has("fmRoutes") && oscObj["fmRoutes"].isArray()) {
@@ -463,67 +511,6 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
           count++;
         }
         p.oscFmRouteCounts[i] = count;
-      }
-    }
-  }
-
-  if (root.has("oscillators") && root["oscillators"].has("noise")) {
-    const auto& n = root["oscillators"]["noise"];
-
-    if (n.has("type")) {
-      auto t = noise::parseNoiseType(n["type"].asString().c_str());
-
-      if (t == NoiseType::Unknown) {
-        result.warnings.push_back("noise.type: unknown, using white");
-        t = NoiseType::White;
-      }
-      p.noiseType = t;
-    }
-  }
-
-  // SVF mode: update both the enum field and paramValues[SVF_MODE] — they must stay in sync
-  if (root.has("filters") && root["filters"].has("svf")) {
-    const auto& svf = root["filters"]["svf"];
-
-    if (svf.has("mode")) {
-      auto mode = filters::parseSVFMode(svf["mode"].asString().c_str());
-
-      if (mode == filters::SVFMode::Unknown) {
-        result.warnings.push_back("svf.mode: unknown, using lp");
-        mode = SVFMode::LP;
-      }
-
-      p.svfMode = mode;
-      p.paramValues[param::SVF_MODE] = static_cast<float>(mode);
-    }
-  }
-
-  if (root.has("lfos") && root["lfos"].isObject()) {
-    for (int i = 0; i < NUM_LFOS; i++) {
-      const auto& lfoObj = root["lfos"][LFO_KEYS[i]];
-
-      if (!lfoObj.isObject())
-        continue;
-
-      if (lfoObj.has("bank")) {
-        auto id = banks::parseBankID(lfoObj["bank"].asString().c_str());
-
-        if (id == BankID::Unknown) {
-          result.warnings.push_back(std::string(LFO_KEYS[i]) + ".bank: unknown, using sine");
-          id = BankID::Sine;
-        }
-
-        p.lfoBanks[i] = id;
-      }
-
-      if (lfoObj.has("subdivision")) {
-        auto sub = tempo::parseSubdivision(lfoObj["subdivision"].asString().c_str());
-
-        if (std::strcmp(lfoObj["subdivision"].asString().c_str(),
-                        tempo::subdivisionToString(sub)) != 0)
-          result.warnings.push_back(std::string(LFO_KEYS[i]) + ".subdivision: unknown, using 1/4");
-
-        p.lfoSubdivisions[i] = sub;
       }
     }
   }
@@ -622,21 +609,6 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
       p.fxChainLength = static_cast<uint8_t>(writeIdx);
       for (size_t i = writeIdx; i < MAX_EFFECT_SLOTS; i++)
         p.fxChain[i] = FXProcessor::None;
-    }
-
-    if (root.has("fx") && root["fx"].has("distortion")) {
-      const auto& dist = root["fx"]["distortion"];
-
-      if (dist.has("type")) {
-        auto type = distortion::parseDistortionType(dist["type"].asString().c_str());
-
-        if (type == distortion::DistortionType::Unknown) {
-          result.warnings.push_back("distortion.type: unknown, using soft");
-          type = distortion::DistortionType::Soft;
-        }
-
-        p.paramValues[param::FX_DISTORTION_TYPE] = static_cast<float>(type);
-      }
     }
   }
   return result;

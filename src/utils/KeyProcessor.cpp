@@ -1,9 +1,17 @@
 #include "KeyProcessor.h"
 #include "Logger.h"
 
-#include "device_io/KeyCapture.h"
 #include "device_io/MidiCapture.h"
 
+#define GL_SILENCE_DEPRECATION
+#define GLFW_INCLUDE_NONE
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <GLFW/glfw3.h>
+#include <OpenGL/gl3.h>
+
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -53,48 +61,6 @@ static void midiCallback(d_io::MidiEvent devieEvent, void* context) {
   app::session::pushMIDIEvent(sessionPtr, event);
 }
 
-// Handle keyboard events
-static void keyEventCallback(device_io::KeyEvent event, void* userContext) {
-  auto sessionPtr = static_cast<hSynthSession>(userContext);
-
-  if (event.type == device_io::KeyEventType::KeyDown) {
-    // ESC (quit)
-    if (event.keyCode == 53) {
-      printf("ESC pressed, stopping...\n");
-      device_io::terminateKeyCaptureLoop();
-      return;
-    }
-
-    uint8_t note = asciiToMidi(event.character);
-    if (note == 0)
-      return;
-
-    evt::MIDIEvent midiEvent{};
-    midiEvent.type = evt::MIDIEvent::Type::NoteOn;
-    midiEvent.data.noteOn = {note, 127};
-
-    app::session::pushMIDIEvent(sessionPtr, midiEvent);
-
-    // Note "OFF" event
-  } else if (event.type == device_io::KeyEventType::KeyUp) {
-
-    // Currently 'z' & 'x' control octive up/down
-    // Need to ignore keyup (note off) for now
-    if (event.character == 120 || event.character == 122)
-      return;
-
-    uint8_t note = asciiToMidi(event.character);
-    if (note == 0)
-      return;
-
-    evt::MIDIEvent midiEvent{};
-    midiEvent.type = evt::MIDIEvent::Type::NoteOff;
-    midiEvent.data.noteOff = {note, 0};
-
-    app::session::pushMIDIEvent(sessionPtr, midiEvent);
-  }
-}
-
 hMidiSession initMidiSession(hSynthSession sessionPtr) {
   // 1a. Setup MIDI on this thread's run loop for now
   constexpr size_t MAX_MIDI_DEVICES = 16;
@@ -136,62 +102,145 @@ hMidiSession initMidiSession(hSynthSession sessionPtr) {
   return midiSession;
 }
 
-int startKeyInputCapture(hSynthSession sessionPtr, hMidiSession midiSessionPtr) {
-  printf("KeyCapture Example\n");
-  printf("------------------\n");
-  printf("Press keys to see events. ESC to quit.\n\n");
+static GLFWwindow* g_window = nullptr;
 
-  // 1. Initialize Cocoa app
-  device_io::initKeyCaptureApp();
+void requestQuit() {
+  if (g_window) {
+    glfwSetWindowShouldClose(g_window, GLFW_TRUE);
+  }
+}
 
-  // 2. Create a minimal window (required for local capture without permissions)
-  device_io::WindowConfig config = device_io::defaultWindowConfig();
-  config.title = "Meh Synth";
-  config.width = 800;
-  config.height = 500;
+static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
+  if (action == GLFW_REPEAT) {
+    return;
+  }
 
-  if (!createCaptureWindow(config)) {
-    printf("Failed to create window\n");
+  auto* sessionPtr = static_cast<hSynthSession>(glfwGetWindowUserPointer(window));
+
+  if (action == GLFW_PRESS) {
+    if (key == GLFW_KEY_ESCAPE) {
+      glfwSetWindowShouldClose(window, GLFW_TRUE);
+      return;
+    }
+
+    uint8_t note = asciiToMidi(static_cast<char>(tolower(key)));
+    if (note == 0) {
+      return;
+    }
+
+    evt::MIDIEvent event{};
+    event.type = evt::MIDIEvent::Type::NoteOn;
+    event.data.noteOn = {note, 127};
+    app::session::pushMIDIEvent(sessionPtr, event);
+    return;
+  }
+
+  if (action == GLFW_RELEASE) {
+    if (key == GLFW_KEY_Z || key == GLFW_KEY_X) {
+      return;
+    }
+
+    uint8_t note = asciiToMidi(static_cast<char>(tolower(key)));
+    if (note == 0) {
+      return;
+    }
+
+    evt::MIDIEvent event{};
+    event.type = evt::MIDIEvent::Type::NoteOff;
+    event.data.noteOff = {note, 0};
+    app::session::pushMIDIEvent(sessionPtr, event);
+  }
+}
+
+int startGLFWLoop(hSynthSession sessionPtr, hMidiSession midiSessionPtr) {
+  if (!glfwInit()) {
     return 1;
   }
 
-  // 3. Start capturing with local mode (no permissions needed when window
-  // focused)
-  //    Change to CaptureMode::Global if you need capture when not focused
-  //    Change to CaptureMode::Both if you want both behaviors
-  if (!startKeyCapture(keyEventCallback, sessionPtr, device_io::CaptureMode::Local)) {
-    printf("Failed to start key capture\n");
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+  g_window = glfwCreateWindow(800, 500, "Meh Synth", nullptr, nullptr);
+  if (!g_window) {
+    glfwTerminate();
     return 1;
   }
 
-  const char* windowText = "Super Synth\n\n"
-                           "Press 'z' to go down an octive and 'c' to go up an octive\n\n"
-                           "================= Keyboard Layout ================\n"
-                           "|    |   |   |   |   |   |   |   |   |   |   |   |\n"
-                           "|    |   |   |   |   |   |   |   |   |   |   |   |\n"
-                           "|    | w |   | E |   |   | T |   | Y |   | U |   |\n"
-                           "|    |___|   |___|   |   |___|   |___|   |___|   |\n"
-                           "|      |       |     |     |       |       |     |\n"
-                           "|      |       |     |     |       |       |     |\n"
-                           "|  A   |   S   |  D  |  F  |   G   |   H   |  J  |\n"
-                           "|______|_______|_____|_____|_______|_______|_____|\n\n"
-                           "Press keys... (ESC to quit)\n";
+  glfwMakeContextCurrent(g_window);
+  glfwSwapInterval(1);
 
-  // Update window text
-  device_io::setWindowText(windowText);
+  glfwSetWindowUserPointer(g_window, sessionPtr);
+  glfwSetKeyCallback(g_window, keyCallback);
 
-  // 4. Run the event loop (blocks until stopKeyCaptureLoop() called)
-  device_io::runKeyCaptureLoop();
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGui_ImplGlfw_InitForOpenGL(g_window, true);
+  ImGui_ImplOpenGL3_Init("#version 150");
 
-  // 5. Cleanup
-  device_io::stopKeyCapture();
+  while (!glfwWindowShouldClose(g_window)) {
+    glfwPollEvents();
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->Pos);
+    ImGui::SetNextWindowSize(viewport->Size);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 16.0f));
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+                             ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::Begin("Meh Synth", nullptr, flags);
+    ImGui::TextUnformatted("Super Synth");
+    ImGui::TextUnformatted("");
+    ImGui::TextUnformatted("Press 'z' to go down an octive and 'x' to go up an octive");
+    ImGui::TextUnformatted("");
+    ImGui::TextUnformatted("================= Keyboard Layout ================");
+    ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
+    ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
+    ImGui::TextUnformatted("|    | w |   | E |   |   | T |   | Y |   | U |   |");
+    ImGui::TextUnformatted("|    |___|   |___|   |   |___|   |___|   |___|   |");
+    ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
+    ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
+    ImGui::TextUnformatted("|  A   |   S   |  D  |  F  |   G   |   H   |  J  |");
+    ImGui::TextUnformatted("|______|_______|_____|_____|_______|_______|_____|");
+    ImGui::TextUnformatted("");
+    ImGui::TextUnformatted("Press keys... (ESC to quit)");
+    ImGui::End();
+    ImGui::PopStyleVar(3);
+
+    ImGui::Render();
+
+    int w = 0;
+    int h = 0;
+    glfwGetFramebufferSize(g_window, &w, &h);
+    glViewport(0, 0, w, h);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    glfwSwapBuffers(g_window);
+  }
+
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+  glfwDestroyWindow(g_window);
+  g_window = nullptr;
+  glfwTerminate();
 
   if (midiSessionPtr) {
     device_io::stopMidiSession(midiSessionPtr);
     device_io::cleanupMidiSession(midiSessionPtr);
   }
 
-  printf("Done.\n");
   return 0;
 }
 

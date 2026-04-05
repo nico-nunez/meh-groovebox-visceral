@@ -1,17 +1,18 @@
 #include "ParamRouter.h"
+#include "ParamDefs.h"
 
 #include "synth/Envelope.h"
 #include "synth/Filters.h"
 #include "synth/LFO.h"
 #include "synth/MonoMode.h"
 #include "synth/Noise.h"
-#include "synth/ParamDefs.h"
 #include "synth/Saturator.h"
 #include "synth/Types.h"
 #include "synth/Unison.h"
 #include "synth/VoicePool.h"
 #include "synth/WavetableOsc.h"
 
+#include "dsp/Tempo.h"
 #include "dsp/fx/Distortion.h"
 #include "dsp/fx/FXChain.h"
 #include "dsp/fx/Reverb.h"
@@ -45,18 +46,27 @@ ParamBinding makeBoolBinding(bool* ptr) {
   return b;
 }
 
-/* FilterMode is the only enum with a binding — it has a small fixed range (0–3)
- * suitable for MIDI CC and potential mod destination use. Other enums (bank,
- * fmSource, noise type) resolve to pointers or string lookups and are direct-write. */
-ParamBinding makeFilterModeBinding(SVFMode* ptr) {
-  ParamBinding b;
-  b.svfModePtr = ptr;
-  return b;
-}
-
 ParamBinding makeOscBankBinding(BankID* ptr) {
   ParamBinding b;
   b.oscBankPtr = ptr;
+  return b;
+}
+
+ParamBinding makePhaseModeBinding(wavetable::osc::PhaseMode* ptr) {
+  ParamBinding b;
+  b.phaseModePtr = ptr;
+  return b;
+}
+
+ParamBinding makeNoiseTypeBinding(NoiseType* ptr) {
+  ParamBinding b;
+  b.noiseType = ptr;
+  return b;
+}
+
+ParamBinding makeFilterModeBinding(SVFMode* ptr) {
+  ParamBinding b;
+  b.svfModePtr = ptr;
   return b;
 }
 
@@ -66,9 +76,9 @@ ParamBinding makeDistortionTypeBinding(dist::DistortionType* ptr) {
   return b;
 }
 
-ParamBinding makePhaseModeBinding(wavetable::osc::PhaseMode* ptr) {
+ParamBinding makeSubdivisionBinding(dsp::tempo::Subdivision* ptr) {
   ParamBinding b;
-  b.phaseModePtr = ptr;
+  b.subdivision = ptr;
   return b;
 }
 
@@ -90,8 +100,21 @@ void bindOscillator(ParamBinding* bindings, const OscParamIDs& ids, WavetableOsc
 
 // Noise Oscillator Binding
 void bindNoise(ParamBinding* bindings, noise::Noise& noise) {
+  bindings[NOISE_TYPE] = makeNoiseTypeBinding(&noise.type);
   bindings[NOISE_MIX_LEVEL] = makeFloatBinding(&noise.mixLevel);
   bindings[NOISE_ENABLED] = makeBoolBinding(&noise.enabled);
+}
+
+// LFO Binding
+void bindLFO(ParamBinding* bindings, LFOParamIDs ids, lfo::LFO& lfo) {
+  bindings[ids.bankID] = makeOscBankBinding(&lfo.bankID);
+  bindings[ids.rate] = makeFloatBinding(&lfo.rate);
+  bindings[ids.subdivision] = makeSubdivisionBinding(&lfo.subdivision);
+  bindings[ids.amplitude] = makeFloatBinding(&lfo.amplitude);
+  bindings[ids.retrigger] = makeBoolBinding(&lfo.retrigger);
+  bindings[ids.tempoSync] = makeBoolBinding(&lfo.tempoSync);
+  bindings[ids.delay] = makeFloatBinding(&lfo.delayMs);
+  bindings[ids.attack] = makeFloatBinding(&lfo.attackMs);
 }
 
 // Filter Bindings
@@ -114,17 +137,6 @@ void bindSaturator(ParamBinding* bindings, saturator::Saturator& saturator) {
   bindings[SATURATOR_DRIVE] = makeFloatBinding(&saturator.drive);
   bindings[SATURATOR_MIX] = makeFloatBinding(&saturator.mix);
   bindings[SATURATOR_ENABLED] = makeBoolBinding(&saturator.enabled);
-}
-
-// LFO Binding
-void bindLFO(ParamBinding* bindings, LFOParamIDs ids, lfo::LFO& lfo) {
-  bindings[ids.bankID] = makeOscBankBinding(&lfo.bankID);
-  bindings[ids.rate] = makeFloatBinding(&lfo.rate);
-  bindings[ids.amplitude] = makeFloatBinding(&lfo.amplitude);
-  bindings[ids.retrigger] = makeBoolBinding(&lfo.retrigger);
-  bindings[ids.tempoSync] = makeBoolBinding(&lfo.tempoSync);
-  bindings[ids.delay] = makeFloatBinding(&lfo.delayMs);
-  bindings[ids.attack] = makeFloatBinding(&lfo.attackMs);
 }
 
 // Envelope Bindings
@@ -194,6 +206,7 @@ void bindPhaser(ParamRouter& r, dsp::fx::phaser::PhaserFX& p) {
 
 void bindDelay(ParamRouter& r, dsp::fx::delay::DelayFX& d) {
   r.paramBindings[FX_DELAY_TIME] = makeFloatBinding(&d.time);
+  r.paramBindings[FX_DELAY_SUBDIVISION] = makeSubdivisionBinding(&d.subdivision);
   r.paramBindings[FX_DELAY_TEMPO_SYNC] = makeBoolBinding(&d.tempoSync);
   r.paramBindings[FX_DELAY_FEEDBACK] = makeFloatBinding(&d.feedback);
   r.paramBindings[FX_DELAY_DAMPING] = makeFloatBinding(&d.damping);
@@ -344,8 +357,11 @@ float getParamValueByID(const ParamRouter& router, ParamID id) {
   case ParamType::Bool:
     return *binding.boolPtr ? 1.0f : 0.0f;
 
-  case ParamType::OscBank:
+  case ParamType::OscBankID:
     return static_cast<float>(*binding.oscBankPtr);
+
+  case ParamType::NoiseType:
+    return static_cast<float>(*binding.noiseType);
 
   case ParamType::FilterMode:
     return static_cast<float>(*binding.svfModePtr);
@@ -355,6 +371,9 @@ float getParamValueByID(const ParamRouter& router, ParamID id) {
 
   case ParamType::PhaseMode:
     return static_cast<float>(*binding.phaseModePtr);
+
+  case ParamType::Subdivision:
+    return static_cast<float>(*binding.subdivision);
   }
 
   return 0.0f;
@@ -384,22 +403,29 @@ void setParamValue(ParamRouter& router, ParamID id, float value) {
     *binding.boolPtr = value >= 0.5f;
     break;
 
-  case ParamType::OscBank:
-    *binding.oscBankPtr = static_cast<BankID>(static_cast<int>(std::round(value)));
+  case ParamType::OscBankID:
+    *binding.oscBankPtr = static_cast<BankID>(static_cast<uint8_t>(std::round(value)));
+    break;
+
+  case ParamType::PhaseMode:
+    *binding.phaseModePtr = static_cast<PhaseMode>(static_cast<uint8_t>(std::round(value)));
+    break;
+
+  case ParamType::NoiseType:
+    *binding.noiseType = static_cast<NoiseType>(static_cast<uint8_t>(std::round(value)));
     break;
 
   case ParamType::FilterMode:
-    *binding.svfModePtr = static_cast<SVFMode>(static_cast<int>(std::round(value)));
+    *binding.svfModePtr = static_cast<SVFMode>(static_cast<uint8_t>(std::round(value)));
     break;
 
   case ParamType::DistortionType:
     *binding.distortionTypePtr =
-        static_cast<dist::DistortionType>(static_cast<int>(std::round(value)));
+        static_cast<dist::DistortionType>(static_cast<uint8_t>(std::round(value)));
     break;
 
-  case ParamType::PhaseMode:
-    *binding.phaseModePtr = static_cast<PhaseMode>(static_cast<int>(std::round(value)));
-    break;
+  case ParamType::Subdivision:
+    *binding.subdivision = static_cast<Subdivision>(static_cast<uint8_t>(std::round(value)));
   }
 }
 

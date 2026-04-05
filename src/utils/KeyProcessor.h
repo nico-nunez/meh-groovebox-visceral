@@ -12,7 +12,8 @@ using device_io::hMidiSession;
 
 hMidiSession initMidiSession(hSynthSession);
 
-int startKeyInputCapture(hSynthSession, hMidiSession);
+int startGLFWLoop(hSynthSession, hMidiSession);
+void requestQuit();
 
 uint8_t asciiToMidi(char key);
 } // namespace synth::utils
