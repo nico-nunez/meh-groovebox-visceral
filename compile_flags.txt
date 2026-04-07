@@ -6,11 +6,11 @@
 -Ilibs/device_io/include
 -Ilibs/dsp/include
 -Ilibs/json/include
--Ilibs/lua/include
--Ilibs/linenoise
--Ilibs/imgui
--Ilibs/imgui/backends
--Ilibs/glfw/include
+-Ideps/lua/include
+-Ideps/linenoise
+-Ideps/imgui
+-Ideps/imgui/backends
+-Ideps/glfw/include
 -Wall
 -Weffc++
 -Wextra

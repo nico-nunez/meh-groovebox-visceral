@@ -13,9 +13,9 @@ CPP_SOURCES = $(shell find \
 							libs/device_io/src \
 							libs/dsp/src \
 							libs/json/src \
-							libs/imgui \
+							deps/imgui \
 							-name '*.cpp')
-C_SOURCES = $(shell find libs/lua/src libs/linenoise -name '*.c')
+C_SOURCES = $(shell find deps/lua/src deps/linenoise -name '*.c')
 
 # Object files (in build directory)
 CPP_OBJECTS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(CPP_SOURCES))
@@ -27,11 +27,11 @@ INCLUDES = -Isrc -Ilibs/audio_io/include -Ilibs/audio_io/src \
 					 -Ilibs/device_io/include \
 					 -Ilibs/dsp/include \
 					 -Ilibs/json/include \
-					 -Ilibs/lua/include \
-					 -Ilibs/linenoise \
-					 -Ilibs/imgui \
-           -Ilibs/imgui/backends \
-           -Ilibs/glfw/include
+					 -Ideps/lua/include \
+					 -Ideps/linenoise \
+					 -Ideps/imgui \
+           -Ideps/imgui/backends \
+           -Ideps/glfw/include
 
 LDFLAGS = -framework AudioToolbox \
 					-framework CoreAudio \
@@ -41,7 +41,7 @@ LDFLAGS = -framework AudioToolbox \
 					-framework Cocoa \
           -framework ApplicationServices \
           -framework IOKit \
-					-Llibs/glfw/lib -lglfw3
+					-Ldeps/glfw/lib -lglfw3
 
 OLD ?= 0
 debug: CXXFLAGS = $(DEBUG_FLAGS) -DOLD=$(OLD)
