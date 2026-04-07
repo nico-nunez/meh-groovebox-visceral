@@ -14,8 +14,7 @@ using dsp::filters::SVFState;
 
 using dsp::filters::LadderState;
 
-// TODO: consider adding "None" (aka disabled)
-enum class SVFMode { LP, HP, BP, Notch, Unknown, COUNT };
+enum SVFMode : uint8_t { LP, HP, BP, Notch, Unknown, COUNT };
 inline constexpr const char* UNKNOWN_MODE = "unknown";
 
 // ==== State Variable Filter (SVF) ====

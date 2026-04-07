@@ -1,11 +1,12 @@
 #pragma once
 
 #include "dsp/Wavetable.h"
+#include <cstdint>
 
 namespace synth::wavetable::banks {
 using dsp::wavetable::WavetableBank;
 
-enum BankID { Sine = 0, Saw, Square, Triangle, SineToSaw, SampleAndHold, Unknown, COUNT };
+enum BankID : uint8_t { Sine = 0, Saw, Square, Triangle, SineToSaw, SampleAndHold, Unknown, COUNT };
 inline constexpr const char* UNKNOWN_BANK = "unknown";
 
 inline constexpr int MAX_BANKS = COUNT - 1;

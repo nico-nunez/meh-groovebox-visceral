@@ -6,7 +6,7 @@
 
 namespace dsp::fx::distortion {
 
-enum class DistortionType : uint8_t {
+enum DistortionType : uint8_t {
   Soft = 0, // tanh soft clip — normalized
   Hard = 1, // hard clip at 1/drive threshold
   Unknown,

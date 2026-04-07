@@ -4,6 +4,6 @@
 
 namespace lua::bindings {
 
-void registerSynthBindings(lua_State* L, Engine& engine, hSynthSession session);
+void registerSynthBindings(lua_State* L, AppContext& appCtx);
 
 } // namespace lua::bindings

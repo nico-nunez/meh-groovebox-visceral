@@ -8,7 +8,7 @@
 namespace synth::noise {
 using dsp::noise::PinkNoiseState;
 
-enum class NoiseType : uint8_t { White = 0, Pink, Unknown, COUNT };
+enum NoiseType : uint8_t { White = 0, Pink, Unknown, COUNT };
 inline constexpr const char* UNKNOWN_NOISE = "unknown";
 
 struct Noise {

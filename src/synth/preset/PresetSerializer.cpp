@@ -1,15 +1,11 @@
 #include "PresetSerializer.h"
 #include "Preset.h"
 
-#include "dsp/Tempo.h"
-#include "synth/Filters.h"
 #include "synth/ModMatrix.h"
-#include "synth/Noise.h"
-#include "synth/WavetableBanks.h"
 #include "synth/WavetableOsc.h"
 #include "synth/params/ParamDefs.h"
+#include "synth/params/ParamUtils.h"
 
-#include "dsp/fx/Distortion.h"
 #include "dsp/fx/FXChain.h"
 #include "json/Json.h"
 
@@ -20,8 +16,6 @@
 namespace synth::preset {
 
 namespace osc = wavetable::osc;
-namespace banks = wavetable::banks;
-namespace dist = dsp::fx::distortion;
 
 using JsonValue = json::Value;
 
@@ -158,7 +152,7 @@ int8_t clampWarnInt8(int8_t val,
 } // anonymous namespace
 
 // ============================================================
-// Serialize Preset
+// Preset Serialization
 // ============================================================
 
 std::string serializePreset(const Preset& p) {
@@ -206,51 +200,28 @@ std::string serializePreset(const Preset& p) {
       break;
 
     case param::ParamType::OscBankID:
-      target.set(fieldName,
-                 JsonValue::string(
-                     banks::bankIDToString(static_cast<banks::BankID>(std::round(value)))));
-      break;
-
     case param::ParamType::PhaseMode:
-      target.set(fieldName,
-                 JsonValue::string(
-                     osc::phaseModeToString(static_cast<osc::PhaseMode>(std::round(value)))));
-      break;
-
     case param::ParamType::NoiseType:
-      target.set(fieldName,
-                 JsonValue::string(
-                     noise::noiseTypeToString(static_cast<noise::NoiseType>(std::round(value)))));
-      break;
-
     case param::ParamType::FilterMode:
+    case param::ParamType::DistortionType:
+    case param::ParamType::Subdivision: {
       target.set(fieldName,
                  JsonValue::string(
-                     filters::svfModeToString(static_cast<filters::SVFMode>(std::round(value)))));
-      break;
+                     param::utils::enumToString(def.type,
+                                                static_cast<uint8_t>(std::round(value)))));
+    } break;
 
-    case param::ParamType::DistortionType:
-      target.set(fieldName,
-                 JsonValue::string(dist::distortionTypeToString(
-                     static_cast<dist::DistortionType>(std::round(value)))));
-      break;
-
-    case param::ParamType::Subdivision:
-      target.set(fieldName,
-                 JsonValue::string(dsp::tempo::subdivisionToString(
-                     static_cast<dsp::tempo::Subdivision>(std::round(value)))));
-      break;
-
-    default:
-      break;
+      // No default to ensure compile error is thrown
+      // if ParamType is added and not handled here
     }
   }
 
-  // Enum fields: convert to strings and insert into the JSON objects
+  // ============ Enigne Events/Route =============
+
+  // FM Routes
   for (int i = 0; i < NUM_OSCS; i++) {
     auto& oscObj = root.getOrCreate("oscillators").getOrCreate(OSC_KEYS[i]);
 
-    // FM Routes
     auto routesArr = JsonValue::array();
     for (uint8_t r = 0; r < p.oscFmRouteCounts[i]; r++) {
       auto routeObj = JsonValue::object();
@@ -301,7 +272,7 @@ std::string serializePreset(const Preset& p) {
 }
 
 // ============================================================
-// deserializePreset
+// Preset Deserialization
 // ============================================================
 
 DeserializeResult deserializePreset(const std::string& jsonStr) {
@@ -396,75 +367,25 @@ DeserializeResult deserializePreset(const std::string& jsonStr) {
       break;
 
     // ======== Enums ========
-    case param::ParamType::OscBankID: {
-      auto id = banks::parseBankID(jsonObj[fieldName].asString().c_str());
-      if (id == banks::BankID::Unknown) {
-        result.warnings.push_back("osc*.bankID: unknown, using sine");
-        id = banks::BankID::Sine;
-      }
-
-      p.paramValues[i] = static_cast<float>(id);
-      break;
-    }
-
-    case param::ParamType::PhaseMode: {
-      auto mode = osc::parsePhaseMode(jsonObj[fieldName].asString().c_str());
-      if (mode == osc::PhaseMode::Unknown) {
-        result.warnings.push_back("osc*.phaseMode: unknown, using reset");
-        mode = osc::PhaseMode::Reset;
-      }
-      p.paramValues[i] = static_cast<float>(mode);
-      break;
-    }
-
-    case param::ParamType::NoiseType: {
-      auto noiseType = noise::parseNoiseType(jsonObj[fieldName].asString().c_str());
-      if (noiseType == noise::NoiseType::Unknown) {
-        result.warnings.push_back("noise.type: unknown, using white");
-        noiseType = noise::NoiseType::White;
-      }
-      p.paramValues[i] = static_cast<float>(noiseType);
-      break;
-    }
-
-    case param::ParamType::FilterMode: {
-      auto mode = filters::parseSVFMode(jsonObj[fieldName].asString().c_str());
-      if (mode == filters::SVFMode::Unknown) {
-        result.warnings.push_back("svf.mode: unknown, using lp");
-        mode = filters::SVFMode::LP;
-      }
-      p.paramValues[i] = static_cast<float>(mode);
-      break;
-    }
-
-    case param::ParamType::DistortionType: {
-      namespace dist = dsp::fx::distortion;
-
-      auto distType = dist::parseDistortionType(jsonObj[fieldName].asString().c_str());
-      if (distType == dist::DistortionType::Unknown) {
-        result.warnings.push_back("distortion.type: unknown, using soft");
-        distType = dist::DistortionType::Soft;
-      }
-      p.paramValues[i] = static_cast<float>(distType);
-      break;
-    }
-
+    case param::ParamType::OscBankID:
+    case param::ParamType::PhaseMode:
+    case param::ParamType::NoiseType:
+    case param::ParamType::FilterMode:
+    case param::ParamType::DistortionType:
     case param::ParamType::Subdivision: {
-      auto sub = dsp::tempo::parseSubdivision(jsonObj[fieldName].asString().c_str());
-      if (sub == dsp::tempo::Subdivision::Unknown) {
-        result.warnings.push_back("*.subdivision: unknown, using quarter");
-        sub = dsp::tempo::Subdivision::Quarter;
-      }
-      p.paramValues[i] = static_cast<float>(sub);
+      auto res = param::utils::parseEnum(def.type, jsonObj[fieldName].asString().c_str());
+      if (!res.ok)
+        result.warnings.push_back(res.error);
+
+      p.paramValues[i] = static_cast<float>(res.value);
       break;
     }
-
-    default:
-      break;
+      // No default to ensure compile error is thrown
+      // if ParamType is added and not handled here
     }
   }
 
-  // ==== Enum fields: parse strings to enums ====
+  // ==== Engine Events/Routes ====
 
   if (root.has("oscillators") && root["oscillators"].isObject()) {
     for (int i = 0; i < NUM_OSCS; i++) {

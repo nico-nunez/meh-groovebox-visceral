@@ -2,39 +2,35 @@
 #include "lauxlib.h"
 #include "lua.h"
 
-#include "synth/EngineTypes.h"
-#include "synth/ModMatrix.h"
-#include "synth/SignalChain.h"
-#include "synth/VoicePool.h"
-#include "synth/WavetableOsc.h"
+#include "app/SynthSession.h"
+
+#include "synth/events/Events.h"
 #include "synth/params/ParamDefs.h"
-#include "synth/params/ParamRouter.h"
 #include "synth/params/ParamUtils.h"
 #include "synth/preset/PresetApply.h"
 #include "synth/preset/PresetIO.h"
 
 #include "utils/KeyProcessor.h"
 
-#include "app/SynthSession.h"
-
 #include "dsp/fx/FXChain.h"
 
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+
+#define CMD_BAD_INPUT     10
+#define CMD_EVENT_FAILURE 1
+#define CMD_EVENT_SUCCESS 0
 
 namespace lua::bindings {
-namespace param = synth::param;
-namespace pr = param::router;
-
-namespace voices = synth::voices;
-
-namespace osc = synth::wavetable::osc;
-
-namespace mm = synth::mod_matrix;
-namespace sc = synth::signal_chain;
+namespace p = synth::param;
 
 namespace preset = synth::preset;
 
 namespace fx = dsp::fx::chain;
+
+using app::session::pushEngineEvent;
+using synth::events::EngineEvent;
 
 namespace {
 
@@ -43,136 +39,60 @@ int paramGroupNewIndex(lua_State* L) {
   const char* group = lua_tostring(L, lua_upvalueindex(1));
   const char* key = luaL_checkstring(L, 2);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  Engine* engine = ctx->engines[ctx->currentPart];
-
-  // Special case: osc*.fmSource — shorthand for clearFMRoutes + single addFMRoute at depth 1.0
-  if (strcmp(key, "fmSource") == 0) {
-    const char* srcName = luaL_checkstring(L, 3);
-    auto* carrier = voices::getOscByName(engine->voicePool, group);
-    if (!carrier) {
-      luaL_error(L, "unknown osc: %s", group);
-      return 0;
-    }
-    osc::clearFMRoutes(*carrier);
-    if (strcmp(srcName, "none") != 0) {
-      auto src = osc::parseFMSource(srcName);
-      if (src == osc::FMSource::None) {
-        luaL_error(L, "unknown fm source: %s", srcName);
-        return 0;
-      }
-      osc::addFMRoute(*carrier, src, 1.0f);
-      printf("OK\n");
-    }
-    return 0;
-  }
+  auto* ctx = getLuaContext(L);
 
   // Normal param path — float / bool / enum → SPSC queue
   char fullName[64];
   snprintf(fullName, sizeof(fullName), "%s.%s", group, key);
 
-  auto paramID = param::utils::getParamIDByName(fullName);
-  if (paramID == param::PARAM_COUNT) {
+  auto paramID = p::utils::getParamIDByName(fullName);
+  if (paramID == p::PARAM_COUNT) {
     luaL_error(L, "unknown param: %s.%s", group, key);
-    return 0;
+    return CMD_BAD_INPUT;
   }
 
-  auto paramDef = param::getParamDef(paramID);
+  auto paramDef = p::getParamDef(paramID);
 
   float paramVal;
 
   switch (paramDef.type) {
-  case param::ParamType::Float:
-  case param::ParamType::Int8: {
+  case p::ParamType::Float:
+  case p::ParamType::Int8: {
     paramVal = static_cast<float>(luaL_checknumber(L, 3));
     break;
   }
 
   // Enable/Disable Item
-  case param::ParamType::Bool:
+  case p::ParamType::Bool:
     paramVal = lua_toboolean(L, 3) ? 1.0f : 0.0f;
     break;
 
-  case param::ParamType::OscBankID: {
+  case p::ParamType::OscBankID:
+  case p::ParamType::PhaseMode:
+  case p::ParamType::NoiseType:
+  case p::ParamType::FilterMode:
+  case p::ParamType::DistortionType:
+  case p::ParamType::Subdivision: {
     auto inputVal = luaL_checkstring(L, 3);
-    auto id = param::utils::parseBankID(inputVal);
+    auto res = p::utils::parseEnum(paramDef.type, inputVal);
 
-    if (id == synth::types::BankID::Unknown) {
-      printf("Unknown bank: %s\n", inputVal);
-      return 10;
+    if (!res.ok) {
+      printf("Unknown value: %s\n", inputVal);
+      printf("%s\n", res.error);
+      return CMD_BAD_INPUT;
     }
-    paramVal = static_cast<float>(id);
-    break;
-  }
-
-  case param::ParamType::PhaseMode: {
-    auto inputVal = luaL_checkstring(L, 3);
-    auto mode = param::utils::parsePhaseMode(inputVal);
-
-    if (mode == synth::types::PhaseMode::Unknown) {
-      printf("Unknown phase mode: %s\n", inputVal);
-      return 10;
-    }
-    paramVal = static_cast<float>(mode);
-    break;
-  }
-
-  case param::ParamType::NoiseType: {
-    auto inputVal = luaL_checkstring(L, 3);
-    auto noiseType = param::utils::parseNoiseType(inputVal);
-
-    if (noiseType == synth::types::NoiseType::Unknown) {
-      printf("Unknown noise type: %s\n", inputVal);
-      return 10;
-    }
-    paramVal = static_cast<float>(noiseType);
-    break;
-  }
-
-  case param::ParamType::FilterMode: {
-    auto inputVal = luaL_checkstring(L, 3);
-    auto mode = param::utils::parseSVFMode(inputVal);
-
-    if (mode == synth::types::SVFMode::Unknown) {
-      printf("Unknown svf mode: %s\n", inputVal);
-      return 10;
-    }
-    paramVal = static_cast<float>(mode);
-    break;
-  }
-
-  case param::ParamType::DistortionType: {
-    auto inputVal = luaL_checkstring(L, 3);
-    auto dist = param::utils::parseDistortionType(inputVal);
-
-    if (dist == synth::types::DistortionType::Unknown) {
-      printf("Unknown distortion type: %s\n", inputVal);
-      return 10;
-    }
-    paramVal = static_cast<float>(dist);
-    break;
-  }
-
-  case param::ParamType::Subdivision: {
-    auto inputVal = luaL_checkstring(L, 3);
-    auto sub = param::utils::parseSubdivision(inputVal);
-
-    if (sub == synth::types::Subdivision::Unknown) {
-      printf("Unknown subdivision value: %s\n", inputVal);
-      return 10;
-    }
-    paramVal = static_cast<float>(sub);
+    paramVal = static_cast<float>(res.value);
     break;
   }
   }
 
-  app::session::pushParamEvent(ctx->sessions[ctx->currentPart],
-                               {static_cast<uint8_t>(paramID), paramVal});
+  if (!pushParamEvent(getTrackSession(ctx), {static_cast<uint8_t>(paramID), paramVal})) {
+    printf("failed to update param");
+    return CMD_EVENT_FAILURE;
+  }
+
   printf("OK\n");
-
-  return 0;
+  return CMD_EVENT_SUCCESS;
 }
 
 int paramGroupIndex(lua_State* L) {
@@ -183,17 +103,15 @@ int paramGroupIndex(lua_State* L) {
   char fullName[64];
   snprintf(fullName, sizeof(fullName), "%s.%s", group, key);
 
-  auto paramID = param::utils::getParamIDByName(fullName);
-  if (paramID == synth::param::PARAM_COUNT) {
+  auto paramID = p::utils::getParamIDByName(fullName);
+  if (paramID == p::PARAM_COUNT) {
     lua_pushnil(L);
     return 1;
   }
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
+  auto* ctx = getLuaContext(L);
 
-  float value = pr::getParamValueByID(ctx->engines[ctx->currentPart]->paramRouter, paramID);
+  float value = p::utils::getParamValueByID(getTrackEngine(ctx), paramID);
   lua_pushnumber(L, value);
   return 1;
 }
@@ -296,48 +214,70 @@ int l_modAdd(lua_State* L) {
   const char* destName = luaL_checkstring(L, 2);
   float amount = (float)luaL_checknumber(L, 3);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
+  auto* ctx = getLuaContext(L);
 
-  auto src = mm::parseModSrc(srcName);
-  auto dest = mm::parseModDest(destName);
-  if (src == mm::ModSrc::NoSrc) {
-    luaL_error(L, "unknown mod source: %s", srcName);
-    return 0;
+  auto src = p::utils::parseModSrc(srcName);
+  auto dest = p::utils::parseModDest(destName);
+  if (!src.ok) {
+    luaL_error(L, "%s: %s", src.error, srcName);
+    return CMD_BAD_INPUT;
   }
-  if (dest == mm::ModDest::NoDest) {
-    luaL_error(L, "unknown mod dest: %s", destName);
-    return 0;
+  if (!dest.ok) {
+    luaL_error(L, "%s: %s", dest.error, destName);
+    return CMD_BAD_INPUT;
   }
 
-  mm::addRoute(ctx->engines[ctx->currentPart]->voicePool.modMatrix, src, dest, amount);
-  return 0;
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::AddModRoute;
+  evt.data.addModRoute = {src.value, dest.value, amount};
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to add mod matrix route");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_modRemove(lua_State* L) {
   uint8_t index = (uint8_t)luaL_checkinteger(L, 1);
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  mm::removeRoute(ctx->engines[ctx->currentPart]->voicePool.modMatrix, index);
-  return 0;
-}
 
-int l_modList(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  mm::printRoutes(ctx->engines[ctx->currentPart]->voicePool.modMatrix);
-  return 0;
+  auto* ctx = getLuaContext(L);
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::RemoveModRoute;
+  evt.data.removeModRoute = {index};
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to remove mod matrix route");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_modClear(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  mm::clearRoutes(ctx->engines[ctx->currentPart]->voicePool.modMatrix);
-  return 0;
+  auto* ctx = getLuaContext(L);
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::ClearModRoutes;
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to clear mod matrix");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
+}
+
+int l_modList(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+
+  p::utils::printModList(getTrackEngine(ctx));
+  return CMD_EVENT_SUCCESS;
 }
 
 void registerModCommands(lua_State* L) {
@@ -346,88 +286,122 @@ void registerModCommands(lua_State* L) {
   lua_setfield(L, -2, "add");
   lua_pushcfunction(L, l_modRemove);
   lua_setfield(L, -2, "remove");
-  lua_pushcfunction(L, l_modList);
-  lua_setfield(L, -2, "list");
   lua_pushcfunction(L, l_modClear);
   lua_setfield(L, -2, "clear");
+  lua_pushcfunction(L, l_modList);
+  lua_setfield(L, -2, "list");
   lua_setglobal(L, "mod");
 }
 
 int l_fmAdd(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
-  const char* srcName = luaL_checkstring(L, 2);
+  const char* sourceName = luaL_checkstring(L, 2);
   float depth = (float)luaL_optnumber(L, 3, 1.0);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
+  auto* ctx = getLuaContext(L);
 
-  auto* carrier = voices::getOscByName(ctx->engines[ctx->currentPart]->voicePool, carrierName);
-  if (!carrier) {
-    luaL_error(L, "unknown carrier: %s", carrierName);
-    return 0;
+  auto fmCarrier = p::utils::parseEnumFM(carrierName);
+  if (!fmCarrier.ok) {
+    luaL_error(L, "unknown FM carrier: %s", carrierName);
+    return CMD_BAD_INPUT;
+  }
+  if (fmCarrier.value == p::utils::FMCarrier::None) {
+    luaL_error(L, "invalid FM carrier: %s", carrierName);
+    return CMD_BAD_INPUT;
   }
 
-  auto src = osc::parseFMSource(srcName);
-  if (src == osc::FMSource::None) {
-    luaL_error(L, "unknown fm source: %s", srcName);
-    return 0;
+  auto fmSource = p::utils::parseEnumFM(sourceName);
+  if (!fmSource.ok) {
+    luaL_error(L, "unknown FM source: %s", sourceName);
+    return CMD_BAD_INPUT;
   }
 
-  osc::addFMRoute(*carrier, src, depth);
-  return 0;
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::AddFMRoute;
+  evt.data.addFMRoute = {fmCarrier.value, fmSource.value, depth};
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to add FM route");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_fmRemove(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
-  const char* srcName = luaL_checkstring(L, 2);
+  const char* sourceName = luaL_checkstring(L, 2);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
+  auto* ctx = getLuaContext(L);
 
-  auto* carrier = voices::getOscByName(ctx->engines[ctx->currentPart]->voicePool, carrierName);
-  if (!carrier) {
-    luaL_error(L, "unknown carrier: %s", carrierName);
-    return 0;
+  auto fmCarrier = p::utils::parseEnumFM(carrierName);
+  if (!fmCarrier.ok) {
+    luaL_error(L, "unknown FM carrier: %s", carrierName);
+    return CMD_BAD_INPUT;
+  }
+  if (fmCarrier.value == p::utils::FMCarrier::None) {
+    luaL_error(L, "invalid FM carrier: %s", carrierName);
+    return CMD_BAD_INPUT;
   }
 
-  osc::removeFMRoute(*carrier, osc::parseFMSource(srcName));
-  return 0;
+  auto fmSource = p::utils::parseEnumFM(sourceName);
+  if (!fmSource.ok) {
+    luaL_error(L, "unknown FM source: %s", sourceName);
+    return CMD_BAD_INPUT;
+  }
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::RemoveFMRoute;
+  evt.data.removeFMRoute = {fmCarrier.value, fmSource.value};
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to remove FM route");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_fmClear(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
+  auto* ctx = getLuaContext(L);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-
-  auto* carrier = voices::getOscByName(ctx->engines[ctx->currentPart]->voicePool, carrierName);
-  if (!carrier) {
-    luaL_error(L, "unknown carrier: %s", carrierName);
-    return 0;
+  auto fmCarrier = p::utils::parseEnumFM(carrierName);
+  if (!fmCarrier.ok) {
+    luaL_error(L, "unknown FM carrier: %s", carrierName);
+    return CMD_BAD_INPUT;
+  }
+  if (fmCarrier.value == p::utils::FMCarrier::None) {
+    luaL_error(L, "invalid FM carrier: %s", carrierName);
+    return CMD_BAD_INPUT;
   }
 
-  osc::clearFMRoutes(*carrier);
-  return 0;
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::ClearFMRoutes;
+  evt.data.clearFMRoutes = {fmCarrier.value};
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to clear FM route");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_fmList(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
+  auto* ctx = getLuaContext(L);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-
-  auto* carrier = voices::getOscByName(ctx->engines[ctx->currentPart]->voicePool, carrierName);
-  if (!carrier) {
-    luaL_error(L, "unknown carrier: %s", carrierName);
-    return 0;
+  auto carrier = p::utils::printFMList(getTrackEngine(ctx), carrierName);
+  if (!carrier.ok) {
+    luaL_error(L, "%s: %s", carrier.error, carrierName);
+    return CMD_BAD_INPUT;
   }
 
-  osc::printFMRoutes(*carrier, carrierName);
-  return 0;
+  return CMD_EVENT_SUCCESS;
 }
 
 void registerFMCommands(lua_State* L) {
@@ -446,42 +420,65 @@ void registerFMCommands(lua_State* L) {
 int l_presetLoad(lua_State* L) {
   const char* name = luaL_checkstring(L, 1);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
+  auto* ctx = getLuaContext(L);
+  auto track = ctx->app->currentTrack;
 
   auto result = preset::loadPresetByName(name);
   if (!result.ok()) {
     luaL_error(L, "load failed: %s", result.error.c_str());
-    return 0;
+    return CMD_EVENT_FAILURE;
   }
-  preset::applyPreset(result.preset, *ctx->engines[ctx->currentPart]);
-  return 0;
+
+  ctx->app->presetStore.slots[track] = result.preset;
+  ctx->app->presetStore.valid[track] = true;
+
+  synth::EngineEvent evt{};
+  evt.type = synth::EngineEvent::Type::ApplyPreset;
+  evt.data.applyPreset.preset = &ctx->app->presetStore.slots[track];
+
+  if (!app::session::pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "engine event queue full, preset apply dropped");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_presetSave(lua_State* L) {
   const char* name = luaL_checkstring(L, 1);
+  auto* ctx = getLuaContext(L);
 
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-
-  auto p = preset::capturePreset(*ctx->engines[ctx->currentPart]);
+  auto p = preset::capturePreset(*getTrackEngine(ctx));
   std::string path = preset::getUserPresetsDir() + "/" + name + ".json";
   std::string err = preset::savePreset(p, path);
-  if (!err.empty())
+  if (!err.empty()) {
     luaL_error(L, "save failed: %s", err.c_str());
-  return 0;
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_presetInit(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
+  auto* ctx = getLuaContext(L);
+  uint8_t track = ctx->app->currentTrack;
 
-  auto p = preset::createInitPreset();
-  preset::applyPreset(p, *ctx->engines[ctx->currentPart]);
-  return 0;
+  ctx->app->presetStore.slots[track] = preset::createInitPreset();
+  ctx->app->presetStore.valid[track] = true;
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::ApplyPreset;
+  evt.data.applyPreset.preset = &ctx->app->presetStore.slots[track];
+
+  if (!app::session::pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "engine event queue full, init preset apply dropped");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_presetList(lua_State*) {
@@ -505,40 +502,52 @@ void registerPresetCommands(lua_State* L) {
 }
 
 int l_fxSet(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-
+  auto* ctx = getLuaContext(L);
   int nargs = lua_gettop(L);
-  fx::FXProcessor procs[fx::MAX_EFFECT_SLOTS];
-  uint8_t count = 0;
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::SetFXChain;
+  uint8_t& count = evt.data.setFXChain.count;
+  count = 0;
 
   for (int i = 1; i <= nargs && count < fx::MAX_EFFECT_SLOTS; i++) {
     const char* name = luaL_checkstring(L, i);
-    auto proc = fx::parseFXProcessor(name);
-    if (proc == fx::FXProcessor::None) {
+    auto fxProc = p::utils::parseFXProcessor(name);
+    if (!fxProc.ok) {
       luaL_error(L, "unknown fx processor: %s", name);
-      return 0;
+      return CMD_BAD_INPUT;
     }
-    procs[count++] = proc;
+    evt.data.setFXChain.processors[count++] = fxProc.value;
   }
-  fx::setFXChain(ctx->engines[ctx->currentPart]->fxChain, procs, count);
-  return 0;
-}
 
-int l_fxList(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  fx::printFXChain(ctx->engines[ctx->currentPart]->fxChain);
-  return 0;
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to set fx chain");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_fxClear(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  fx::clearFXChain(ctx->engines[ctx->currentPart]->fxChain);
+  auto* ctx = getLuaContext(L);
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::ClearFXChain;
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to clear fx chain");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
+}
+
+int l_fxList(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+
+  fx::printFXChain(getTrackEngine(ctx)->fxChain);
   return 0;
 }
 
@@ -554,41 +563,55 @@ void registerFXCommands(lua_State* L) {
 }
 
 int l_signalSet(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-
+  auto* ctx = getLuaContext(L);
   int nargs = lua_gettop(L);
-  sc::SignalProcessor procs[sc::MAX_CHAIN_SLOTS];
-  uint8_t count = 0;
 
-  for (int i = 1; i <= nargs && count < sc::MAX_CHAIN_SLOTS; i++) {
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::SetSignalChain;
+  uint8_t& count = evt.data.setSignalChain.count;
+  count = 0;
+
+  for (int i = 1; i <= nargs && count < p::utils::MAX_SIGNAL_CHAIN_SLOTS; i++) {
     const char* name = luaL_checkstring(L, i);
-    auto proc = sc::parseSignalProcessor(name);
-    if (proc == sc::SignalProcessor::None) {
-      luaL_error(L, "unknown signal processor: %s", name);
-      return 0;
+    auto sigProc = p::utils::parseSignalProcessor(name);
+    if (!sigProc.ok) {
+      luaL_error(L, "%s: %s", sigProc.error, name);
+      return CMD_BAD_INPUT;
     }
-    procs[count++] = proc;
+    evt.data.setSignalChain.processors[count++] = sigProc.value;
   }
-  sc::setSigChain(ctx->engines[ctx->currentPart]->voicePool.signalChain, procs, count);
-  return 0;
-}
 
-int l_signalList(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  sc::printSigChain(ctx->engines[ctx->currentPart]->voicePool.signalChain);
-  return 0;
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to set signal chain");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_signalClear(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  sc::clearSigChain(ctx->engines[ctx->currentPart]->voicePool.signalChain);
-  return 0;
+  auto* ctx = getLuaContext(L);
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::ClearSignalChain;
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to clear signal chain");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
+}
+
+int l_signalList(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+
+  p::utils::printSignalChain(getTrackEngine(ctx));
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 void registerSignalCommands(lua_State* L) {
@@ -603,35 +626,38 @@ void registerSignalCommands(lua_State* L) {
 }
 
 int l_panic(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  voices::panicVoicePool(ctx->engines[ctx->currentPart]->voicePool);
-  return 0;
+  auto* ctx = getLuaContext(L);
+
+  EngineEvent evt{};
+  evt.type = EngineEvent::Type::Panic;
+
+  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+    luaL_error(L, "failed to panic");
+    return CMD_EVENT_FAILURE;
+  }
+
+  printf("OK\n");
+  return CMD_EVENT_SUCCESS;
 }
 
 int l_params(lua_State* L) {
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  Engine* engine = ctx->engines[ctx->currentPart];
+  auto* ctx = getLuaContext(L);
 
   for (int i = 0; i < synth::param::PARAM_COUNT; i++) {
     auto id = static_cast<synth::param::ParamID>(i);
-    float val = pr::getParamValueByID(engine->paramRouter, id);
+    float val = p::utils::getParamValueByID(getTrackEngine(ctx), id);
     printf("%-35s %g\n", synth::param::PARAM_DEFS[i].name, val);
   }
   return 0;
 }
 
 int l_select(lua_State* L) {
-  int part = (int)luaL_checkinteger(L, 1);
-  lua_getfield(L, LUA_REGISTRYINDEX, "synthctx");
-  auto* ctx = static_cast<LuaContext*>(lua_touserdata(L, -1));
-  lua_pop(L, 1);
-  if (part < 1 || part > (int)MAX_PARTS)
-    luaL_error(L, "part %d out of range (1–%d)", part, (int)MAX_PARTS);
-  ctx->currentPart = (uint8_t)(part - 1);
+  int track = (int)luaL_checkinteger(L, 1);
+  auto* ctx = getLuaContext(L);
+
+  if (track < 1 || track > (int)app::MAX_TRACKS)
+    luaL_error(L, "track %d out of range (1–%d)", track, (int)app::MAX_TRACKS);
+  ctx->app->currentTrack = (uint8_t)(track - 1);
   return 0;
 }
 
@@ -641,14 +667,18 @@ int l_quit(lua_State*) {
   return 0;
 }
 
+int l_clear(lua_State*) {
+  system("clear");
+  return 0;
+}
+
 } // anonymous namespace
 
-void registerSynthBindings(lua_State* L, Engine& engine, hSynthSession session) {
+void registerSynthBindings(lua_State* L, AppContext& appCtx) {
 
   // 1. Store context in registry
   auto* ctx = new LuaContext{};
-  ctx->engines[0] = &engine;
-  ctx->sessions[0] = session;
+  ctx->app = &appCtx;
   lua_pushlightuserdata(L, ctx);
   lua_setfield(L, LUA_REGISTRYINDEX, "synthctx");
 
@@ -694,6 +724,8 @@ void registerSynthBindings(lua_State* L, Engine& engine, hSynthSession session) 
   lua_setglobal(L, "params");
   lua_pushcfunction(L, l_select);
   lua_setglobal(L, "select");
+  lua_pushcfunction(L, l_clear);
+  lua_setglobal(L, "clear");
   lua_pushcfunction(L, l_quit);
   lua_setglobal(L, "quit");
 }

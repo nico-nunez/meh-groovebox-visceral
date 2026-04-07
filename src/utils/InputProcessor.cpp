@@ -1,7 +1,6 @@
 #include "InputProcessor.h"
 
 #include "synth/Engine.h"
-#include "synth/EngineTypes.h"
 #include "synth/ModMatrix.h"
 #include "synth/SignalChain.h"
 #include "synth/VoicePool.h"
@@ -56,84 +55,26 @@ int setInputParam(const std::string& paramName,
     break;
   }
 
-  case param::ParamType::OscBankID: {
-    std::string value;
-    iss >> value;
-
-    auto id = p::utils::parseBankID(value.c_str());
-    if (id == types::BankID::Unknown) {
-      printf("Unknown bank: %s\n", value.c_str());
-      return 10;
-    }
-    paramValue = static_cast<float>(id);
-    break;
-  }
-
-  case param::ParamType::PhaseMode: {
-    std::string value;
-    iss >> value;
-
-    auto mode = p::utils::parsePhaseMode(value.c_str());
-    if (mode == types::PhaseMode::Unknown) {
-      printf("Unknown phase mode: %s\n", value.c_str());
-      return 10;
-    }
-    paramValue = static_cast<float>(mode);
-    break;
-  }
-
-  case param::ParamType::NoiseType: {
-    std::string value;
-    iss >> value;
-
-    auto noiseType = p::utils::parseNoiseType(value.c_str());
-    if (noiseType == types::NoiseType::Unknown) {
-      printf("Unknown noise type: %s\n", value.c_str());
-      return 10;
-    }
-    paramValue = static_cast<float>(noiseType);
-    break;
-  }
-
-  case param::ParamType::FilterMode: {
-    std::string value;
-    iss >> value;
-
-    auto mode = p::utils::parseSVFMode(value.c_str());
-    if (mode == types::SVFMode::Unknown) {
-      printf("Unknown svf mode: %s\n", value.c_str());
-      return 10;
-    }
-    paramValue = static_cast<float>(mode);
-    break;
-  }
-
-  case param::ParamType::DistortionType: {
-    std::string value;
-    iss >> value;
-
-    auto dist = p::utils::parseDistortionType(value.c_str());
-    if (dist == types::DistortionType::Unknown) {
-      printf("Unknown distortion type: %s\n", value.c_str());
-      return 10;
-    }
-    paramValue = static_cast<float>(dist);
-    break;
-  }
-
+  case param::ParamType::OscBankID:
+  case param::ParamType::PhaseMode:
+  case param::ParamType::NoiseType:
+  case param::ParamType::FilterMode:
+  case param::ParamType::DistortionType:
   case param::ParamType::Subdivision: {
     std::string value;
     iss >> value;
 
-    auto sub = p::utils::parseSubdivision(value.c_str());
-    if (sub == types::Subdivision::Unknown) {
-      printf("Unknown subdivision value: %s\n", value.c_str());
+    auto res = p::utils::parseEnum(paramDef.type, value.c_str());
+    if (!res.ok) {
+      printf("Unknown value: %s\n", value.c_str());
+      printf("%s\n", res.error);
       return 10;
     }
-    paramValue = static_cast<float>(sub);
+    paramValue = static_cast<float>(res.value);
     break;
   }
-    // Treat all other params values as floats (denormalized)
+
+  // Treat all other params values as floats (denormalized)
   default:
     iss >> paramValue;
   }

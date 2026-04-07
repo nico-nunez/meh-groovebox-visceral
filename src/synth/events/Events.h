@@ -1,9 +1,10 @@
 #pragma once
 
 #include "synth/SignalChain.h"
-#include "synth/preset/Preset.h"
+#include "synth/WavetableOsc.h"
 
 #include "dsp/fx/FXChain.h"
+#include "synth/preset/Preset.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -62,6 +63,9 @@ struct MIDIEvent {
 // Param Event Queue (scalar)
 // ============================
 
+using wavetable::osc::FMCarrier;
+using wavetable::osc::FMSource;
+
 struct ParamEvent {
   uint8_t id = 0;
   float value = 0.0f; // Normalized [0, 1]
@@ -84,7 +88,10 @@ struct EngineEvent {
     ClearModRoutes,
 
     SetSignalChain,
+    ClearSignalChain,
+
     SetFXChain,
+    ClearFXChain,
 
     ApplyPreset,
     Panic,
@@ -98,23 +105,23 @@ struct EngineEvent {
     } setNoiseType;
 
     struct {
-      uint8_t carrierIndex; // 0..3
-      uint8_t source;       // synth-defined FM source enum as uint8_t
-      float depth;
+      uint8_t carrier;
+      uint8_t source;
+      float depth; // [0.0, 1.0]
     } addFMRoute;
 
     struct {
-      uint8_t carrierIndex;
+      uint8_t carrier;
       uint8_t source;
     } removeFMRoute;
 
     struct {
-      uint8_t carrierIndex;
+      uint8_t carrier;
     } clearFMRoutes;
 
     struct {
-      uint8_t source;      // synth-defined mod source enum as uint8_t
-      uint8_t destination; // synth-defined mod destination enum as uint8_t
+      uint8_t source;
+      uint8_t destination;
       float amount;
     } addModRoute;
 
@@ -132,9 +139,17 @@ struct EngineEvent {
     } setSignalChain;
 
     struct {
+      uint8_t reserved;
+    } clearSignalChain;
+
+    struct {
       uint8_t processors[dsp::fx::chain::MAX_EFFECT_SLOTS];
       uint8_t count;
     } setFXChain;
+
+    struct {
+      uint8_t reserved;
+    } clearFXChain;
 
     struct {
       const preset::Preset* preset;

@@ -7,7 +7,7 @@
 
 namespace synth::mod_matrix {
 // ==== Modulation Sources ====
-enum ModSrc {
+enum ModSrc : uint8_t {
   NoSrc = 0,
 
   // Envelopes — all three, whether or not they're "doing anything" currently
@@ -30,7 +30,7 @@ enum ModSrc {
 };
 
 // ==== Modulation Destinations ====
-enum ModDest {
+enum ModDest : uint8_t {
   NoDest = 0,
 
   // Filter cutoff — units are octaves (bipolar ±4)

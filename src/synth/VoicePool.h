@@ -24,6 +24,7 @@ using envelope::Envelope;
 using lfo::LFO;
 using lfo::LFOModState;
 
+using wavetable::osc::FMSource;
 using wavetable::osc::WavetableOsc;
 using wavetable::osc::WavetableOscModState;
 
@@ -207,15 +208,15 @@ inline WavetableOsc* getOscByName(VoicePool& pool, const std::string& name) {
   return nullptr;
 }
 
-inline WavetableOsc* getOscByIndex(VoicePool& pool, uint8_t index) {
-  switch (index) {
-  case 0:
+inline WavetableOsc* getOscByEnum(VoicePool& pool, FMSource src) {
+  switch (src) {
+  case FMSource::Osc1:
     return &pool.osc1;
-  case 1:
+  case FMSource::Osc2:
     return &pool.osc2;
-  case 2:
+  case FMSource::Osc3:
     return &pool.osc3;
-  case 3:
+  case FMSource::Osc4:
     return &pool.osc4;
   default:
     return nullptr;

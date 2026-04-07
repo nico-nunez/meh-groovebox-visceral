@@ -37,7 +37,6 @@ struct SynthSession {
   hAudioSession audioSession;
   void* userContext;
 };
-using hSynthSession = SynthSession*;
 
 static void audioCallback(AudioBuffer buffer, void* context) {
   auto* ctx = static_cast<SynthSession*>(context);
@@ -83,6 +82,7 @@ hSynthSession initSession(SessionConfig userConfig,
   sessionPtr->processParamEvent = userCallbacks.processParamEvent;
   sessionPtr->processMIDIEvent = userCallbacks.processMIDIEvent;
   sessionPtr->processAudioBlock = userCallbacks.processAudioBlock;
+  sessionPtr->processEngineEvent = userCallbacks.processEngineEvent;
   sessionPtr->userContext = userContext;
 
   // 2. Setup audio_io

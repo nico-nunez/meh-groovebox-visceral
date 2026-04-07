@@ -1,4 +1,7 @@
+#include "app/AppContext.h"
 #include "app/SynthSession.h"
+
+#include "lua/LuaREPL.h"
 #include "utils/InputProcessor.h"
 #include "utils/KeyProcessor.h"
 
@@ -8,7 +11,7 @@
 #include <csignal>
 #include <cstdio>
 #include <functional>
-#include <iostream>
+// #include <iostream>
 #include <thread>
 
 static void processMIDIEvent(synth::MIDIEvent event, void* myContext) {
@@ -32,22 +35,22 @@ processAudioBlock(float** outputBuffer, size_t numChannels, size_t numFrames, vo
   engine->processAudioBlock(outputBuffer, numChannels, numFrames);
 }
 
-static void getUserInput(synth::Engine& engine, app::session::hSynthSession sessionPtr) {
-  bool isRunning = true;
-  std::string input;
-
-  while (isRunning) {
-    printf(">");
-    std::getline(std::cin, input);
-
-    synth::utils::parseCommand(input, engine, sessionPtr);
-
-    if (input == "quit") {
-      synth::utils::requestQuit();
-      isRunning = false;
-    }
-  }
-}
+// static void getUserInput(app::AppContext appCtx) {
+//   bool isRunning = true;
+//   std::string input;
+//
+//   while (isRunning) {
+//     printf(">");
+//     std::getline(std::cin, input);
+//
+//     synth::utils::parseCommand(input, app::getTrackEngine(appCtx), app::getTrackSession(appCtx));
+//
+//     if (input == "quit") {
+//       synth::utils::requestQuit();
+//       isRunning = false;
+//     }
+//   }
+// }
 
 int main() {
   using synth::Engine;
@@ -72,6 +75,10 @@ int main() {
 
   Engine engine = synth::createEngine(engineConfig);
 
+  app::AppContext appContext{};
+  appContext.currentTrack = 0;
+  appContext.tracks[0].engine = &engine;
+
   SessionConfig sessionConfig{};
   sessionConfig.sampleRate = deviceInfo.sampleRate;
   sessionConfig.numFrames = deviceInfo.bufferFrameSize;
@@ -84,11 +91,13 @@ int main() {
   sessionCallbacks.processAudioBlock = processAudioBlock;
 
   hSynthSession session = app::session::initSession(sessionConfig, sessionCallbacks, &engine);
+  appContext.tracks[0].session = session;
 
   app::session::startSession(session);
   auto midiSession = synth::utils::initMidiSession(session);
 
-  std::thread terminalWorker(getUserInput, std::ref(engine), session);
+  //std::thread terminalWorker(getUserInput, std::ref(appContext));
+  std::thread terminalWorker(lua::repl::runLuaREPL, std::ref(appContext));
   terminalWorker.detach();
 
   synth::utils::startGLFWLoop(session, midiSession);

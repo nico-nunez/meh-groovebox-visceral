@@ -4,6 +4,6 @@
 
 namespace lua::repl {
 
-void runLuaREPL(Engine& engine, hSynthSession session);
+void runLuaREPL(AppContext& appCtx);
 
 } // namespace lua::repl

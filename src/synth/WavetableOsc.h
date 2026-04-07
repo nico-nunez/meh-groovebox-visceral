@@ -32,6 +32,23 @@ enum FMSource : uint8_t {
   Osc4,
 };
 
+typedef enum FMSource FMCarrier;
+
+inline constexpr uint8_t FM_SOURCE_COUNT = FMSource::Osc4 + 1;
+
+struct FMMapping {
+  FMSource id;
+  const char* name;
+};
+
+inline constexpr FMMapping FM_MAPPINGS[FM_SOURCE_COUNT] = {
+    {FMSource::None, "none"},
+    {FMSource::Osc1, "osc1"},
+    {FMSource::Osc2, "osc2"},
+    {FMSource::Osc3, "osc3"},
+    {FMSource::Osc4, "osc4"},
+};
+
 struct FMRoute {
   FMSource source = FMSource::None;
   float depth = 0.0f; // valid range [0.0, 10.0]

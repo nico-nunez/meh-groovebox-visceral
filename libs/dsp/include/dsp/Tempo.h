@@ -5,7 +5,7 @@
 
 namespace dsp::tempo {
 
-enum class Subdivision : uint8_t {
+enum Subdivision : uint8_t {
   // Straight
   Whole,        // 1/1  — 4.0 beats
   Half,         // 1/2  — 2.0 beats

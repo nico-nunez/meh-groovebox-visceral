@@ -1,6 +1,9 @@
 #include "Engine.h"
 
+#include "synth/SignalChain.h"
 #include "synth/VoicePool.h"
+#include "synth/WavetableOsc.h"
+#include "synth/events/Events.h"
 #include "synth/params/ParamDefs.h"
 #include "synth/params/ParamSync.h"
 #include "synth/preset/Preset.h"
@@ -115,7 +118,8 @@ void Engine::processEngineEvent(const EngineEvent& event) {
   }
 
   case EngineEvent::Type::AddFMRoute: {
-    auto* carrier = voices::getOscByIndex(voicePool, event.data.addFMRoute.carrierIndex);
+    auto* carrier =
+        voices::getOscByEnum(voicePool, static_cast<osc::FMCarrier>(event.data.addFMRoute.carrier));
     if (!carrier)
       return;
     osc::addFMRoute(*carrier,
@@ -125,7 +129,9 @@ void Engine::processEngineEvent(const EngineEvent& event) {
   }
 
   case EngineEvent::Type::RemoveFMRoute: {
-    auto* carrier = voices::getOscByIndex(voicePool, event.data.removeFMRoute.carrierIndex);
+    auto* carrier =
+        voices::getOscByEnum(voicePool,
+                             static_cast<osc::FMCarrier>(event.data.removeFMRoute.carrier));
     if (!carrier)
       return;
     osc::removeFMRoute(*carrier, static_cast<osc::FMSource>(event.data.removeFMRoute.source));
@@ -133,7 +139,9 @@ void Engine::processEngineEvent(const EngineEvent& event) {
   }
 
   case EngineEvent::Type::ClearFMRoutes: {
-    auto* carrier = voices::getOscByIndex(voicePool, event.data.clearFMRoutes.carrierIndex);
+    auto* carrier =
+        voices::getOscByEnum(voicePool,
+                             static_cast<osc::FMCarrier>(event.data.clearFMRoutes.carrier));
     if (!carrier)
       return;
     osc::clearFMRoutes(*carrier);
@@ -167,12 +175,22 @@ void Engine::processEngineEvent(const EngineEvent& event) {
     return;
   }
 
+  case EngineEvent::Type::ClearSignalChain: {
+    sc::clearSigChain(voicePool.signalChain);
+    return;
+  }
+
   case EngineEvent::Type::SetFXChain: {
     fx::FXProcessor procs[fx::MAX_EFFECT_SLOTS];
     uint8_t count = event.data.setFXChain.count;
     for (uint8_t i = 0; i < count; ++i)
       procs[i] = static_cast<fx::FXProcessor>(event.data.setFXChain.processors[i]);
     fx::setFXChain(fxChain, procs, count);
+    return;
+  }
+
+  case EngineEvent::Type::ClearFXChain: {
+    fx::clearFXChain(fxChain);
     return;
   }
 
