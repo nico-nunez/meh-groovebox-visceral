@@ -2,16 +2,15 @@
 #include "app/SynthSession.h"
 
 #include "lua/LuaREPL.h"
-#include "utils/InputProcessor.h"
 #include "utils/KeyProcessor.h"
 
 #include "synth/Engine.h"
 
 #include <audio_io/AudioIO.h>
+
 #include <csignal>
 #include <cstdio>
 #include <functional>
-// #include <iostream>
 #include <thread>
 
 static void processMIDIEvent(synth::MIDIEvent event, void* myContext) {
@@ -35,23 +34,9 @@ processAudioBlock(float** outputBuffer, size_t numChannels, size_t numFrames, vo
   engine->processAudioBlock(outputBuffer, numChannels, numFrames);
 }
 
-// static void getUserInput(app::AppContext appCtx) {
-//   bool isRunning = true;
-//   std::string input;
-//
-//   while (isRunning) {
-//     printf(">");
-//     std::getline(std::cin, input);
-//
-//     synth::utils::parseCommand(input, app::getTrackEngine(appCtx), app::getTrackSession(appCtx));
-//
-//     if (input == "quit") {
-//       synth::utils::requestQuit();
-//       isRunning = false;
-//     }
-//   }
-// }
-
+// ==============
+// App Entry
+// ==============
 int main() {
   using synth::Engine;
   using synth::EngineConfig;
@@ -96,7 +81,6 @@ int main() {
   app::session::startSession(session);
   auto midiSession = synth::utils::initMidiSession(session);
 
-  //std::thread terminalWorker(getUserInput, std::ref(appContext));
   std::thread terminalWorker(lua::repl::runLuaREPL, std::ref(appContext));
   terminalWorker.detach();
 

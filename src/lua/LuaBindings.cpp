@@ -18,9 +18,9 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define CMD_BAD_INPUT     10
-#define CMD_EVENT_FAILURE 1
-#define CMD_EVENT_SUCCESS 0
+#define CMD_BAD_INPUT 10
+#define CMD_FAILURE   1
+#define CMD_SUCCESS   0
 
 namespace lua::bindings {
 namespace p = synth::param;
@@ -88,11 +88,11 @@ int paramGroupNewIndex(lua_State* L) {
 
   if (!pushParamEvent(getTrackSession(ctx), {static_cast<uint8_t>(paramID), paramVal})) {
     printf("failed to update param");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
 int paramGroupIndex(lua_State* L) {
@@ -110,9 +110,25 @@ int paramGroupIndex(lua_State* L) {
   }
 
   auto* ctx = getLuaContext(L);
-
+  auto paramDef = p::getParamDef(paramID);
   float value = p::utils::getParamValueByID(getTrackEngine(ctx), paramID);
-  lua_pushnumber(L, value);
+
+  switch (paramDef.type) {
+  case p::ParamType::OscBankID:
+  case p::ParamType::PhaseMode:
+  case p::ParamType::NoiseType:
+  case p::ParamType::FilterMode:
+  case p::ParamType::DistortionType:
+  case p::ParamType::Subdivision: {
+    const char* str = p::utils::enumToString(paramDef.type, static_cast<uint8_t>(value));
+    lua_pushstring(L, str);
+    break;
+  }
+  default:
+    lua_pushnumber(L, value);
+    break;
+  }
+
   return 1;
 }
 
@@ -209,6 +225,9 @@ void registerEnumGlobals(lua_State* L) {
   lua_setglobal(L, "pink");
 }
 
+// =========================
+// Modulation (add)
+// =========================
 int l_modAdd(lua_State* L) {
   const char* srcName = luaL_checkstring(L, 1);
   const char* destName = luaL_checkstring(L, 2);
@@ -233,13 +252,16 @@ int l_modAdd(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to add mod matrix route");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// Modulation (remove)
+// =========================
 int l_modRemove(lua_State* L) {
   uint8_t index = (uint8_t)luaL_checkinteger(L, 1);
 
@@ -251,13 +273,16 @@ int l_modRemove(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to remove mod matrix route");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// Modulation (clear)
+// =========================
 int l_modClear(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
@@ -266,18 +291,21 @@ int l_modClear(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to clear mod matrix");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// Modulation (print)
+// =========================
 int l_modList(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
   p::utils::printModList(getTrackEngine(ctx));
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
 void registerModCommands(lua_State* L) {
@@ -293,6 +321,9 @@ void registerModCommands(lua_State* L) {
   lua_setglobal(L, "mod");
 }
 
+// =========================
+// FM Modulation (add)
+// =========================
 int l_fmAdd(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
   const char* sourceName = luaL_checkstring(L, 2);
@@ -322,13 +353,16 @@ int l_fmAdd(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to add FM route");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// FM Modulation (remove)
+// =========================
 int l_fmRemove(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
   const char* sourceName = luaL_checkstring(L, 2);
@@ -357,13 +391,16 @@ int l_fmRemove(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to remove FM route");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// FM Modulation (clear)
+// =========================
 int l_fmClear(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
   auto* ctx = getLuaContext(L);
@@ -384,13 +421,16 @@ int l_fmClear(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to clear FM route");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// FM Modulation (print)
+// =========================
 int l_fmList(lua_State* L) {
   const char* carrierName = luaL_checkstring(L, 1);
   auto* ctx = getLuaContext(L);
@@ -401,7 +441,7 @@ int l_fmList(lua_State* L) {
     return CMD_BAD_INPUT;
   }
 
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
 void registerFMCommands(lua_State* L) {
@@ -417,6 +457,9 @@ void registerFMCommands(lua_State* L) {
   lua_setglobal(L, "fm");
 }
 
+// =========================
+// Presets (load)
+// =========================
 int l_presetLoad(lua_State* L) {
   const char* name = luaL_checkstring(L, 1);
 
@@ -426,7 +469,7 @@ int l_presetLoad(lua_State* L) {
   auto result = preset::loadPresetByName(name);
   if (!result.ok()) {
     luaL_error(L, "load failed: %s", result.error.c_str());
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   ctx->app->presetStore.slots[track] = result.preset;
@@ -438,13 +481,16 @@ int l_presetLoad(lua_State* L) {
 
   if (!app::session::pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "engine event queue full, preset apply dropped");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// Presets (save)
+// =========================
 int l_presetSave(lua_State* L) {
   const char* name = luaL_checkstring(L, 1);
   auto* ctx = getLuaContext(L);
@@ -454,13 +500,16 @@ int l_presetSave(lua_State* L) {
   std::string err = preset::savePreset(p, path);
   if (!err.empty()) {
     luaL_error(L, "save failed: %s", err.c_str());
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// Presets (initialize)
+// =========================
 int l_presetInit(lua_State* L) {
   auto* ctx = getLuaContext(L);
   uint8_t track = ctx->app->currentTrack;
@@ -474,17 +523,30 @@ int l_presetInit(lua_State* L) {
 
   if (!app::session::pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "engine event queue full, init preset apply dropped");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// ================================
+// Presets (print list of presets)
+// ================================
 int l_presetList(lua_State*) {
   auto entries = preset::listPresets();
   for (const auto& e : entries)
     printf("  [%s] %s\n", e.isFactory ? "factory" : "user", e.name.c_str());
+  return 0;
+}
+
+// ================================
+// Preset (print current values)
+// ================================
+int l_presetDump(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+  auto p = preset::capturePreset(*getTrackEngine(ctx));
+  preset::printPreset(p); // assuming this exists
   return 0;
 }
 
@@ -498,9 +560,14 @@ void registerPresetCommands(lua_State* L) {
   lua_setfield(L, -2, "init");
   lua_pushcfunction(L, l_presetList);
   lua_setfield(L, -2, "list");
+  lua_pushcfunction(L, l_presetDump);
+  lua_setfield(L, -2, "dump");
   lua_setglobal(L, "preset");
 }
 
+// =========================
+// FX Chain (set)
+// =========================
 int l_fxSet(lua_State* L) {
   auto* ctx = getLuaContext(L);
   int nargs = lua_gettop(L);
@@ -522,13 +589,16 @@ int l_fxSet(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to set fx chain");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// FX Chain (clear all)
+// =========================
 int l_fxClear(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
@@ -537,13 +607,16 @@ int l_fxClear(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to clear fx chain");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// FX Chain (print)
+// =========================
 int l_fxList(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
@@ -562,6 +635,9 @@ void registerFXCommands(lua_State* L) {
   lua_pop(L, 1); // pop fx table
 }
 
+// =========================
+// Signal Chain (set)
+// =========================
 int l_signalSet(lua_State* L) {
   auto* ctx = getLuaContext(L);
   int nargs = lua_gettop(L);
@@ -583,13 +659,16 @@ int l_signalSet(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to set signal chain");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// Signal Chain (clear all)
+// =========================
 int l_signalClear(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
@@ -598,20 +677,23 @@ int l_signalClear(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to clear signal chain");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// =========================
+// Signal Chain (print)
+// =========================
 int l_signalList(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
   p::utils::printSignalChain(getTrackEngine(ctx));
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
 void registerSignalCommands(lua_State* L) {
@@ -625,6 +707,9 @@ void registerSignalCommands(lua_State* L) {
   lua_setglobal(L, "signal");
 }
 
+// =========================
+// Panic! (stop all voices)
+// =========================
 int l_panic(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
@@ -633,24 +718,85 @@ int l_panic(lua_State* L) {
 
   if (!pushEngineEvent(getTrackSession(ctx), evt)) {
     luaL_error(L, "failed to panic");
-    return CMD_EVENT_FAILURE;
+    return CMD_FAILURE;
   }
 
   printf("OK\n");
-  return CMD_EVENT_SUCCESS;
+  return CMD_SUCCESS;
 }
 
+// ========================================
+// Param (print - alt `print(group.name)`)
+// ========================================
+int l_get(lua_State* L) {
+  const char* fullName = luaL_checkstring(L, 1);
+
+  auto paramID = p::utils::getParamIDByName(fullName);
+  if (paramID == p::PARAM_COUNT) {
+    luaL_error(L, "unknown param: %s", fullName);
+    return 1;
+  }
+
+  auto* ctx = getLuaContext(L);
+  auto paramDef = p::getParamDef(paramID);
+  float value = p::utils::getParamValueByID(getTrackEngine(ctx), paramID);
+
+  switch (paramDef.type) {
+  case p::ParamType::OscBankID:
+  case p::ParamType::PhaseMode:
+  case p::ParamType::NoiseType:
+  case p::ParamType::FilterMode:
+  case p::ParamType::DistortionType:
+  case p::ParamType::Subdivision:
+    printf("%s = %s\n",
+           fullName,
+           p::utils::enumToString(paramDef.type, static_cast<uint8_t>(value)));
+    break;
+  default:
+    printf("%s = %g\n", fullName, value);
+    break;
+  }
+
+  return CMD_SUCCESS;
+}
+
+// ====================
+// Params (print list)
+// ====================
 int l_params(lua_State* L) {
   auto* ctx = getLuaContext(L);
+  const char* filter = luaL_optstring(L, 1, nullptr);
+  size_t filterLen = filter ? strlen(filter) : 0;
 
   for (int i = 0; i < synth::param::PARAM_COUNT; i++) {
+    const char* name = synth::param::PARAM_DEFS[i].name;
+    if (filter && strncmp(name, filter, filterLen) != 0)
+      continue;
+
     auto id = static_cast<synth::param::ParamID>(i);
     float val = p::utils::getParamValueByID(getTrackEngine(ctx), id);
-    printf("%-35s %g\n", synth::param::PARAM_DEFS[i].name, val);
+    auto& def = synth::param::PARAM_DEFS[i];
+
+    switch (def.type) {
+    case p::ParamType::OscBankID:
+    case p::ParamType::PhaseMode:
+    case p::ParamType::NoiseType:
+    case p::ParamType::FilterMode:
+    case p::ParamType::DistortionType:
+    case p::ParamType::Subdivision:
+      printf("%-35s %s\n", name, p::utils::enumToString(def.type, static_cast<uint8_t>(val)));
+      break;
+    default:
+      printf("%-35s %g\n", name, val);
+      break;
+    }
   }
-  return 0;
+  return CMD_SUCCESS;
 }
 
+// =================
+// Track selection
+// =================
 int l_select(lua_State* L) {
   int track = (int)luaL_checkinteger(L, 1);
   auto* ctx = getLuaContext(L);
@@ -658,18 +804,120 @@ int l_select(lua_State* L) {
   if (track < 1 || track > (int)app::MAX_TRACKS)
     luaL_error(L, "track %d out of range (1–%d)", track, (int)app::MAX_TRACKS);
   ctx->app->currentTrack = (uint8_t)(track - 1);
-  return 0;
+  return CMD_SUCCESS;
 }
 
+// =====================
+// Help (print options)
+// =====================
+int l_help(lua_State* L) {
+  const char* topic = luaL_optstring(L, 1, nullptr);
+
+  if (!topic) {
+    printf("Param groups (read/write as group.param):\n"
+           "  osc1-4  lfo1-3  noise  ampEnv filterEnv modEnv\n"
+           "  svf  ladder  saturator  pitchBend  mono  porta\n"
+           "  unison  master  tempo\n"
+           "  fx.distortion  fx.chorus  fx.phaser  fx.delay  fx.reverb\n"
+           "\n"
+           "Commands:\n"
+           "  mod      mod.add/remove/clear/list\n"
+           "  fm       fm.add/remove/clear/list\n"
+           "  preset   preset.load/save/init/list\n"
+           "  fx       fx.set/list/clear\n"
+           "  signal   signal.set/list/clear\n"
+           "\n"
+           "Functions:\n"
+           "  get(\"group.param\")  -- print param value\n"
+           "  params([group])    -- list params (optional prefix filter)\n"
+           "  panic()            -- silence all voices\n"
+           "  select(n)          -- select track n (1-based)\n"
+           "  clear()            -- clear terminal\n"
+           "  quit()             -- exit\n"
+           "\n"
+           "help(\"topic\") for detail on: params mod fm preset fx signal\n");
+    return CMD_SUCCESS;
+  }
+
+  if (strcmp(topic, "params") == 0) {
+    printf("Reading params:  print(osc1.freq)   value = osc1.freq\n"
+           "Writing params:  osc1.freq = 440    osc1.bank = \"saw\"\n"
+           "List all:        params()\n"
+           "List group:      params(\"osc1\")\n"
+           "Print one:       get(\"osc1.freq\")\n"
+           "\n"
+           "Param groups: osc1 osc2 osc3 osc4 lfo1 lfo2 lfo3 noise\n"
+           "              ampEnv filterEnv modEnv svf ladder saturator\n"
+           "              pitchBend mono porta unison master tempo\n"
+           "              fx.distortion fx.chorus fx.phaser fx.delay fx.reverb\n");
+
+  } else if (strcmp(topic, "mod") == 0) {
+    printf("mod.add(src, dest, amount)  -- add a mod route\n"
+           "mod.remove(index)           -- remove route by index\n"
+           "mod.clear()                 -- remove all routes\n"
+           "mod.list()                  -- print all active routes\n"
+           "\n"
+           "Sources: ampEnv filterEnv modEnv lfo1 lfo2 lfo3\n"
+           "         velocity keyTrack modWheel noise\n"
+           "Dests:   osc1Pitch osc1ScanPos osc1FMDepth osc1Mix ... (osc1-4)\n"
+           "         svfCutoff svfResonance ladderCutoff ladderResonance\n"
+           "         lfo1Rate lfo1Amp lfo2Rate lfo2Amp lfo3Rate lfo3Amp\n");
+
+  } else if (strcmp(topic, "fm") == 0) {
+    printf("fm.add(carrier, source, depth)  -- add FM route (depth default 1.0)\n"
+           "fm.remove(carrier, source)      -- remove a specific route\n"
+           "fm.clear(carrier)               -- clear all routes on carrier\n"
+           "fm.list(carrier)                -- list routes on carrier\n"
+           "\n"
+           "Carriers/sources: \"osc1\" \"osc2\" \"osc3\" \"osc4\"\n"
+           "Example: fm.add(\"osc1\", \"osc2\", 0.5)  -- osc2 modulates osc1 at depth 0.5\n");
+
+  } else if (strcmp(topic, "preset") == 0) {
+    printf("preset.load(name)   -- load preset by name\n"
+           "preset.save(name)   -- save current state as preset\n"
+           "preset.init()       -- reset to init patch\n"
+           "preset.list()       -- list all factory and user presets\n");
+
+  } else if (strcmp(topic, "fx") == 0) {
+    printf("fx.set(...)         -- set effects chain order\n"
+           "fx.list()           -- print current effects chain\n"
+           "fx.clear()          -- remove all effects from chain\n"
+           "\n"
+           "Effect names: \"distortion\" \"chorus\" \"phaser\" \"delay\" \"reverb\"\n"
+           "Example: fx.set(\"distortion\", \"delay\", \"reverb\")\n"
+           "\n"
+           "Effect params: fx.reverb.decay = 0.8   fx.delay.time = 250\n");
+
+  } else if (strcmp(topic, "signal") == 0) {
+    printf("signal.set(...)     -- set voice signal chain order\n"
+           "signal.list()       -- print current signal chain\n"
+           "signal.clear()      -- remove all processors from chain\n"
+           "\n"
+           "Processor names: \"svf\" \"ladder\" \"saturator\"\n"
+           "Example: signal.set(\"ladder\", \"saturator\")\n");
+
+  } else {
+    printf("Unknown topic: %s\nTopics: params mod fm preset fx signal\n", topic);
+  }
+
+  return CMD_SUCCESS;
+}
+
+// =================
+// Clear (terminal)
+// =================
+int l_clear(lua_State*) {
+  system("clear");
+  return CMD_SUCCESS;
+}
+
+// =================
+// Quit app
+// =================
 int l_quit(lua_State*) {
   synth::utils::requestQuit();
   printf("Goodbye\n");
-  return 0;
-}
-
-int l_clear(lua_State*) {
-  system("clear");
-  return 0;
+  return CMD_SUCCESS;
 }
 
 } // anonymous namespace
@@ -722,8 +970,12 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   lua_setglobal(L, "panic");
   lua_pushcfunction(L, l_params);
   lua_setglobal(L, "params");
+  lua_pushcfunction(L, l_get);
+  lua_setglobal(L, "get");
   lua_pushcfunction(L, l_select);
   lua_setglobal(L, "select");
+  lua_pushcfunction(L, l_help);
+  lua_setglobal(L, "help");
   lua_pushcfunction(L, l_clear);
   lua_setglobal(L, "clear");
   lua_pushcfunction(L, l_quit);
