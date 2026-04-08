@@ -1,11 +1,12 @@
 -xc++
 -std=c++17
+-Iengine/src
+-Iengine/libs/dsp/include
+-Iengine/libs/json/include
 -Isrc
 -Ilibs/audio_io/src
 -Ilibs/audio_io/include
 -Ilibs/device_io/include
--Ilibs/dsp/include
--Ilibs/json/include
 -Ideps/lua/include
 -Ideps/linenoise
 -Ideps/imgui

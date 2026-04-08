@@ -7,12 +7,13 @@ TARGET = main
 BUILD_DIR = build
 
 # Find all source files
-CPP_SOURCES = $(shell find \
+include engine/engine.mk
+
+CPP_SOURCES = $(ENGINE_SOURCES) \
+							$(shell find \
 							src \
 							libs/audio_io/src \
 							libs/device_io/src \
-							libs/dsp/src \
-							libs/json/src \
 							deps/imgui \
 							-name '*.cpp')
 C_SOURCES = $(shell find deps/lua/src deps/linenoise -name '*.c')
@@ -23,10 +24,11 @@ C_OBJECTS  = $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_SOURCES))
 ALL_OBJECTS = $(CPP_OBJECTS) $(MM_OBJECTS) $(C_OBJECTS)
 
 # Add src/ to include search path
-INCLUDES = -Isrc -Ilibs/audio_io/include -Ilibs/audio_io/src \
+INCLUDES = $(ENGINE_INCLUDES) \
+					 -Isrc \
+					 -Ilibs/audio_io/include \
+					 -Ilibs/audio_io/src \
 					 -Ilibs/device_io/include \
-					 -Ilibs/dsp/include \
-					 -Ilibs/json/include \
 					 -Ideps/lua/include \
 					 -Ideps/linenoise \
 					 -Ideps/imgui \

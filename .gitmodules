@@ -1,0 +1,4 @@
+[submodule "engine"]
+	path = engine
+	url = git@github.com:nico-nunez/meh-synth-engine.git
+  ignore = dirty
