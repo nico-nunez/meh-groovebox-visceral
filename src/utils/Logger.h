@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <string_view>
 
-namespace synth::utils {
+namespace app::utils {
 void Log(std::string_view message);
 
 // Printf-style logging with automatic flush for real-time output
@@ -19,4 +19,4 @@ inline void LogF(const char* message) {
   fflush(stdout);
 }
 
-} // namespace synth::utils
+} // namespace app::utils

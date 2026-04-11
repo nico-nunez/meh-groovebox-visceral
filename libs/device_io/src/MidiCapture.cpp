@@ -213,7 +213,7 @@ size_t getMidiSources(struct MidiSource* srcBuffer, size_t srcBufferCount) {
   size_t numSources = 0;
 
   ItemCount sourceCount = MIDIGetNumberOfSources();
-  synth::utils::LogF("Found %ld MIDI sources\n", sourceCount);
+  app::utils::LogF("Found %ld MIDI sources\n", sourceCount);
 
   for (ItemCount i = 0; i < sourceCount && i < srcBufferCount; i++) {
     MIDIEndpointRef source = MIDIGetSource(i);

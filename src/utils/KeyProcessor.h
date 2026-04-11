@@ -1,19 +1,20 @@
 #pragma once
 
-#include "app/SynthSession.h"
+#include "app/AudioSession.h"
 
 #include "device_io/MidiCapture.h"
 
 #include <cstdint>
 
-namespace synth::utils {
-using app::session::hSynthSession;
+namespace app {
+struct AppContext;
+}
+
+namespace app::utils {
 using device_io::hMidiSession;
 
-hMidiSession initMidiSession(hSynthSession);
-
-int startGLFWLoop(hSynthSession, hMidiSession);
+int startGLFWLoop(AppContext*, hMidiSession);
 void requestQuit();
 
 uint8_t asciiToMidi(char key);
-} // namespace synth::utils
+} // namespace app::utils

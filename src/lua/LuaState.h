@@ -2,7 +2,7 @@
 
 #include "app/AppContext.h"
 
-#include "app/SynthSession.h"
+#include "app/AudioSession.h"
 #include "synth/Engine.h"
 #include "synth/preset/Preset.h"
 
@@ -16,7 +16,8 @@ extern "C" {
 
 namespace lua {
 using app::AppContext;
-using app::session::hSynthSession;
+using app::TrackSession;
+
 using synth::Engine;
 using synth::preset::Preset;
 
@@ -35,7 +36,7 @@ inline Engine* getTrackEngine(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) 
   return app::getTrackEngine(ctx->app, track);
 }
 
-inline hSynthSession getTrackSession(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
+inline app::TrackSession* getTrackSession(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
   return app::getTrackSession(ctx->app, track);
 }
 

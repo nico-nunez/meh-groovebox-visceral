@@ -24,10 +24,10 @@ static void completionCallback(const char* buf, linenoiseCompletions* lc) {
   lua_pop(gL, 1); // pop _G
 }
 
-void runLuaREPL(app::AppContext& appCtx) {
+void runLuaREPL(app::AppContext* appCtx) {
   lua_State* L = luaL_newstate();
   luaL_openlibs(L);
-  bindings::registerSynthBindings(L, appCtx);
+  bindings::registerSynthBindings(L, *appCtx);
 
   gL = L;
   linenoiseSetCompletionCallback(completionCallback);
@@ -74,7 +74,7 @@ void runLuaREPL(app::AppContext& appCtx) {
   }
 
   gL = nullptr;
-  synth::utils::requestQuit();
+  app::utils::requestQuit();
   lua_close(L);
 }
 

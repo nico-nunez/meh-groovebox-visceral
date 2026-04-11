@@ -1,7 +1,9 @@
 #include "KeyProcessor.h"
-#include "Logger.h"
+
+#include "app/AppContext.h"
 
 #include "device_io/MidiCapture.h"
+#include "synth/events/Events.h"
 
 #define GL_SILENCE_DEPRECATION
 #define GLFW_INCLUDE_NONE
@@ -14,93 +16,9 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <iostream>
 
-namespace synth::utils {
-namespace d_io = device_io;
+namespace app::utils {
 namespace evt = synth::events;
-
-// Handle MIDI device events
-static void midiCallback(d_io::MidiEvent devieEvent, void* context) {
-  auto sessionPtr = static_cast<hSynthSession>(context);
-
-  // Convert raw device MIDI data to user friendly event
-  evt::MIDIEvent event{};
-  event.type = static_cast<evt::MIDIEvent::Type>(devieEvent.type);
-  event.channel = devieEvent.channel;
-  event.timestamp = devieEvent.timestamp;
-
-  switch (event.type) {
-  case evt::MIDIEvent::Type::NoteOn:
-    event.data.noteOn = {devieEvent.data1, devieEvent.data2};
-    break;
-  case evt::MIDIEvent::Type::NoteOff:
-    event.data.noteOff = {devieEvent.data1, devieEvent.data2};
-    break;
-  case evt::MIDIEvent::Type::ControlChange:
-    event.data.cc = {devieEvent.data1, devieEvent.data2};
-    break;
-  case evt::MIDIEvent::Type::PitchBend:
-    event.data.pitchBend = {devieEvent.pitchBendValue};
-    break;
-  case evt::MIDIEvent::Type::ProgramChange:
-    event.data.programChange = {devieEvent.data1};
-    break;
-  case evt::MIDIEvent::Type::Aftertouch:
-    event.data.aftertouch = {devieEvent.data1, devieEvent.data2};
-    break;
-  case evt::MIDIEvent::Type::ChannelPressure:
-    event.data.channelPressure = {devieEvent.data1};
-    break;
-
-  default:
-    break;
-  }
-
-  app::session::pushMIDIEvent(sessionPtr, event);
-}
-
-hMidiSession initMidiSession(hSynthSession sessionPtr) {
-  // 1a. Setup MIDI on this thread's run loop for now
-  constexpr size_t MAX_MIDI_DEVICES = 16;
-  device_io::MidiSource midiSourceBuffer[MAX_MIDI_DEVICES];
-  size_t numMidiDevices = device_io::getMidiSources(midiSourceBuffer, MAX_MIDI_DEVICES);
-
-  hMidiSession midiSession = nullptr;
-
-  if (numMidiDevices) {
-    // Display MIDI source options
-    for (size_t i = 0; i < numMidiDevices; i++) {
-      // Display options as 1 based indexing
-      printf("%ld. %s\n", i + 1, midiSourceBuffer[i].displayName);
-    }
-
-    uint32_t srcIndex;
-    LogF("Enter midi device number: ");
-    std::cin >> srcIndex;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-    // Adjust for options starting at 1 (not 0)
-    --srcIndex;
-
-    if (srcIndex < 0 || srcIndex >= numMidiDevices) {
-      printf("Invalid option selected: %d", srcIndex);
-      return midiSession;
-    }
-
-    midiSession = device_io::setupMidiSession({}, midiCallback, sessionPtr);
-
-    device_io::connectMidiSource(midiSession, midiSourceBuffer[srcIndex].uniqueID);
-
-    device_io::startMidiSession(midiSession);
-
-  } else {
-    synth::utils::LogF("No MIDI devices found\n");
-  }
-
-  return midiSession;
-}
 
 static GLFWwindow* g_window = nullptr;
 
@@ -115,7 +33,7 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
     return;
   }
 
-  auto* sessionPtr = static_cast<hSynthSession>(glfwGetWindowUserPointer(window));
+  auto* ctx = static_cast<AppContext*>(glfwGetWindowUserPointer(window));
 
   if (action == GLFW_PRESS) {
     if (key == GLFW_KEY_ESCAPE) {
@@ -131,7 +49,8 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
     evt::MIDIEvent event{};
     event.type = evt::MIDIEvent::Type::NoteOn;
     event.data.noteOn = {note, 127};
-    app::session::pushMIDIEvent(sessionPtr, event);
+    event.channel = MIDI_CHANNEL_UNASSIGNED;
+    pushMIDIEvent(ctx, event);
     return;
   }
 
@@ -148,11 +67,12 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
     evt::MIDIEvent event{};
     event.type = evt::MIDIEvent::Type::NoteOff;
     event.data.noteOff = {note, 0};
-    app::session::pushMIDIEvent(sessionPtr, event);
+    event.channel = MIDI_CHANNEL_UNASSIGNED;
+    pushMIDIEvent(ctx, event);
   }
 }
 
-int startGLFWLoop(hSynthSession sessionPtr, hMidiSession midiSessionPtr) {
+int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
   if (!glfwInit()) {
     return 1;
   }
@@ -171,7 +91,7 @@ int startGLFWLoop(hSynthSession sessionPtr, hMidiSession midiSessionPtr) {
   glfwMakeContextCurrent(g_window);
   glfwSwapInterval(1);
 
-  glfwSetWindowUserPointer(g_window, sessionPtr);
+  glfwSetWindowUserPointer(g_window, ctx);
   glfwSetKeyCallback(g_window, keyCallback);
 
   IMGUI_CHECKVERSION();
@@ -320,4 +240,4 @@ uint8_t asciiToMidi(char key) {
   return midiKey + (octiveOffset * SEMITONES);
 }
 
-} // namespace synth::utils
+} // namespace app::utils

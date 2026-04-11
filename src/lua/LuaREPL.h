@@ -4,6 +4,6 @@
 
 namespace lua::repl {
 
-void runLuaREPL(AppContext& appCtx);
+void runLuaREPL(AppContext* appCtx);
 
 } // namespace lua::repl

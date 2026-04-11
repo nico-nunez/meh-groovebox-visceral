@@ -2,14 +2,11 @@
 #include "lauxlib.h"
 #include "lua.h"
 
-#include "app/SynthSession.h"
-
 #include "synth/events/Events.h"
 #include "synth/params/ParamDefs.h"
 #include "synth/params/ParamUtils.h"
 #include "synth/preset/PresetApply.h"
 #include "synth/preset/PresetIO.h"
-
 #include "utils/KeyProcessor.h"
 
 #include "dsp/fx/FXChain.h"
@@ -29,7 +26,7 @@ namespace preset = synth::preset;
 
 namespace fx = dsp::fx::chain;
 
-using app::session::pushEngineEvent;
+using app::pushEngineEvent;
 using synth::events::EngineEvent;
 
 namespace {
@@ -86,7 +83,7 @@ int paramGroupNewIndex(lua_State* L) {
   }
   }
 
-  if (!pushParamEvent(getTrackSession(ctx), {static_cast<uint8_t>(paramID), paramVal})) {
+  if (!pushParamEvent(ctx->app, {static_cast<uint8_t>(paramID), paramVal})) {
     printf("failed to update param");
     return CMD_FAILURE;
   }
@@ -250,7 +247,7 @@ int l_modAdd(lua_State* L) {
   evt.type = EngineEvent::Type::AddModRoute;
   evt.data.addModRoute = {src.value, dest.value, amount};
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to add mod matrix route");
     return CMD_FAILURE;
   }
@@ -271,7 +268,7 @@ int l_modRemove(lua_State* L) {
   evt.type = EngineEvent::Type::RemoveModRoute;
   evt.data.removeModRoute = {index};
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to remove mod matrix route");
     return CMD_FAILURE;
   }
@@ -289,7 +286,7 @@ int l_modClear(lua_State* L) {
   EngineEvent evt{};
   evt.type = EngineEvent::Type::ClearModRoutes;
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to clear mod matrix");
     return CMD_FAILURE;
   }
@@ -351,7 +348,7 @@ int l_fmAdd(lua_State* L) {
   evt.type = EngineEvent::Type::AddFMRoute;
   evt.data.addFMRoute = {fmCarrier.value, fmSource.value, depth};
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to add FM route");
     return CMD_FAILURE;
   }
@@ -389,7 +386,7 @@ int l_fmRemove(lua_State* L) {
   evt.type = EngineEvent::Type::RemoveFMRoute;
   evt.data.removeFMRoute = {fmCarrier.value, fmSource.value};
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to remove FM route");
     return CMD_FAILURE;
   }
@@ -419,7 +416,7 @@ int l_fmClear(lua_State* L) {
   evt.type = EngineEvent::Type::ClearFMRoutes;
   evt.data.clearFMRoutes = {fmCarrier.value};
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to clear FM route");
     return CMD_FAILURE;
   }
@@ -479,7 +476,7 @@ int l_presetLoad(lua_State* L) {
   evt.type = synth::EngineEvent::Type::ApplyPreset;
   evt.data.applyPreset.preset = &ctx->app->presetStore.slots[track];
 
-  if (!app::session::pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "engine event queue full, preset apply dropped");
     return CMD_FAILURE;
   }
@@ -521,7 +518,7 @@ int l_presetInit(lua_State* L) {
   evt.type = EngineEvent::Type::ApplyPreset;
   evt.data.applyPreset.preset = &ctx->app->presetStore.slots[track];
 
-  if (!app::session::pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "engine event queue full, init preset apply dropped");
     return CMD_FAILURE;
   }
@@ -587,7 +584,7 @@ int l_fxSet(lua_State* L) {
     evt.data.setFXChain.processors[count++] = fxProc.value;
   }
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to set fx chain");
     return CMD_FAILURE;
   }
@@ -605,7 +602,7 @@ int l_fxClear(lua_State* L) {
   EngineEvent evt{};
   evt.type = EngineEvent::Type::ClearFXChain;
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to clear fx chain");
     return CMD_FAILURE;
   }
@@ -657,7 +654,7 @@ int l_signalSet(lua_State* L) {
     evt.data.setSignalChain.processors[count++] = sigProc.value;
   }
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to set signal chain");
     return CMD_FAILURE;
   }
@@ -675,7 +672,7 @@ int l_signalClear(lua_State* L) {
   EngineEvent evt{};
   evt.type = EngineEvent::Type::ClearSignalChain;
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to clear signal chain");
     return CMD_FAILURE;
   }
@@ -708,6 +705,54 @@ void registerSignalCommands(lua_State* L) {
 }
 
 // =========================
+// MIDI Mapping
+// =========================
+static int l_midiSetChannelTrack(lua_State* L) {
+  uint8_t channel = static_cast<uint8_t>(luaL_checkinteger(L, 1));
+  uint8_t track = static_cast<uint8_t>(luaL_checkinteger(L, 2));
+
+  if (channel > 15)
+    return luaL_error(L, "channel must be 0-15");
+  if (track >= app::MAX_TRACKS)
+    return luaL_error(L, "track must be 0-%d", app::MAX_TRACKS - 1);
+
+  auto* ctx = getLuaContext(L);
+  ctx->app->midiChannelMap[channel] = track;
+  return CMD_SUCCESS;
+}
+
+void registerMIDICommands(lua_State* L) {
+  lua_newtable(L);
+  lua_pushcfunction(L, l_midiSetChannelTrack);
+  lua_setfield(L, -2, "setChannelTrack");
+  lua_setglobal(L, "midi");
+}
+
+// =========================
+// Trasnport
+// =========================
+static int l_setBPM(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+  float bpm = static_cast<float>(luaL_checknumber(L, 1));
+
+  app::transport::TransportAction action{};
+  action.type = app::transport::TransportAction::Type::SetBPM;
+  action.data.setBPM.bpm = bpm;
+
+  if (!pushTransportAction(ctx->app, action))
+    return luaL_error(L, "transport queue full");
+
+  return CMD_SUCCESS;
+}
+
+void registerTransportCommands(lua_State* L) {
+  lua_newtable(L);
+  lua_pushcfunction(L, l_setBPM);
+  lua_setfield(L, -2, "setBPM");
+  lua_setglobal(L, "transport");
+}
+
+// =========================
 // Panic! (stop all voices)
 // =========================
 int l_panic(lua_State* L) {
@@ -716,7 +761,7 @@ int l_panic(lua_State* L) {
   EngineEvent evt{};
   evt.type = EngineEvent::Type::Panic;
 
-  if (!pushEngineEvent(getTrackSession(ctx), evt)) {
+  if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "failed to panic");
     return CMD_FAILURE;
   }
@@ -915,7 +960,7 @@ int l_clear(lua_State*) {
 // Quit app
 // =================
 int l_quit(lua_State*) {
-  synth::utils::requestQuit();
+  app::utils::requestQuit();
   printf("Goodbye\n");
   return CMD_SUCCESS;
 }
@@ -950,7 +995,6 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   registerParamGroup(L, "porta");
   registerParamGroup(L, "unison");
   registerParamGroup(L, "master");
-  registerParamGroup(L, "tempo"); // tempo.bpm
 
   // 3. Nested FX param proxy tables — must come before registerFXCommands
   registerFXGroups(L);
@@ -964,6 +1008,8 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   registerPresetCommands(L);
   registerFXCommands(L); // adds fx.set/list/clear to the existing fx global
   registerSignalCommands(L);
+  registerMIDICommands(L);
+  registerTransportCommands(L);
 
   // 6. Top-level functions (see lua-command-bindings.md)
   lua_pushcfunction(L, l_panic);
