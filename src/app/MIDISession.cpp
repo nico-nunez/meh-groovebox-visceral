@@ -1,8 +1,8 @@
 #include "MIDISession.h"
 
 #include "app/AppContext.h"
+#include "meh_utils/MehUtils.h"
 #include "synth/events/Events.h"
-#include "utils/Logger.h"
 
 #include <iostream>
 
@@ -70,7 +70,7 @@ hMidiSession initSession(AppContext* ctx) {
     }
 
     uint32_t srcIndex;
-    utils::LogF("Enter midi device number: ");
+    meh::utils::LogF("Enter midi device number: ");
     std::cin >> srcIndex;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
@@ -89,7 +89,7 @@ hMidiSession initSession(AppContext* ctx) {
     device_io::startMidiSession(midiSession);
 
   } else {
-    utils::LogF("No MIDI devices found\n");
+    meh::utils::LogF("No MIDI devices found\n");
   }
 
   return midiSession;

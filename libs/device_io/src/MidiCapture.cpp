@@ -1,5 +1,6 @@
 #include "device_io/MidiCapture.h"
-#include "utils/Logger.h"
+
+#include "meh_utils/MehUtils.h"
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreMIDI/CoreMIDI.h>
@@ -213,7 +214,7 @@ size_t getMidiSources(struct MidiSource* srcBuffer, size_t srcBufferCount) {
   size_t numSources = 0;
 
   ItemCount sourceCount = MIDIGetNumberOfSources();
-  app::utils::LogF("Found %ld MIDI sources\n", sourceCount);
+  meh::utils::LogF("Found %ld MIDI sources\n", sourceCount);
 
   for (ItemCount i = 0; i < sourceCount && i < srcBufferCount; i++) {
     MIDIEndpointRef source = MIDIGetSource(i);

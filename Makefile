@@ -29,6 +29,7 @@ INCLUDES = $(ENGINE_INCLUDES) \
 					 -Ilibs/audio_io/include \
 					 -Ilibs/audio_io/src \
 					 -Ilibs/device_io/include \
+					 -Ilibs/meh_utils/include \
 					 -Ideps/lua/include \
 					 -Ideps/linenoise \
 					 -Ideps/imgui \

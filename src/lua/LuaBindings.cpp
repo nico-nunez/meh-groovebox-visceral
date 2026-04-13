@@ -20,16 +20,55 @@
 #define CMD_SUCCESS   0
 
 namespace lua::bindings {
+
 namespace p = synth::param;
-
 namespace preset = synth::preset;
-
 namespace fx = dsp::fx::chain;
 
 using app::pushEngineEvent;
 using synth::events::EngineEvent;
 
+static std::vector<std::string> gVisibleGlobals;
+static std::unordered_map<std::string, std::vector<std::string>> gParamFields;
+
 namespace {
+
+void finalizeCompletionMetadata() {
+  std::sort(gVisibleGlobals.begin(), gVisibleGlobals.end());
+  gVisibleGlobals.erase(std::unique(gVisibleGlobals.begin(), gVisibleGlobals.end()),
+                        gVisibleGlobals.end());
+
+  for (auto& [group, fields] : gParamFields) {
+    std::sort(fields.begin(), fields.end());
+    fields.erase(std::unique(fields.begin(), fields.end()), fields.end());
+  }
+}
+
+void buildParamFieldIndex() {
+  gParamFields.clear();
+
+  for (int i = 0; i < p::PARAM_COUNT; i++) {
+    const char* name = p::PARAM_DEFS[i].name;
+
+    const char* dot = strchr(name, '.');
+    if (!dot)
+      continue; // flat param like "masterGain"
+
+    const char* secondDot = strchr(dot + 1, '.');
+
+    std::string group = secondDot
+                            ? std::string(name, secondDot) // "fx.reverb" from "fx.reverb.decay"
+                            : std::string(name, dot);      // "osc1" from "osc1.bank"
+
+    std::string field = secondDot ? std::string(secondDot + 1) : std::string(dot + 1);
+
+    gParamFields[group].push_back(std::move(field));
+  }
+}
+
+void addVisibleGlobal(const char* name) {
+  gVisibleGlobals.push_back(name);
+}
 
 int paramGroupNewIndex(lua_State* L) {
   // stack: proxy table (1), key (2), value (3)
@@ -143,6 +182,8 @@ void registerParamGroup(lua_State* L, const char* group) {
 
   lua_setmetatable(L, -2);
   lua_setglobal(L, group); // _G[group] = proxy
+
+  addVisibleGlobal(group);
 }
 
 void registerFXGroup(lua_State* L, const char* group, const char* key) {
@@ -158,6 +199,22 @@ void registerFXGroup(lua_State* L, const char* group, const char* key) {
   lua_pushcclosure(L, paramGroupNewIndex, 1);
   lua_setfield(L, -2, "__newindex");
 
+  lua_pushstring(L, group);
+  lua_setfield(L, -2, "__name");
+
+  // __fields: param field names for tab completion
+  lua_newtable(L);
+  int fieldIdx = 0;
+  size_t groupLen = strlen(group);
+  for (int i = 0; i < p::PARAM_COUNT; i++) {
+    const char* name = p::PARAM_DEFS[i].name;
+    if (strncmp(name, group, groupLen) == 0 && name[groupLen] == '.') {
+      lua_pushstring(L, name + groupLen + 1); // e.g. "bank", "detune", "mixLevel"
+      lua_rawseti(L, -2, ++fieldIdx);
+    }
+  }
+  lua_setfield(L, -2, "__fields");
+
   lua_setmetatable(L, -2);
   lua_setfield(L, -2, key); // fx[key] = proxy
 }
@@ -172,52 +229,66 @@ void registerFXGroups(lua_State* L) {
   registerFXGroup(L, "fx.reverb", "reverb");
 
   lua_setglobal(L, "fx");
+  addVisibleGlobal("fx");
 }
 
 void registerEnumGlobals(lua_State* L) {
   // SVF filter modes
   lua_pushnumber(L, 0.0);
   lua_setglobal(L, "lp");
+
   lua_pushnumber(L, 1.0);
   lua_setglobal(L, "hp");
+
   lua_pushnumber(L, 2.0);
   lua_setglobal(L, "bp");
+
   lua_pushnumber(L, 3.0);
   lua_setglobal(L, "notch");
 
   // Distortion types
   lua_pushnumber(L, 0.0);
   lua_setglobal(L, "soft");
+
   lua_pushnumber(L, 1.0);
   lua_setglobal(L, "hard");
 
   // Oscillator phase modes (prefixed to avoid clashing with Lua builtins)
   lua_pushnumber(L, 0.0);
   lua_setglobal(L, "phaseReset");
+
   lua_pushnumber(L, 1.0);
   lua_setglobal(L, "phaseFree");
+
   lua_pushnumber(L, 2.0);
   lua_setglobal(L, "phaseRandom");
+
   lua_pushnumber(L, 3.0);
   lua_setglobal(L, "phaseSpread");
 
   // Bank names — strings, routed through the `bank` special case in __newindex
   lua_pushstring(L, "sine");
   lua_setglobal(L, "sine");
+
   lua_pushstring(L, "saw");
   lua_setglobal(L, "saw");
+
   lua_pushstring(L, "square");
   lua_setglobal(L, "square");
+
   lua_pushstring(L, "triangle");
   lua_setglobal(L, "triangle");
+
   lua_pushstring(L, "sineToSaw");
   lua_setglobal(L, "sineToSaw");
+
   lua_pushstring(L, "sah");
   lua_setglobal(L, "sah");
 
   // Noise types
   lua_pushstring(L, "white");
   lua_setglobal(L, "white");
+
   lua_pushstring(L, "pink");
   lua_setglobal(L, "pink");
 }
@@ -315,7 +386,9 @@ void registerModCommands(lua_State* L) {
   lua_setfield(L, -2, "clear");
   lua_pushcfunction(L, l_modList);
   lua_setfield(L, -2, "list");
+
   lua_setglobal(L, "mod");
+  addVisibleGlobal("mod");
 }
 
 // =========================
@@ -451,7 +524,9 @@ void registerFMCommands(lua_State* L) {
   lua_setfield(L, -2, "clear");
   lua_pushcfunction(L, l_fmList);
   lua_setfield(L, -2, "list");
+
   lua_setglobal(L, "fm");
+  addVisibleGlobal("fm");
 }
 
 // =========================
@@ -559,7 +634,9 @@ void registerPresetCommands(lua_State* L) {
   lua_setfield(L, -2, "list");
   lua_pushcfunction(L, l_presetDump);
   lua_setfield(L, -2, "dump");
+
   lua_setglobal(L, "preset");
+  addVisibleGlobal("preset");
 }
 
 // =========================
@@ -701,7 +778,9 @@ void registerSignalCommands(lua_State* L) {
   lua_setfield(L, -2, "list");
   lua_pushcfunction(L, l_signalClear);
   lua_setfield(L, -2, "clear");
+
   lua_setglobal(L, "signal");
+  addVisibleGlobal("signal");
 }
 
 // =========================
@@ -725,7 +804,9 @@ void registerMIDICommands(lua_State* L) {
   lua_newtable(L);
   lua_pushcfunction(L, l_midiSetChannelTrack);
   lua_setfield(L, -2, "setChannelTrack");
+
   lua_setglobal(L, "midi");
+  addVisibleGlobal("midi");
 }
 
 // =========================
@@ -749,7 +830,9 @@ void registerTransportCommands(lua_State* L) {
   lua_newtable(L);
   lua_pushcfunction(L, l_setBPM);
   lua_setfield(L, -2, "setBPM");
+
   lua_setglobal(L, "transport");
+  addVisibleGlobal("transport");
 }
 
 // =========================
@@ -968,6 +1051,7 @@ int l_quit(lua_State*) {
 } // anonymous namespace
 
 void registerSynthBindings(lua_State* L, AppContext& appCtx) {
+  buildParamFieldIndex();
 
   // 1. Store context in registry
   auto* ctx = new LuaContext{};
@@ -1014,18 +1098,42 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   // 6. Top-level functions (see lua-command-bindings.md)
   lua_pushcfunction(L, l_panic);
   lua_setglobal(L, "panic");
+  addVisibleGlobal("panic");
+
   lua_pushcfunction(L, l_params);
   lua_setglobal(L, "params");
+  addVisibleGlobal("params");
+
   lua_pushcfunction(L, l_get);
   lua_setglobal(L, "get");
+  addVisibleGlobal("get");
+
   lua_pushcfunction(L, l_select);
   lua_setglobal(L, "select");
+  addVisibleGlobal("select");
+
   lua_pushcfunction(L, l_help);
   lua_setglobal(L, "help");
+  addVisibleGlobal("help");
+
   lua_pushcfunction(L, l_clear);
   lua_setglobal(L, "clear");
+  addVisibleGlobal("clear");
+
   lua_pushcfunction(L, l_quit);
   lua_setglobal(L, "quit");
+  addVisibleGlobal("quit");
+
+  finalizeCompletionMetadata();
+}
+
+const std::vector<std::string>& getVisibleGlobals() {
+  return gVisibleGlobals;
+}
+
+const std::vector<std::string>* getParamFields(const char* group) {
+  auto it = gParamFields.find(group);
+  return it != gParamFields.end() ? &it->second : nullptr;
 }
 
 } // namespace lua::bindings
