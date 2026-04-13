@@ -11,8 +11,6 @@ This repo started from a standalone synth app. That synth engine still forms the
 - A code-first performance surface driven by Lua, keyboard input, MIDI, and an eventual visual control layer
 - A loop-based system focused on patterns, variation, and real-time manipulation rather than linear song arrangement
 
-For the higher-level vision and architecture, see [`_docs_/architecture/groovebox-vision.md`](_docs_/architecture/groovebox-vision.md).
-
 ## Current State
 
 Right now the repo is in the transition from "standalone synth" to "groovebox runtime."
