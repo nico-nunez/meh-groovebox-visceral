@@ -123,7 +123,6 @@
       "enabled": false
     }
   },
-  "bpm": 120.0,
   "lfos": {
     "lfo1": {
       "bank": "sine",
