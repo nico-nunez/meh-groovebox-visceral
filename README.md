@@ -1,40 +1,84 @@
-# meh-synth-wave
+# meh-groovebox-visceral
 
-A standalone wavetable synthesizer for macOS. No DAW, no plugins — just a terminal-driven synth you can play with a MIDI controller or your keyboard.
+An in-progress standalone groovebox for macOS: a code-driven performance instrument built around a shared clock, pattern-based sequencing, and deep synth engines per part.
 
-Built from scratch in C++ on top of CoreAudio and CoreMIDI, with a focus on production-quality DSP and real-time safety.
+This repo started from a standalone synth app. That synth engine still forms the core sound source, but the project goal is now a live-performance groovebox rather than a single playable synth.
 
-## What it does
+## What This Project Is Becoming
 
-- **4 wavetable oscillators** with mip-mapped lookup, frame scanning, and FM phase modulation
-- **FM synthesis** — any oscillator can modulate any other (including self-feedback)
-- **Dual filters** — State Variable Filter (LP/BP/HP) and a Moog-style 4-pole Ladder, with a configurable signal chain
-- **Modulation matrix** — 16 routable slots connecting envelopes, LFOs, velocity, noise, and mod wheel to filter, pitch, scan position, FM depth, and more
-- **3 envelopes** (amp, filter, mod) and **3 LFOs** with modulatable rate and amplitude
-- **Saturation** stage in the signal chain
-- **MIDI input** via CoreMIDI — plug in a controller and play
-- **Keyboard input** — play notes from the terminal without any hardware
+- A standalone groovebox for live electronic performance
+- A multi-part instrument with a shared transport and tempo-synced behavior
+- A code-first performance surface driven by Lua, keyboard input, MIDI, and an eventual visual control layer
+- A loop-based system focused on patterns, variation, and real-time manipulation rather than linear song arrangement
 
-## Building
+For the higher-level vision and architecture, see [`_docs_/architecture/groovebox-vision.md`](_docs_/architecture/groovebox-vision.md).
+
+## Current State
+
+Right now the repo is in the transition from "standalone synth" to "groovebox runtime."
+
+Already present in the codebase:
+
+- A production-oriented synth engine extracted under [`engine/`](engine/README.md)
+- Standalone macOS audio and MIDI runtime built on CoreAudio/CoreMIDI
+- Lua REPL control surface for live parameter changes, preset commands, routing commands, and BPM updates
+- Basic transport state and action queue
+- Track-oriented app scaffolding in the host runtime
+- Preset loading/saving infrastructure
+- Keyboard and MIDI note input
+
+Important limitation: the host is still effectively single-track at runtime today. The app has track abstractions and shared transport scaffolding, but audio rendering still runs only the currently selected track.
+
+## Planned Groovebox Features
+
+The list below is intentionally written as a project checklist. Items are pending unless marked done.
+
+- [x] Core synth engine foundation
+- [x] Standalone audio output and MIDI input
+- [x] Lua REPL for live control
+- [x] Basic transport/BPM control
+- [x] Preset system
+- [ ] Single-track step sequencer
+- [ ] Per-step parameter locks
+- [ ] Multi-part playback and internal mixing
+- [ ] Track selection and addressing beyond the current single-track scaffold
+- [ ] Pattern creation, editing, and switching
+- [ ] Mute / solo / performance mix controls
+- [ ] Session save and recall for groovebox state
+- [ ] Sample playback / drum-part engine
+- [ ] Resampling / recording workflow
+- [ ] External control protocol for editor/UI clients
+- [ ] ImGui or equivalent performance display
+
+## Build
 
 ```bash
-make debug     # Debug build
-make release   # Optimized (-O3 -ffast-math)
+make debug
+make release
 make clean
 ```
 
-Requires macOS and Xcode command line tools.
+Requirements:
 
-## Running
+- macOS
+- Xcode command line tools
+
+## Run
 
 ```bash
 ./main
 ```
 
-Connects to your default CoreAudio output and any attached MIDI devices automatically.
+On startup the app connects to the default audio device, initializes MIDI, and opens the Lua-driven terminal control surface.
 
-## Architecture
+## Project Layout
 
-Four libraries under `libs/` handle the platform layer — CoreAudio I/O, CoreMIDI + keyboard capture, a MIDI/param event protocol, and a platform-independent DSP primitives library. The synth engine in `src/synth/` sits on top of those and knows nothing about audio hardware.
+- [`engine/`](engine/README.md): reusable synth engine library
+- [`src/app/`](src/app): standalone host runtime, transport, app context, audio/MIDI session wiring
+- [`src/lua/`](src/lua): Lua REPL and command bindings
+- [`presets/`](presets): factory presets and preset authoring notes
+- [`_docs_/architecture/`](_docs_/architecture): groovebox architecture and roadmap docs
 
-Voice state is laid out SoA for SIMD-friendliness. Modulation runs a block-rate pre-pass then interpolates per-sample inside the voice loop. No heap allocations on the audio thread.
+## Notes
+
+This README is now groovebox-first on purpose. The synth engine is still a major part of the project, but it is no longer the full product description.
