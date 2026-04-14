@@ -20,8 +20,7 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   engineConfig.numFrames = deviceInfo.bufferFrameSize;
 
   for (uint8_t i = 0; i < MAX_TRACKS; ++i) {
-    ctx->engines[i] = synth::createEngine(engineConfig);
-    ctx->tracks[i].engine = &ctx->engines[i];
+    ctx->tracks[i].engine = synth::createEngine(engineConfig);
   }
 
   // init shared transport

@@ -16,7 +16,8 @@ extern "C" {
 
 namespace lua {
 using app::AppContext;
-using app::TrackSession;
+using app::TrackQueues;
+using app::TrackRuntime;
 
 using synth::Engine;
 using synth::preset::Preset;
@@ -32,12 +33,16 @@ inline LuaContext* getLuaContext(lua_State* L) {
   return ctx;
 }
 
+inline TrackRuntime* getTrackRuntime(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
+  return app::getTrackRuntime(ctx->app, track);
+}
+
 inline Engine* getTrackEngine(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
   return app::getTrackEngine(ctx->app, track);
 }
 
-inline app::TrackSession* getTrackSession(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
-  return app::getTrackSession(ctx->app, track);
+inline TrackQueues* getTrackQueues(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
+  return app::getTrackQueues(ctx->app, track);
 }
 
 } // namespace lua

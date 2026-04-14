@@ -536,7 +536,7 @@ int l_presetLoad(lua_State* L) {
   const char* name = luaL_checkstring(L, 1);
 
   auto* ctx = getLuaContext(L);
-  auto track = ctx->app->currentTrack;
+  auto* trackRt = getTrackRuntime(ctx);
 
   auto result = preset::loadPresetByName(name);
   if (!result.ok()) {
@@ -544,12 +544,12 @@ int l_presetLoad(lua_State* L) {
     return CMD_FAILURE;
   }
 
-  ctx->app->presetStore.slots[track] = result.preset;
-  ctx->app->presetStore.valid[track] = true;
+  trackRt->preset = result.preset;
+  trackRt->presetValid = true;
 
   synth::EngineEvent evt{};
   evt.type = synth::EngineEvent::Type::ApplyPreset;
-  evt.data.applyPreset.preset = &ctx->app->presetStore.slots[track];
+  evt.data.applyPreset.preset = &trackRt->preset;
 
   if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "engine event queue full, preset apply dropped");
@@ -584,14 +584,14 @@ int l_presetSave(lua_State* L) {
 // =========================
 int l_presetInit(lua_State* L) {
   auto* ctx = getLuaContext(L);
-  uint8_t track = ctx->app->currentTrack;
+  auto* trackRt = getTrackRuntime(ctx);
 
-  ctx->app->presetStore.slots[track] = preset::createInitPreset();
-  ctx->app->presetStore.valid[track] = true;
+  trackRt->preset = preset::createInitPreset();
+  trackRt->presetValid = true;
 
   EngineEvent evt{};
   evt.type = EngineEvent::Type::ApplyPreset;
-  evt.data.applyPreset.preset = &ctx->app->presetStore.slots[track];
+  evt.data.applyPreset.preset = &trackRt->preset;
 
   if (!pushEngineEvent(ctx->app, evt)) {
     luaL_error(L, "engine event queue full, init preset apply dropped");

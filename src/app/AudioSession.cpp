@@ -2,6 +2,7 @@
 
 #include "AppContext.h"
 
+#include "app/BlockScheduler.h"
 #include "app/Transport.h"
 #include "audio_io/AudioIO.h"
 #include "audio_io/AudioIOTypes.h"
@@ -25,30 +26,31 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
   while (ctx->transportQueue.pop(evt))
     transport::applyTransportEvent(ctx->transport, evt);
 
-  transport::advanceTransportBlock(ctx->transport, previousMode, buffer.numFrames);
+  auto blockInfo = transport::advanceTransportBlock(ctx->transport, previousMode, buffer.numFrames);
+  runBlockScheduler(ctx, blockInfo);
 
   // 2. Drain queues for all tracks
   for (int i = 0; i < MAX_TRACKS; i++) {
     auto& track = ctx->tracks[i];
 
     synth::MIDIEvent midi;
-    while (track.session.midiQueue.pop(midi))
-      track.engine->processMIDIEvent(midi);
+    while (track.queues.midi.pop(midi))
+      track.engine.processMIDIEvent(midi);
 
     synth::ParamEvent param;
-    while (track.session.paramQueue.pop(param))
-      track.engine->processParamEvent(param);
+    while (track.queues.param.pop(param))
+      track.engine.processParamEvent(param);
 
     synth::EngineEvent evt;
-    while (track.session.engineQueue.pop(evt))
-      track.engine->processEngineEvent(evt);
+    while (track.queues.engine.pop(evt))
+      track.engine.processEngineEvent(evt);
   }
 
   // 3. TODO: render mixed tracks NOT just the current one
-  ctx->tracks[ctx->currentTrack].engine->processAudioBlock(buffer.channelPtrs,
-                                                           buffer.numChannels,
-                                                           buffer.numFrames,
-                                                           ctx->transport.bpm);
+  ctx->tracks[ctx->currentTrack].engine.processAudioBlock(buffer.channelPtrs,
+                                                          buffer.numChannels,
+                                                          buffer.numFrames,
+                                                          ctx->transport.bpm);
 }
 
 } // namespace

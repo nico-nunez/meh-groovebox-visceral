@@ -36,7 +36,7 @@ enum class BoundaryFlags : uint32_t {
   CrossedBar = 1 << 1,
 };
 
-struct BlockTimeResult {
+struct TransportBlockInfo {
   uint32_t sampleRate = 48000;
   float bpm = 120.0f;
   TransportMode mode = TransportMode::Stopped;
@@ -118,8 +118,8 @@ float clampBPM(float bpm);
 void initTransportRuntime(TransportRuntime& rt, uint32_t sampleRate, float bpm);
 void applyTransportEvent(TransportRuntime& rt, const TransportEvent& action);
 
-BlockTimeResult advanceTransportBlock(TransportRuntime& runtime,
-                                      TransportMode previousMode,
-                                      uint32_t numFrames);
+TransportBlockInfo advanceTransportBlock(TransportRuntime& runtime,
+                                         TransportMode previousMode,
+                                         uint32_t numFrames);
 
 } // namespace app::transport

@@ -57,10 +57,10 @@ void applyTransportEvent(TransportRuntime& rt, const TransportEvent& event) {
   }
 }
 
-BlockTimeResult advanceTransportBlock(TransportRuntime& rt,
-                                      TransportMode previousMode,
-                                      uint32_t numFrames) {
-  BlockTimeResult result{};
+TransportBlockInfo advanceTransportBlock(TransportRuntime& rt,
+                                         TransportMode previousMode,
+                                         uint32_t numFrames) {
+  TransportBlockInfo result{};
   result.sampleRate = rt.sampleRate;
   result.bpm = rt.bpm;
   result.mode = rt.mode;
