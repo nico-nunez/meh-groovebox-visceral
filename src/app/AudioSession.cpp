@@ -2,10 +2,12 @@
 
 #include "AppContext.h"
 
+#include "app/Transport.h"
 #include "audio_io/AudioIO.h"
 #include "audio_io/AudioIOTypes.h"
 #include "audio_io/AudioIOTypesFwd.h"
 
+#include <cassert>
 #include <cstdio>
 
 namespace app::audio {
@@ -17,9 +19,13 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
   auto* ctx = static_cast<AppContext*>(context);
 
   // 1. Admit transport actions
-  transport::TransportAction action;
-  while (ctx->transportQueue.pop(action))
-    transport::applyTransportAction(ctx->transport, action);
+  auto previousMode = ctx->transport.mode;
+
+  transport::TransportEvent evt;
+  while (ctx->transportQueue.pop(evt))
+    transport::applyTransportEvent(ctx->transport, evt);
+
+  transport::advanceTransportBlock(ctx->transport, previousMode, buffer.numFrames);
 
   // 2. Drain queues for all tracks
   for (int i = 0; i < MAX_TRACKS; i++) {
@@ -42,7 +48,7 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
   ctx->tracks[ctx->currentTrack].engine->processAudioBlock(buffer.channelPtrs,
                                                            buffer.numChannels,
                                                            buffer.numFrames,
-                                                           ctx->transport.clock.bpm);
+                                                           ctx->transport.bpm);
 }
 
 } // namespace

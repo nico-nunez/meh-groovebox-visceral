@@ -25,8 +25,7 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   }
 
   // init shared transport
-  transport::initTransportContext(ctx->transport, 120.0f);
-  ctx->transport.transport.mode = transport::TransportMode::Playing;
+  transport::initTransportRuntime(ctx->transport, deviceInfo.sampleRate, 120.0f);
 
   return ctx;
 }

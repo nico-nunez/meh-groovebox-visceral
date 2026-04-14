@@ -14,8 +14,8 @@ namespace audio {
 struct DeviceInfo;
 }
 
-using transport::TransportActionQueue;
-using transport::TransportContext;
+using transport::TransportEventQueue;
+using transport::TransportRuntime;
 
 using synth::Engine;
 
@@ -46,8 +46,8 @@ struct TrackContext {
 };
 
 struct AppContext {
-  TransportContext transport{};
-  TransportActionQueue transportQueue{};
+  TransportRuntime transport{};
+  TransportEventQueue transportQueue{};
 
   Engine engines[MAX_TRACKS];
   TrackContext tracks[MAX_TRACKS]{};
@@ -75,8 +75,8 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo);
 void destroyAppContext(AppContext* ctx);
 
 // ==== Event push helpers ====
-inline bool pushTransportAction(AppContext* ctx, transport::TransportAction action) {
-  return ctx->transportQueue.push(action);
+inline bool pushTransportAction(AppContext* ctx, transport::TransportEvent evt) {
+  return ctx->transportQueue.push(evt);
 }
 
 inline bool pushMIDIEvent(AppContext* ctx, synth::MIDIEvent evt) {

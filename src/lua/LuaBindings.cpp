@@ -816,8 +816,8 @@ static int l_setBPM(lua_State* L) {
   auto* ctx = getLuaContext(L);
   float bpm = static_cast<float>(luaL_checknumber(L, 1));
 
-  app::transport::TransportAction action{};
-  action.type = app::transport::TransportAction::Type::SetBPM;
+  app::transport::TransportEvent action{};
+  action.type = app::transport::TransportEvent::Type::SetBPM;
   action.data.setBPM.bpm = bpm;
 
   if (!pushTransportAction(ctx->app, action))
