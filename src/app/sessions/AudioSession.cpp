@@ -1,6 +1,6 @@
 #include "AudioSession.h"
 
-#include "AppContext.h"
+#include "app/AppContext.h"
 
 #include "app/BlockScheduler.h"
 #include "app/Transport.h"

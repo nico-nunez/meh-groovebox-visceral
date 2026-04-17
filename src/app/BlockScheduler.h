@@ -1,13 +1,12 @@
 #pragma once
 
+#include "app/Transport.h"
+
 namespace app {
-
 struct AppContext;
-namespace transport {
-struct TransportBlockInfo;
-}
 
-void runBlockScheduler(AppContext* app, const transport::TransportBlockInfo& blockInfo);
+using transport::TransportBlockInfo;
 
-// stuff
+void runBlockScheduler(AppContext* app, const TransportBlockInfo& blockInfo);
+
 } // namespace app

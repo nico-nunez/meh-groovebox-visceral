@@ -1,6 +1,6 @@
 #include "app/AppContext.h"
-#include "app/AudioSession.h"
-#include "app/MIDISession.h"
+#include "app/sessions/AudioSession.h"
+#include "app/sessions/MIDISession.h"
 
 #include "lua/LuaREPL.h"
 #include "utils/KeyProcessor.h"

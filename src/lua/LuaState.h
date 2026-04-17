@@ -1,8 +1,8 @@
 #pragma once
 
 #include "app/AppContext.h"
+#include "app/sessions/AudioSession.h"
 
-#include "app/AudioSession.h"
 #include "synth/Engine.h"
 #include "synth/preset/Preset.h"
 
@@ -17,7 +17,7 @@ extern "C" {
 namespace lua {
 using app::AppContext;
 using app::TrackQueues;
-using app::TrackRuntime;
+using app::TrackState;
 
 using synth::Engine;
 using synth::preset::Preset;
@@ -33,8 +33,8 @@ inline LuaContext* getLuaContext(lua_State* L) {
   return ctx;
 }
 
-inline TrackRuntime* getTrackRuntime(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
-  return app::getTrackRuntime(ctx->app, track);
+inline TrackState* getTrack(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {
+  return app::getTrack(ctx->app, track);
 }
 
 inline Engine* getTrackEngine(LuaContext* ctx, uint8_t track = app::MAX_TRACKS) {

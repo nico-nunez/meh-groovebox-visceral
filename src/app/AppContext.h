@@ -1,10 +1,9 @@
 #pragma once
 
+#include "app/Constants.h"
+#include "app/Sequencer.h"
+#include "app/Track.h"
 #include "app/Transport.h"
-
-#include "synth/Engine.h"
-#include "synth/events/EventQueues.h"
-#include "synth/preset/Preset.h"
 
 #include <cstdint>
 
@@ -15,43 +14,23 @@ struct DeviceInfo;
 }
 
 using transport::TransportEventQueue;
-using transport::TransportRuntime;
+using transport::TransportState;
+
+using sequencer::PatternStore;
+using sequencer::SequencerState;
+
+using track::TrackQueues;
+using track::TrackState;
 
 using synth::Engine;
 
-using synth::preset::Preset;
-
-using synth::events::EngineEventQueue;
-using synth::events::MIDIEventQueue;
-using synth::events::ParamEventQueue;
-
-inline constexpr uint8_t MAX_TRACKS = 1;
-inline constexpr uint8_t MIDI_CHANNEL_UNASSIGNED = 0xFF;
-
-struct PresetStore {
-  Preset slots[MAX_TRACKS]{};
-  bool valid[MAX_TRACKS] = {};
-};
-
-struct TrackQueues {
-  MIDIEventQueue midi{};
-  ParamEventQueue param{};
-  EngineEventQueue engine{};
-};
-
-struct TrackRuntime {
-  Engine engine{};
-  TrackQueues queues{};
-
-  Preset preset{};
-  bool presetValid = false;
-};
-
 struct AppContext {
-  TransportRuntime transport{};
+  TransportState transport{};
   TransportEventQueue transportQueue{};
 
-  TrackRuntime tracks[MAX_TRACKS]{};
+  TrackState tracks[MAX_TRACKS]{};
+
+  SequencerState sequencer{};
 
   uint8_t midiChannelMap[16];
   uint8_t currentTrack = 0;
@@ -63,7 +42,7 @@ void destroyAppContext(AppContext* ctx);
 // ==================
 // Getters
 // ==================
-inline TrackRuntime* getTrackRuntime(AppContext* ctx, uint8_t track = MAX_TRACKS) {
+inline TrackState* getTrack(AppContext* ctx, uint8_t track = MAX_TRACKS) {
   if (track >= MAX_TRACKS)
     track = ctx->currentTrack;
 

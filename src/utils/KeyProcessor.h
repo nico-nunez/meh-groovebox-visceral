@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/AudioSession.h"
+#include "app/sessions/AudioSession.h"
 
 #include "device_io/MidiCapture.h"
 

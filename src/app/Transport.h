@@ -15,7 +15,7 @@ enum class TransportMode : uint8_t {
   Playing = 1,
 };
 
-struct TransportRuntime {
+struct TransportState {
   uint32_t sampleRate = 48000;
   float bpm = 120.0f;
   TransportMode mode = TransportMode::Stopped;
@@ -115,10 +115,10 @@ struct TransportEventQueue {
 // ======================
 float clampBPM(float bpm);
 
-void initTransportRuntime(TransportRuntime& rt, uint32_t sampleRate, float bpm);
-void applyTransportEvent(TransportRuntime& rt, const TransportEvent& action);
+void initTransport(TransportState& rt, uint32_t sampleRate, float bpm);
+void applyTransportEvent(TransportState& rt, const TransportEvent& action);
 
-TransportBlockInfo advanceTransportBlock(TransportRuntime& runtime,
+TransportBlockInfo advanceTransportBlock(TransportState& runtime,
                                          TransportMode previousMode,
                                          uint32_t numFrames);
 

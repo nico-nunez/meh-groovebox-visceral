@@ -536,7 +536,7 @@ int l_presetLoad(lua_State* L) {
   const char* name = luaL_checkstring(L, 1);
 
   auto* ctx = getLuaContext(L);
-  auto* trackRt = getTrackRuntime(ctx);
+  auto* trackRt = getTrack(ctx);
 
   auto result = preset::loadPresetByName(name);
   if (!result.ok()) {
@@ -584,7 +584,7 @@ int l_presetSave(lua_State* L) {
 // =========================
 int l_presetInit(lua_State* L) {
   auto* ctx = getLuaContext(L);
-  auto* trackRt = getTrackRuntime(ctx);
+  auto* trackRt = getTrack(ctx);
 
   trackRt->preset = preset::createInitPreset();
   trackRt->presetValid = true;
@@ -786,7 +786,7 @@ void registerSignalCommands(lua_State* L) {
 // =========================
 // MIDI Mapping
 // =========================
-static int l_midiSetChannelTrack(lua_State* L) {
+int l_midiSetChannelTrack(lua_State* L) {
   uint8_t channel = static_cast<uint8_t>(luaL_checkinteger(L, 1));
   uint8_t track = static_cast<uint8_t>(luaL_checkinteger(L, 2));
 
@@ -812,7 +812,7 @@ void registerMIDICommands(lua_State* L) {
 // =========================
 // Trasnport
 // =========================
-static int l_setBPM(lua_State* L) {
+int l_setBPM(lua_State* L) {
   auto* ctx = getLuaContext(L);
   float bpm = static_cast<float>(luaL_checknumber(L, 1));
 
@@ -826,10 +826,41 @@ static int l_setBPM(lua_State* L) {
   return CMD_SUCCESS;
 }
 
+int l_setPlay(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+
+  app::transport::TransportEvent action{};
+  action.type = app::transport::TransportEvent::Type::Play;
+
+  if (!pushTransportAction(ctx->app, action))
+    return luaL_error(L, "transport queue full");
+
+  return CMD_SUCCESS;
+}
+
+int l_setStop(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+
+  app::transport::TransportEvent action{};
+  action.type = app::transport::TransportEvent::Type::Stop;
+
+  if (!pushTransportAction(ctx->app, action))
+    return luaL_error(L, "transport queue full");
+
+  return CMD_SUCCESS;
+}
+
 void registerTransportCommands(lua_State* L) {
   lua_newtable(L);
+
   lua_pushcfunction(L, l_setBPM);
   lua_setfield(L, -2, "setBPM");
+
+  lua_pushcfunction(L, l_setPlay);
+  lua_setfield(L, -2, "play");
+
+  lua_pushcfunction(L, l_setStop);
+  lua_setfield(L, -2, "stop");
 
   lua_setglobal(L, "transport");
   addVisibleGlobal("transport");

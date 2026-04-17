@@ -10,7 +10,7 @@ double calcBeatsPerSample(float bpm, uint32_t sampleRate) {
   return static_cast<double>(bpm) / (60.0 * static_cast<double>(sampleRate));
 }
 
-double deriveBeatPosition(const TransportRuntime& rt, uint64_t samplePos) {
+double deriveBeatPosition(const TransportState& rt, uint64_t samplePos) {
   double beatsPerSample = calcBeatsPerSample(rt.bpm, rt.sampleRate);
 
   return rt.segmentStartBeat +
@@ -23,7 +23,7 @@ float clampBPM(float bpm) {
   return std::clamp(bpm, MIN_BPM, MAX_BPM);
 }
 
-void initTransportRuntime(TransportRuntime& rt, uint32_t sampleRate, float bpm) {
+void initTransport(TransportState& rt, uint32_t sampleRate, float bpm) {
   rt.sampleRate = sampleRate;
 
   rt.bpm = bpm;
@@ -36,7 +36,7 @@ void initTransportRuntime(TransportRuntime& rt, uint32_t sampleRate, float bpm) 
   rt.segmentStartBeat = 0.0;
 }
 
-void applyTransportEvent(TransportRuntime& rt, const TransportEvent& event) {
+void applyTransportEvent(TransportState& rt, const TransportEvent& event) {
   switch (event.type) {
   case TransportEvent::Type::SetBPM: {
     // Move beat forward at prior bpm (becomes new tempo's start)
@@ -57,7 +57,7 @@ void applyTransportEvent(TransportRuntime& rt, const TransportEvent& event) {
   }
 }
 
-TransportBlockInfo advanceTransportBlock(TransportRuntime& rt,
+TransportBlockInfo advanceTransportBlock(TransportState& rt,
                                          TransportMode previousMode,
                                          uint32_t numFrames) {
   TransportBlockInfo result{};
