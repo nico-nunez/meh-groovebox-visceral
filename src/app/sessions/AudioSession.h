@@ -16,6 +16,7 @@ using audio_io::hAudioSession;
 inline constexpr uint32_t DEFAULT_SAMPLE_RATE = 48000;
 inline constexpr uint32_t DEFAULT_FRAMES = 512;
 inline constexpr uint16_t DEFAULT_CHANNELS = 2;
+inline constexpr uint32_t MAX_BLOCK_FRAMES = DEFAULT_FRAMES;
 
 struct DeviceInfo {
   uint32_t sampleRate = DEFAULT_SAMPLE_RATE;
@@ -24,11 +25,6 @@ struct DeviceInfo {
 };
 
 DeviceInfo queryDefaultDevice();
-
-enum class BufferFormat {
-  NonInterleaved, // channels in separate arrays [LLLL] [RRRR]
-  Interleaved,    // channels interwoven in single array [LRLRLRLR]
-};
 
 hAudioSession initSession(const DeviceInfo& deviceInfo, app::AppContext* ctx);
 

@@ -1,9 +1,12 @@
 #pragma once
 
 #include "app/Constants.h"
+#include "app/Mixer.h"
 #include "app/Sequencer.h"
 #include "app/Track.h"
 #include "app/Transport.h"
+
+#include "dsp/Buffers.h"
 
 #include <cstdint>
 
@@ -12,6 +15,11 @@ namespace app {
 namespace audio {
 struct DeviceInfo;
 }
+
+using dsp::buffers::StereoBufferPool;
+
+using mixer::MasterBusState;
+using mixer::MixerState;
 
 using transport::TransportEventQueue;
 using transport::TransportState;
@@ -29,11 +37,14 @@ struct AppContext {
   TransportEventQueue transportQueue{};
 
   TrackState tracks[MAX_TRACKS]{};
-
   SequencerState sequencer{};
 
   uint8_t midiChannelMap[16];
   uint8_t currentTrack = 0;
+
+  StereoBufferPool renderBufferPool{};
+  MixerState mixer{};
+  MasterBusState masterBus{};
 };
 
 AppContext* createAppContext(audio::DeviceInfo deviceInfo);
