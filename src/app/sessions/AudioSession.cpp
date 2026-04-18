@@ -39,38 +39,33 @@ void sumTrackToMaster(const track::TrackState& track,
   if (!mixState.enabled)
     return;
 
-  for (uint32_t i = 0; i < numFrames; ++i)
+  for (uint32_t i = 0; i < numFrames; ++i) {
     master.busBuffer.left[i] += track.outputBuffer.left[i] * mixState.gain;
-
-  for (uint32_t i = 0; i < numFrames; ++i)
     master.busBuffer.right[i] += track.outputBuffer.right[i] * mixState.gain;
+  }
 }
 
 void applyMasterGain(mixer::MasterBusState& master, float gain, uint32_t numFrames) {
-  for (uint32_t i = 0; i < numFrames; ++i)
+  for (uint32_t i = 0; i < numFrames; ++i) {
     master.busBuffer.left[i] *= gain;
-
-  for (uint32_t i = 0; i < numFrames; ++i)
     master.busBuffer.right[i] *= gain;
+  }
 }
 
-void writeMasterToDevice(const mixer::MasterBusState& master, audio_io::AudioBuffer buffer) {
-  const uint32_t frames = buffer.numFrames;
-  const uint32_t channels = buffer.numChannels;
-
-  if (channels == 0)
+void writeMasterBusToDevice(const mixer::MasterBusState& master, audio_io::AudioBuffer buffer) {
+  if (buffer.numChannels == 0)
     return;
 
-  for (uint32_t i = 0; i < frames; ++i)
-    buffer.channelPtrs[0][i] = master.busBuffer.left[i];
+  for (uint32_t i = 0; i < buffer.numFrames; ++i)
+    buffer.channelPtrs[0][i] = master.busBuffer.left[i]; // mono
 
-  if (channels >= 2) {
-    for (uint32_t i = 0; i < frames; ++i)
-      buffer.channelPtrs[1][i] = master.busBuffer.right[i];
+  if (buffer.numChannels >= 2) {
+    for (uint32_t i = 0; i < buffer.numFrames; ++i)
+      buffer.channelPtrs[1][i] = master.busBuffer.right[i]; // stereo
   }
 
-  for (uint32_t ch = 2; ch < channels; ++ch)
-    std::fill_n(buffer.channelPtrs[ch], frames, 0.0f);
+  for (uint32_t ch = 2; ch < buffer.numChannels; ++ch)
+    std::fill_n(buffer.channelPtrs[ch], buffer.numFrames, 0.0f); // extra channels
 }
 
 void audioCallback(audio_io::AudioBuffer buffer, void* context) {
@@ -103,7 +98,7 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
       track.engine.processEngineEvent(engEvt);
   }
 
-  // 3. render and mix
+  // 3. render and mix tracks
   auto& masterBus = ctx->masterBus;
   auto& mixer = ctx->mixer;
 
@@ -117,13 +112,12 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
   }
 
   applyMasterGain(masterBus, mixer.masterGain, buffer.numFrames);
-
   dsp::dynamics::processPeakLimiter(masterBus.limiter,
                                     masterBus.busBuffer,
                                     buffer.numFrames,
                                     mixer.limiterThreshold);
 
-  writeMasterToDevice(masterBus, buffer);
+  writeMasterBusToDevice(masterBus, buffer);
 }
 
 } // namespace
