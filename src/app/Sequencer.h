@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/Constants.h"
+#include "app/Types.h"
 
 #include "synth/events/Events.h"
 
@@ -10,6 +11,8 @@ namespace app::sequencer {
 using synth::events::EngineEvent;
 using synth::events::MIDIEvent;
 using synth::events::ParamEvent;
+
+inline uint8_t MAX_LANES = MAX_TRACKS;
 
 // ==================
 // P-Lock
@@ -70,6 +73,7 @@ struct PatternStore {
 // ==================
 // Lane State
 // ==================
+
 using GetParamCallback = float (*)(uint8_t id, void* ctx);
 
 // lane-specific or target-derived data required by sequencer
@@ -94,6 +98,8 @@ struct SequencerState {
   LaneState lanes[MAX_TRACKS]{};
   LaneContext laneCtxs[MAX_TRACKS]{};
   uint8_t numLanes = 0;
+
+  bool isEditing = false;
 };
 
 // ===============
@@ -136,5 +142,31 @@ struct SequencerBlockWindow {
 };
 
 void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLaneEvents& evts);
+
+// =====================
+// Pattern Editing
+// =====================
+Result beginPatternEdit(SequencerState& state, bool copy);
+Result commitPattern(SequencerState& state);
+
+// Per-step (set all fields at once)
+Result setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt);
+
+// Per-field
+Result setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active);
+Result setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note);
+Result setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity);
+Result setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn);
+
+// P-lock editing
+Result setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, float value);
+Result clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID);
+Result clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step);
+
+// Bulk — table length must equal numSteps exactly, otherwise error
+Result setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
+Result setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
+Result
+setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
 
 } // namespace app::sequencer

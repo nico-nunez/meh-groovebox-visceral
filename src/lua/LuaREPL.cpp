@@ -1,6 +1,6 @@
 #include "LuaREPL.h"
 
-#include "LuaBindings.h"
+#include "lua/bindings/ParamBindings.h"
 
 #include "linenoise.h"
 #include "utils/KeyProcessor.h"
