@@ -25,7 +25,6 @@ float clampBPM(float bpm) {
 
 void initTransport(TransportState& rt, uint32_t sampleRate, float bpm) {
   rt.sampleRate = sampleRate;
-
   rt.bpm = bpm;
   rt.mode = TransportMode::Stopped;
 
@@ -48,50 +47,53 @@ void applyTransportEvent(TransportState& rt, const TransportEvent& event) {
     rt.beatPosition = rt.segmentStartBeat;
     return;
   }
+
   case TransportEvent::Type::Play:
     rt.mode = TransportMode::Playing;
     return;
+
   case TransportEvent::Type::Stop:
     rt.mode = TransportMode::Stopped;
     return;
   }
 }
 
-TransportBlockInfo advanceTransportBlock(TransportState& rt,
+TransportBlockInfo advanceTransportBlock(TransportState& state,
                                          TransportMode previousMode,
                                          uint32_t numFrames) {
-  TransportBlockInfo result{};
-  result.sampleRate = rt.sampleRate;
-  result.bpm = rt.bpm;
-  result.mode = rt.mode;
+  TransportBlockInfo block{};
+  block.sampleRate = state.sampleRate;
+  block.numFrames = numFrames;
+  block.bpm = state.bpm;
+  block.mode = state.mode;
 
-  result.startedThisBlock =
-      (previousMode == TransportMode::Stopped && rt.mode == TransportMode::Playing);
-  result.stoppedThisBlock =
-      (previousMode == TransportMode::Playing && rt.mode == TransportMode::Stopped);
+  block.startedThisBlock =
+      (previousMode == TransportMode::Stopped && state.mode == TransportMode::Playing);
+  block.stoppedThisBlock =
+      (previousMode == TransportMode::Playing && state.mode == TransportMode::Stopped);
 
-  result.startSample = rt.samplePosition;
-  result.startBeat = deriveBeatPosition(rt, result.startSample);
+  block.startSample = state.samplePosition;
+  block.startBeat = deriveBeatPosition(state, block.startSample);
 
-  if (rt.mode == TransportMode::Playing)
-    rt.samplePosition += numFrames;
+  if (state.mode == TransportMode::Playing)
+    state.samplePosition += numFrames;
 
-  result.endSample = rt.samplePosition;
-  result.endBeat = deriveBeatPosition(rt, result.endSample);
-  result.advancedThisBlock = (rt.mode == TransportMode::Playing && numFrames > 0);
-  rt.beatPosition = result.endBeat;
+  block.endSample = state.samplePosition;
+  block.endBeat = deriveBeatPosition(state, block.endSample);
+  block.advancedThisBlock = (state.mode == TransportMode::Playing && numFrames > 0);
+  state.beatPosition = block.endBeat;
 
-  bool crossedBeat = static_cast<int64_t>(std::floor(result.startBeat)) !=
-                     static_cast<int64_t>(std::floor(result.endBeat));
-  bool crossedBar = static_cast<int64_t>(std::floor(result.startBeat / BEATS_PER_BAR)) !=
-                    static_cast<int64_t>(std::floor(result.endBeat / BEATS_PER_BAR));
+  bool crossedBeat = static_cast<int64_t>(std::floor(block.startBeat)) !=
+                     static_cast<int64_t>(std::floor(block.endBeat));
+  bool crossedBar = static_cast<int64_t>(std::floor(block.startBeat / BEATS_PER_BAR)) !=
+                    static_cast<int64_t>(std::floor(block.endBeat / BEATS_PER_BAR));
 
   if (crossedBeat)
-    result.boundaryFlags |= static_cast<uint32_t>(BoundaryFlags::CrossedBeat);
+    block.boundaryFlags |= static_cast<uint32_t>(BoundaryFlags::CrossedBeat);
   if (crossedBar)
-    result.boundaryFlags |= static_cast<uint32_t>(BoundaryFlags::CrossedBar);
+    block.boundaryFlags |= static_cast<uint32_t>(BoundaryFlags::CrossedBar);
 
-  return result;
+  return block;
 }
 
 } // namespace app::transport

@@ -1,6 +1,6 @@
 #include "Sequencer.h"
-#include "app/Constants.h"
-#include "app/Types.h"
+
+#include "synth/events/Events.h"
 
 #include <cassert>
 #include <cmath>
@@ -8,52 +8,82 @@
 
 namespace app::sequencer {
 
+using synth::events::ScheduledEventOrder;
+
 namespace {
 
 // =====================
 // Event Factories
 // =====================
 
-SequencerEvent makeNoteOffEvent(uint8_t note) {
-  SequencerEvent e{};
-  e.kind = SequencerEvent::Kind::MIDI;
-  e.data.midi.type = MIDIEvent::Type::NoteOff;
-  e.data.midi.data.noteOff.note = note;
-  e.data.midi.data.noteOff.velocity = 0;
-  return e;
+ScheduledEvent makeNoteOffEvent(uint8_t note, uint32_t sampleOffset, ScheduledEventOrder order) {
+  ScheduledEvent evt{};
+  evt.sampleOffset = sampleOffset;
+  evt.order = order;
+  evt.kind = ScheduledEvent::Kind::MIDI;
+  evt.data.midi.type = MIDIEvent::Type::NoteOff;
+  evt.data.midi.data.noteOff.note = note;
+  evt.data.midi.data.noteOff.velocity = 0;
+  return evt;
 }
 
-SequencerEvent makeNoteOnEvent(uint8_t note, uint8_t velocity) {
-  SequencerEvent e{};
-  e.kind = SequencerEvent::Kind::MIDI;
-  e.data.midi.type = MIDIEvent::Type::NoteOn;
-  e.data.midi.data.noteOn.note = note;
-  e.data.midi.data.noteOn.velocity = velocity;
-  return e;
+ScheduledEvent makeNoteOnEvent(uint8_t note, uint8_t velocity, uint32_t sampleOffset) {
+  ScheduledEvent evt{};
+  evt.sampleOffset = sampleOffset;
+  evt.order = ScheduledEventOrder::NoteOn;
+  evt.kind = ScheduledEvent::Kind::MIDI;
+  evt.data.midi.type = MIDIEvent::Type::NoteOn;
+  evt.data.midi.data.noteOn.note = note;
+  evt.data.midi.data.noteOn.velocity = velocity;
+  return evt;
 }
 
-SequencerEvent makeParamEvent(uint8_t paramID, float value) {
-  SequencerEvent e{};
-  e.kind = SequencerEvent::Kind::Param;
-  e.data.param.id = paramID;
-  e.data.param.value = value;
-  return e;
+ScheduledEvent
+makeParamEvent(uint8_t paramID, float value, uint32_t sampleOffset, ScheduledEventOrder order) {
+  ScheduledEvent evt{};
+  evt.sampleOffset = sampleOffset;
+  evt.order = order;
+  evt.kind = ScheduledEvent::Kind::Param;
+  evt.data.param.id = paramID;
+  evt.data.param.value = value;
+  return evt;
+}
+
+uint32_t beatToSampleOffset(double beat, const SequencerBlockWindow& block) {
+  double blockBeat = block.endBeat - block.startBeat;
+
+  if (block.numFrames == 0 || blockBeat <= 0.0)
+    return 0;
+
+  double normalized = (beat - block.startBeat) / blockBeat;
+  normalized = std::clamp(normalized, 0.0, 1.0);
+
+  double scaled = std::floor(normalized * static_cast<double>(block.numFrames));
+  return static_cast<uint32_t>(scaled);
 }
 
 // =====================
 // P-Unlock
 // =====================
 
-// Resolves pending unlocks against the current step.
-// For each pending unlock:
-//   - held:    current step also locks this param — keep entry, lockedValue updated in applyParamLocks
-//   - drop:    user edited the param since lock fired — clear entry, leave current value
-//   - fire:    param unchanged since lock — emit restore, clear entry
+/* Resolves pending unlocks against the current step.
+ * For each pending unlock:
+ *   - held:    current step also locks this param — keep entry, lockedValue updated in applyParamLocks
+ *   - drop:    user edited the param since lock fired — clear entry, leave current value
+ *   - fire:    param unchanged since lock — emit restore, clear entry
+ *
+ * NOTE: Locked value comparison is only safe while engine.params[] is written
+ * exclusively via setParam/setParamDeferred. If any render-path code ever writes
+ * back to params[] (i.e. param smoothing), replace with write serials.
+ * Floating point equality is too fragile otherwise.
+*/
+
 void resolvePendingUnlocks(LaneState& laneState,
                            LaneEvents& laneOut,
                            const LaneContext& ctx,
-                           const StepEvent& currentStep) {
-  for (uint8_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
+                           const StepEvent& currentStep,
+                           uint32_t sampleOffset) {
+  for (uint32_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
     ParamUnlock& unlock = laneState.unlocks.entries[i];
     if (!unlock.pending)
       continue;
@@ -77,7 +107,10 @@ void resolvePendingUnlocks(LaneState& laneState,
     }
 
     // Fire — restore to base value
-    laneOut.push(makeParamEvent(unlock.paramID, unlock.restoreValue));
+    laneOut.push(makeParamEvent(unlock.paramID,
+                                unlock.restoreValue,
+                                sampleOffset,
+                                ScheduledEventOrder::ParamUnlock));
     unlock.pending = false;
   }
 }
@@ -89,13 +122,14 @@ void resolvePendingUnlocks(LaneState& laneState,
 void applyParamLocks(const StepEvent& step,
                      LaneState& laneState,
                      LaneEvents& laneOut,
-                     const LaneContext& ctx) {
+                     const LaneContext& ctx,
+                     uint32_t sampleOffset) {
 
   for (uint8_t l = 0; l < step.numLocks; ++l) {
     const ParamLock& lock = step.locks[l];
 
     ParamUnlock* existing = nullptr;
-    for (uint8_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
+    for (uint32_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
       if (laneState.unlocks.entries[i].pending &&
           laneState.unlocks.entries[i].paramID == lock.paramID) {
         existing = &laneState.unlocks.entries[i];
@@ -106,7 +140,7 @@ void applyParamLocks(const StepEvent& step,
     if (existing) {
       existing->lockedValue = lock.value;
     } else {
-      for (uint8_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
+      for (uint32_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
         ParamUnlock& entry = laneState.unlocks.entries[i];
         if (!entry.pending) {
           entry.paramID = lock.paramID;
@@ -118,17 +152,20 @@ void applyParamLocks(const StepEvent& step,
       }
     }
 
-    laneOut.push(makeParamEvent(lock.paramID, lock.value));
+    laneOut.push(
+        makeParamEvent(lock.paramID, lock.value, sampleOffset, ScheduledEventOrder::ParamLock));
   }
 }
 
 // Fires all pending unlocks unconditionally — used on stop.
 void fireAllPendingUnlocks(LaneState& laneState, LaneEvents& laneOut) {
-  for (uint8_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
+  for (uint32_t i = 0; i < MAX_PENDING_UNLOCKS; ++i) {
     ParamUnlock& unlock = laneState.unlocks.entries[i];
     if (!unlock.pending)
       continue;
-    laneOut.push(makeParamEvent(unlock.paramID, unlock.restoreValue));
+
+    laneOut.push(
+        makeParamEvent(unlock.paramID, unlock.restoreValue, 0, ScheduledEventOrder::ParamUnlock));
     unlock.pending = false;
   }
 }
@@ -141,29 +178,59 @@ void fireStep(uint32_t i,
               const LanePattern& pattern,
               LaneState& laneState,
               LaneEvents& laneOut,
-              const LaneContext& ctx) {
+              const LaneContext& ctx,
+              double absStepBeat,
+              double stepLengthBeats,
+              const SequencerBlockWindow& block) {
   if (static_cast<int32_t>(i) == laneState.lastStep)
     return;
 
   const StepEvent& step = pattern.steps[i];
+  uint32_t stepOffset = beatToSampleOffset(absStepBeat, block);
 
-  resolvePendingUnlocks(laneState, laneOut, ctx, step); // always resolve at boundries
+  resolvePendingUnlocks(laneState, laneOut, ctx, step, stepOffset);
 
   if (!step.active)
     return;
 
-  applyParamLocks(step, laneState, laneOut, ctx);
+  applyParamLocks(step, laneState, laneOut, ctx, stepOffset);
 
+  // NoteOn event
   if (step.noteOn) {
     if (laneState.noteActive) {
-      if (!laneOut.push(makeNoteOffEvent(laneState.activeNote)))
+      // Kill prior
+      if (!laneOut.push(
+              makeNoteOffEvent(laneState.activeNote, stepOffset, ScheduledEventOrder::NoteOff)))
         return;
+      laneState.noteActive = false;
+      laneState.noteOffBeat = -1.0;
     }
-    if (!laneOut.push(makeNoteOnEvent(step.note, step.velocity)))
+
+    if (!laneOut.push(makeNoteOnEvent(step.note, step.velocity, stepOffset)))
       return;
 
     laneState.noteActive = true;
     laneState.activeNote = step.note;
+
+    // GateNoteOff event
+    double gateBeats = std::max(static_cast<double>(step.gate) * stepLengthBeats, MIN_GATE_BEAT);
+    double scheduledNoteOffBeat = absStepBeat + gateBeats;
+
+    if (step.legato) {
+      laneState.noteOffBeat = -1; // hold note
+
+    } else if (scheduledNoteOffBeat < block.endBeat) {
+      uint32_t noteOffOffset = beatToSampleOffset(scheduledNoteOffBeat, block);
+      if (!laneOut.push(
+              makeNoteOffEvent(step.note, noteOffOffset, ScheduledEventOrder::GateNoteOff)))
+        return;
+
+      laneState.noteActive = false;
+      laneState.noteOffBeat = -1.0;
+
+    } else {
+      laneState.noteOffBeat = scheduledNoteOffBeat;
+    }
   }
 
   laneState.lastStep = static_cast<int32_t>(i);
@@ -228,17 +295,26 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
     LaneEvents& laneOut = evts.lanes[laneIndex];
     const LaneContext& ctx = state.laneCtxs[laneIndex];
 
-    // ==== Stop handling ====
     if (block.stoppedThisBlock) {
       if (laneState.noteActive)
-        laneOut.push(makeNoteOffEvent(laneState.activeNote));
+        laneOut.push(makeNoteOffEvent(laneState.activeNote, 0, ScheduledEventOrder::NoteOff));
+
       fireAllPendingUnlocks(laneState, laneOut);
       laneState.noteActive = false;
+      laneState.noteOffBeat = -1.0;
       laneState.lastStep = -1;
       continue;
     }
 
-    // ==== Step evaluation ====
+    if (laneState.noteActive && laneState.noteOffBeat >= block.startBeat &&
+        laneState.noteOffBeat < block.endBeat) {
+      uint32_t offset = beatToSampleOffset(laneState.noteOffBeat, block);
+      laneOut.push(
+          makeNoteOffEvent(laneState.activeNote, offset, ScheduledEventOrder::GateNoteOff));
+      laneState.noteActive = false;
+      laneState.noteOffBeat = -1.0;
+    }
+
     if (pattern.numSteps == 0 || pattern.stepsPerBeat == 0)
       continue;
 
@@ -252,18 +328,27 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
     if (!wraps) {
       for (uint32_t i = 0; i < pattern.numSteps; ++i) {
         const double stepBeat = i * stepLengthBeats;
-        if (stepBeat >= localStart && stepBeat < localEnd)
-          fireStep(i, pattern, laneState, laneOut, ctx);
+
+        if (stepBeat >= localStart && stepBeat < localEnd) {
+          double abs = block.startBeat + (stepBeat - localStart);
+          fireStep(i, pattern, laneState, laneOut, ctx, abs, stepLengthBeats, block);
+        }
       }
     } else {
       const double headEnd = localEnd - patternLengthBeats;
+
       for (uint32_t i = 0; i < pattern.numSteps; ++i) {
-        if (i * stepLengthBeats >= localStart)
-          fireStep(i, pattern, laneState, laneOut, ctx);
-      }
-      for (uint32_t i = 0; i < pattern.numSteps; ++i) {
-        if (i * stepLengthBeats < headEnd)
-          fireStep(i, pattern, laneState, laneOut, ctx);
+        const double stepBeat = i * stepLengthBeats;
+
+        if (stepBeat >= localStart) { // tail
+          double abs = block.startBeat + (stepBeat - localStart);
+          fireStep(i, pattern, laneState, laneOut, ctx, abs, stepLengthBeats, block);
+        }
+
+        if (stepBeat < headEnd) { // head
+          double abs = block.startBeat + (patternLengthBeats - localStart) + stepBeat;
+          fireStep(i, pattern, laneState, laneOut, ctx, abs, stepLengthBeats, block);
+        }
       }
     }
   }
@@ -409,8 +494,10 @@ Result setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* valu
   if (count != lp.numSteps)
     return {false, "table length must match numSteps"};
 
-  for (uint8_t i = 0; i < count; ++i)
+  for (uint8_t i = 0; i < count; ++i) {
     lp.steps[i].active = values[i] != 0;
+    lp.steps[i].noteOn = values[i] != 0;
+  }
   return res;
 }
 

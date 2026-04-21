@@ -1,7 +1,9 @@
 #pragma once
 
 #include "app/Constants.h"
+#include "app/Transport.h"
 #include "app/Types.h"
+#include "app/sessions/AudioSession.h"
 
 #include "synth/events/Events.h"
 
@@ -11,15 +13,27 @@ namespace app::sequencer {
 using synth::events::EngineEvent;
 using synth::events::MIDIEvent;
 using synth::events::ParamEvent;
+using synth::events::ScheduledEvent;
 
-inline uint8_t MAX_LANES = MAX_TRACKS;
+using audio::DEFAULT_FRAMES;
+using audio::DEFAULT_SAMPLE_RATE;
+using transport::DEFAULT_BPM;
+
+inline constexpr uint8_t MAX_LANES = MAX_TRACKS;
+inline constexpr double MIN_GATE_BEAT =
+    static_cast<double>(DEFAULT_FRAMES) / (DEFAULT_SAMPLE_RATE * (DEFAULT_BPM / 60.0));
+
+// "beat" == Quarter Note
+inline constexpr uint32_t MAX_PATTERN_STEPS = 64;
+inline constexpr uint32_t DEFAULT_PATTERN_STEPS = 16;
+inline constexpr uint32_t DEFAULT_STEPS_PER_BEAT = 4;
+
+inline constexpr uint32_t MAX_LOCKS_PER_STEP = 4;
+inline constexpr uint32_t MAX_PENDING_UNLOCKS = MAX_LOCKS_PER_STEP * MAX_PATTERN_STEPS;
 
 // ==================
 // P-Lock
 // ==================
-inline constexpr uint32_t MAX_LOCKS_PER_STEP = 4;
-inline constexpr uint32_t MAX_STEPS_PER_BLOCK = 2; // theortical and not actually enforced
-inline constexpr uint32_t MAX_PENDING_UNLOCKS = MAX_LOCKS_PER_STEP * MAX_STEPS_PER_BLOCK;
 
 struct ParamLock {
   uint8_t paramID = 0;
@@ -41,22 +55,24 @@ struct PendingUnlocks {
 // Step / Pattern
 // ==================
 
-inline constexpr uint32_t MAX_PATTERN_STEPS = 16;
-
 struct StepEvent {
   ParamLock locks[MAX_LOCKS_PER_STEP]{};
   uint8_t numLocks = 0;
 
   bool active = false;
   bool noteOn = false;
+
+  bool legato = false; // aka "tie": ignores gate
+  float gate = 0.5f;
+
   uint8_t note = 0;
   uint8_t velocity = 0;
 };
 
 struct LanePattern {
   StepEvent steps[MAX_PATTERN_STEPS]{};
-  uint32_t numSteps = MAX_PATTERN_STEPS;
-  uint8_t stepsPerBeat = 4;
+  uint32_t numSteps = DEFAULT_PATTERN_STEPS;
+  uint8_t stepsPerBeat = DEFAULT_STEPS_PER_BEAT;
 };
 
 struct PatternSnapshot {
@@ -84,6 +100,7 @@ struct LaneContext {
 
 struct LaneState {
   PendingUnlocks unlocks{};
+  double noteOffBeat = -1.0;
   int32_t lastStep = -1;
   bool noteActive = false;
   uint8_t activeNote = 0;
@@ -106,24 +123,21 @@ struct SequencerState {
 // Processing
 // ===============
 
-struct SequencerEvent {
-  enum class Kind : uint8_t { MIDI, Param, Engine };
-  Kind kind;
-  union {
-    synth::events::MIDIEvent midi;
-    synth::events::ParamEvent param;
-    synth::events::EngineEvent engine;
-  } data;
-};
-
-// "+ 2" is for note on/off
-inline constexpr uint8_t MAX_LANE_EVENTS_PER_BLOCK = MAX_PATTERN_STEPS * (MAX_LOCKS_PER_STEP + 2);
+//  Per step:
+//  - MAX_PATTERN_STEPS * (
+//  - (max lock + unlock events) + (
+//  - 1 cut noteOff +
+//  - 1 noteOn +
+//  - 1 same-block gate noteOff )) +
+//  - 1 pending gate noteOff
+inline constexpr uint16_t MAX_LANE_EVENTS_PER_BLOCK =
+    MAX_PATTERN_STEPS * ((2 * MAX_LOCKS_PER_STEP) + 3) + 1;
 
 struct LaneEvents {
-  SequencerEvent events[MAX_LANE_EVENTS_PER_BLOCK];
-  uint8_t count = 0;
+  ScheduledEvent events[MAX_LANE_EVENTS_PER_BLOCK];
+  uint16_t count = 0;
 
-  bool push(const SequencerEvent& e) {
+  bool push(const ScheduledEvent& e) {
     if (count >= MAX_LANE_EVENTS_PER_BLOCK)
       return false;
     events[count++] = e;
@@ -138,6 +152,7 @@ struct SequencerLaneEvents {
 struct SequencerBlockWindow {
   double startBeat = 0.0;
   double endBeat = 0.0;
+  uint32_t numFrames = 0;
   bool stoppedThisBlock = false;
 };
 
@@ -146,6 +161,7 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 // =====================
 // Pattern Editing
 // =====================
+
 Result beginPatternEdit(SequencerState& state, bool copy);
 Result commitPattern(SequencerState& state);
 

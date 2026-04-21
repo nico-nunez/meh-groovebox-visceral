@@ -11,6 +11,7 @@
 
 #include "dsp/Buffers.h"
 #include "dsp/Dynamics.h"
+#include "synth/Engine.h"
 
 #include <algorithm>
 #include <cassert>
@@ -24,12 +25,17 @@ using audio_io::hAudioSession;
 namespace {
 
 void renderTrackToBuffer(track::TrackState& track, uint32_t numFrames, float bpm) {
-  float* channelPtrs[2] = {
+  float* channelPtrs[DEFAULT_CHANNELS] = {
       track.outputBuffer.left,
       track.outputBuffer.right,
   };
 
-  track.engine.processAudioBlock(channelPtrs, 2, numFrames, bpm);
+  synth::RenderContext ctx{};
+  ctx.bpm = bpm;
+  ctx.events = track.events.buffer;
+  ctx.numEvents = track.events.count;
+
+  track.engine.processAudioBlock(channelPtrs, DEFAULT_CHANNELS, numFrames, ctx);
 }
 
 void sumTrackToMaster(const track::TrackState& track,
@@ -79,7 +85,6 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
     transport::applyTransportEvent(ctx->transport, transEvt);
 
   auto blockInfo = transport::advanceTransportBlock(ctx->transport, previousMode, buffer.numFrames);
-  runBlockScheduler(ctx, blockInfo);
 
   // 2. Drain queues for all tracks
   for (int i = 0; i < MAX_TRACKS; i++) {
@@ -98,7 +103,10 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
       track.engine.processEngineEvent(engEvt);
   }
 
-  // 3. render and mix tracks
+  // 3. Run  schedular
+  runBlockScheduler(ctx, blockInfo);
+
+  // 4. render and mix tracks
   auto& masterBus = ctx->masterBus;
   auto& mixer = ctx->mixer;
 

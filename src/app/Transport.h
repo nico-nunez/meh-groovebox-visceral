@@ -1,11 +1,14 @@
 #pragma once
 
+#include "app/sessions/AudioSession.h"
+
 #include <atomic>
 #include <cstdint>
 
 namespace app::transport {
 inline constexpr float MIN_BPM = 20.0f;
 inline constexpr float MAX_BPM = 300.0f;
+inline constexpr float DEFAULT_BPM = 120.0f;
 
 // =====================
 // Transport Runtime
@@ -16,8 +19,8 @@ enum class TransportMode : uint8_t {
 };
 
 struct TransportState {
-  uint32_t sampleRate = 48000;
-  float bpm = 120.0f;
+  uint32_t sampleRate = audio::DEFAULT_SAMPLE_RATE;
+  float bpm = DEFAULT_BPM;
   TransportMode mode = TransportMode::Stopped;
 
   uint64_t samplePosition = 0;
@@ -37,7 +40,8 @@ enum class BoundaryFlags : uint32_t {
 };
 
 struct TransportBlockInfo {
-  uint32_t sampleRate = 48000;
+  uint32_t sampleRate = audio::DEFAULT_SAMPLE_RATE;
+  uint32_t numFrames = 0;
   float bpm = 120.0f;
   TransportMode mode = TransportMode::Stopped;
 
@@ -93,7 +97,6 @@ struct TransportEventQueue {
 
     queue[currentIndex] = action;
     writeIndex.store(nextIndex);
-
     return true;
   }
 
@@ -105,7 +108,6 @@ struct TransportEventQueue {
 
     action = queue[currentIndex];
     readIndex.store((currentIndex + 1) & MASK);
-
     return true;
   }
 };
