@@ -358,6 +358,8 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 // Pattern Editing
 // =====================
 
+// TODO / IMPORTANT - Clamp input values!!!!!!
+
 // Preps write buffer
 Result beginPatternEdit(SequencerState& state, bool copy) {
   if (state.isEditing)

@@ -26,6 +26,8 @@ inline constexpr double MIN_GATE_BEAT =
 // "beat" == Quarter Note
 inline constexpr uint32_t MAX_PATTERN_STEPS = 64;
 inline constexpr uint32_t DEFAULT_PATTERN_STEPS = 16;
+
+inline constexpr uint8_t MAX_STEPS_PER_BEAT = 48;
 inline constexpr uint32_t DEFAULT_STEPS_PER_BEAT = 4;
 
 inline constexpr uint32_t MAX_LOCKS_PER_STEP = 4;

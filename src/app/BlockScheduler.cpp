@@ -3,10 +3,13 @@
 #include "app/AppContext.h"
 #include "app/Sequencer.h"
 
+#include "synth/events/Events.h"
+
 namespace app {
 
 namespace {
 namespace seq = sequencer;
+using synth::events::ScheduledEvent;
 
 seq::SequencerBlockWindow makeBlockWindow(const TransportBlockInfo& blockInfo) {
   seq::SequencerBlockWindow block{};
@@ -15,6 +18,17 @@ seq::SequencerBlockWindow makeBlockWindow(const TransportBlockInfo& blockInfo) {
   block.numFrames = blockInfo.numFrames;
   block.stoppedThisBlock = blockInfo.stoppedThisBlock;
   return block;
+}
+
+bool compareEvents(const ScheduledEvent& a, const ScheduledEvent& b) {
+  if (a.sampleOffset != b.sampleOffset)
+    return a.sampleOffset < b.sampleOffset;
+
+  return static_cast<uint8_t>(a.order) < static_cast<uint8_t>(b.order);
+}
+
+void sortScheduledEvents(track::ScheduledEventBuffer& events) {
+  std::sort(events.buffer, events.buffer + events.count, compareEvents);
 }
 
 } // namespace
@@ -30,9 +44,11 @@ void runBlockScheduler(AppContext* app, const TransportBlockInfo& blockInfo) {
     trackEvents.clear();
 
     const auto& lane = evts.lanes[i];
-    for (uint8_t j = 0; j < lane.count; ++j) {
+    for (u_int16_t j = 0; j < lane.count; ++j) {
       trackEvents.push(lane.events[j]);
     }
+
+    sortScheduledEvents(trackEvents);
   }
 }
 

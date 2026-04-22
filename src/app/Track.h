@@ -48,14 +48,15 @@ struct TrackState {
   TrackQueues queues{};
   ScheduledEventBuffer events{};
 
-  // TODO: param scheduled events
-  // uint32_t paramWriteSerials[synth::param::PARAM_COUNT]{};
-
   Preset preset{};
   bool presetValid = false;
 
   StereoBufferView outputBuffer{};
   uint32_t outputSlot = 0;
 };
+
+// ======================
+// Track Binding Helpers
+// ======================
 
 } // namespace app::track
