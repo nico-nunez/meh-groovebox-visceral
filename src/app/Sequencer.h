@@ -164,25 +164,29 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 // Pattern Editing
 // =====================
 
+// ==== Pattern-level ====
+VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint32_t numSteps);
+VoidResult setPatternStepsPerBeat(SequencerState& state, uint8_t lane, uint8_t stepsPerBeat);
+
 VoidResult beginPatternEdit(SequencerState& state, bool copy);
 VoidResult commitPattern(SequencerState& state);
 
-// Per-step (set all fields at once)
+// ==== Step field setters ====
 VoidResult setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt);
-
-// Per-field
 VoidResult setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active);
 VoidResult setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note);
 VoidResult setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity);
 VoidResult setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn);
+VoidResult setStepGate(SequencerState& state, uint8_t lane, uint8_t step, float gate);
+VoidResult setStepLegato(SequencerState& state, uint8_t lane, uint8_t step, bool legato);
 
-// P-lock editing
+// ==== P-lock editing ====
 VoidResult
 setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, float value);
 VoidResult clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID);
 VoidResult clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step);
 
-// Bulk — table length must equal numSteps exactly, otherwise error
+// ==== Bulk edit — table length must equal numSteps exactly, otherwise error ====
 VoidResult
 setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
 VoidResult

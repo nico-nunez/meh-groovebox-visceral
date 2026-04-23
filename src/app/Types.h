@@ -15,6 +15,13 @@
   uint8_t name##_data[size] = {};                                                                  \
   Uint32Arr name = {name##_data, size}
 
+#define CHECK_RESULT(exp)                                                                          \
+  {                                                                                                \
+    auto res = (exp);                                                                              \
+    if (!res.ok)                                                                                   \
+      return (exp);                                                                                \
+  }
+
 namespace app {
 
 // =================

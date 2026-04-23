@@ -267,17 +267,49 @@ VoidResult checkStepBounds(uint8_t step) {
   return {step < MAX_PATTERN_STEPS, errMsg};
 }
 
+// ===============
+// Validators
+// ===============
+
 VoidResult validateArgs(const SequencerState& state, uint8_t lane = 0, uint8_t step = 0) {
-  VoidResult res;
-  res = checkIsEditing(state);
-  if (!res.ok)
-    return res;
-
-  res = checkLaneBounds(lane);
-  if (!res.ok)
-    return res;
-
+  CHECK_RESULT(checkIsEditing(state));
+  CHECK_RESULT(checkLaneBounds(lane));
   return checkStepBounds(step);
+}
+
+VoidResult validateGate(float gate) {
+  if (!std::isfinite(gate) || gate < 0.0f)
+    return {false, "gate out of range"};
+  return {true, nullptr};
+}
+
+VoidResult validateNote(uint8_t note) {
+  if (note > 127)
+    return {false, "note out of range"};
+
+  return {true, nullptr};
+}
+
+VoidResult validateVelocity(uint8_t velocity) {
+  if (velocity > 127)
+    return {false, "velocity out of range"};
+
+  return {true, nullptr};
+}
+
+VoidResult validateNumLocks(uint8_t numLocks) {
+  if (numLocks > MAX_LOCKS_PER_STEP)
+    return {false, "exceeds max step locks"};
+  return {true, nullptr};
+}
+
+VoidResult validateStepEvent(const StepEvent& evt) {
+  VoidResult res{};
+  CHECK_RESULT(validateNote(evt.note));
+  CHECK_RESULT(validateVelocity(evt.velocity));
+  CHECK_RESULT(validateGate(evt.gate));
+  CHECK_RESULT(validateNumLocks(evt.numLocks));
+  return res;
 }
 
 } // namespace
@@ -356,12 +388,41 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 }
 
 // =====================
-// Pattern Editing
+// Pattern APIs
 // =====================
 
-// TODO / IMPORTANT - Clamp input values!!!!!!
+// ==== Pattern-level ====
+VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint32_t numSteps) {
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane));
 
-// Preps write buffer
+  if (numSteps == 0 || numSteps > MAX_PATTERN_STEPS)
+    return {false, "numSteps out of range"};
+
+  LanePattern& lp = getWriteBuffer(state).lanes[lane];
+  if (numSteps < lp.numSteps) {
+    for (uint32_t i = numSteps; i < MAX_PATTERN_STEPS; ++i)
+      lp.steps[i] = StepEvent{};
+  }
+
+  lp.numSteps = numSteps;
+
+  return res;
+}
+
+VoidResult setPatternStepsPerBeat(SequencerState& state, uint8_t lane, uint8_t stepsPerBeat) {
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane));
+
+  if (stepsPerBeat == 0 || stepsPerBeat > MAX_STEPS_PER_BEAT)
+    return {false, "stepsPerBeat out of range"};
+
+  LanePattern& lp = getWriteBuffer(state).lanes[lane];
+  lp.stepsPerBeat = stepsPerBeat;
+
+  return res;
+}
+
 VoidResult beginPatternEdit(SequencerState& state, bool copy) {
   if (state.isEditing)
     return {false, "Editing already in progress"};
@@ -381,9 +442,8 @@ VoidResult beginPatternEdit(SequencerState& state, bool copy) {
 
 // Swap write -> read buffer
 VoidResult commitPattern(SequencerState& state) {
-  auto res = checkIsEditing(state);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(checkIsEditing(state));
 
   uint32_t writeIndex = 1 - state.store.readIndex.load(std::memory_order_relaxed);
   state.store.readIndex.store(writeIndex, std::memory_order_release);
@@ -391,56 +451,73 @@ VoidResult commitPattern(SequencerState& state) {
   return res;
 }
 
+// ===== Step-level ====
 VoidResult setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
+  CHECK_RESULT(validateStepEvent(evt));
 
   getWriteBuffer(state).lanes[lane].steps[step] = evt;
   return res;
 }
 
 VoidResult setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
 
   getWriteBuffer(state).lanes[lane].steps[step].active = active;
   return res;
 }
 
 VoidResult setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
+  CHECK_RESULT(validateNote(note));
 
   getWriteBuffer(state).lanes[lane].steps[step].note = note;
   return res;
 }
 
 VoidResult setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
+  CHECK_RESULT(validateVelocity(velocity));
 
   getWriteBuffer(state).lanes[lane].steps[step].velocity = velocity;
   return res;
 }
 
 VoidResult setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
 
   getWriteBuffer(state).lanes[lane].steps[step].noteOn = noteOn;
   return res;
 }
 
+VoidResult setStepGate(SequencerState& state, uint8_t lane, uint8_t step, float gate) {
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
+  CHECK_RESULT(validateGate(gate));
+
+  getWriteBuffer(state).lanes[lane].steps[step].gate = gate;
+  return res;
+}
+
+VoidResult setStepLegato(SequencerState& state, uint8_t lane, uint8_t step, bool legato) {
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
+
+  getWriteBuffer(state).lanes[lane].steps[step].legato = legato;
+  return res;
+}
+
+// ===== P-lock (step-level) ====
+
 VoidResult
 setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, float value) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
 
   StepEvent& s = getWriteBuffer(state).lanes[lane].steps[step];
 
@@ -461,9 +538,8 @@ setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, 
 }
 
 VoidResult clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
 
   StepEvent& s = getWriteBuffer(state).lanes[lane].steps[step];
 
@@ -479,20 +555,18 @@ VoidResult clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint
 }
 
 VoidResult clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step) {
-  auto res = validateArgs(state, lane, step);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
 
   getWriteBuffer(state).lanes[lane].steps[step].numLocks = 0;
   return res;
 }
 
-// ===== Multi-value/full-pattern input =====
+// ==== Multi-value/full-pattern input ====
 VoidResult
 setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
-  auto res = validateArgs(state, lane);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane));
 
   LanePattern& lp = getWriteBuffer(state).lanes[lane];
   if (count != lp.numSteps)
@@ -507,31 +581,35 @@ setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uin
 
 VoidResult
 setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
-  auto res = validateArgs(state, lane);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane));
 
   LanePattern& lp = getWriteBuffer(state).lanes[lane];
   if (count != lp.numSteps)
     return {false, "table length must match numSteps"};
 
-  for (uint8_t i = 0; i < count; ++i)
+  for (uint8_t i = 0; i < count; ++i) {
+    CHECK_RESULT(validateNote(values[i]));
     lp.steps[i].note = values[i];
+  }
+
   return res;
 }
 
 VoidResult
 setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
-  auto res = validateArgs(state, lane);
-  if (!res.ok)
-    return res;
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane));
 
   LanePattern& lp = getWriteBuffer(state).lanes[lane];
   if (count != lp.numSteps)
     return {false, "table length must match numSteps"};
 
-  for (uint8_t i = 0; i < count; ++i)
+  for (uint8_t i = 0; i < count; ++i) {
+    CHECK_RESULT(validateVelocity(values[i]));
     lp.steps[i].velocity = values[i];
+  }
   return res;
 }
+
 } // namespace app::sequencer
