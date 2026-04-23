@@ -25,7 +25,7 @@ Already present in the codebase:
 - Preset loading/saving infrastructure
 - Keyboard and MIDI note input
 
-Important limitation: the host is still effectively single-track at runtime today. The app has track abstractions and shared transport scaffolding, but audio rendering still runs only the currently selected track.
+Important limitations: the host now renders and mixes multiple tracks, and the step sequencer/p-lock runtime is present, but the groovebox layer is still incomplete. Pattern management and switching are still minimal, session recall is not in place, solo/performance-mix behavior is unfinished, and the current ImGui window is still a basic runtime shell rather than a real performance display.
 
 ## Planned Groovebox Features
 
@@ -36,17 +36,18 @@ The list below is intentionally written as a project checklist. Items are pendin
 - [x] Lua REPL for live control
 - [x] Basic transport/BPM control
 - [x] Preset system
-- [ ] Single-track step sequencer
-- [ ] Per-step parameter locks
-- [ ] Multi-part playback and internal mixing
-- [ ] Track selection and addressing beyond the current single-track scaffold
-- [ ] Pattern creation, editing, and switching
-- [ ] Mute / solo / performance mix controls
+- [x] Step sequencer runtime
+- [x] Per-step parameter locks
+- [x] Multi-track render path and internal mixing
+- [ ] Expanded track addressing and direct per-track operations
+- [ ] Pattern management, storage, and switching
+- [ ] Solo and broader performance-mix controls
+- [x] Basic mute / gain / pan / master mix controls
 - [ ] Session save and recall for groovebox state
 - [ ] Sample playback / drum-part engine
 - [ ] Resampling / recording workflow
 - [ ] External control protocol for editor/UI clients
-- [ ] ImGui or equivalent performance display
+- [ ] Performance-oriented visual display
 
 ## Build
 
