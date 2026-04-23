@@ -3,14 +3,16 @@
 #include "ParamBindings.h"
 #include "SequencerBindings.h"
 
+#include "app/AppContext.h"
+#include "lua/bindings/MixerBindings.h"
+#include "utils/KeyProcessor.h"
+
+#include "dsp/fx/FXChain.h"
 #include "synth/events/Events.h"
 #include "synth/params/ParamDefs.h"
 #include "synth/params/ParamUtils.h"
 #include "synth/preset/PresetApply.h"
 #include "synth/preset/PresetIO.h"
-#include "utils/KeyProcessor.h"
-
-#include "dsp/fx/FXChain.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -672,38 +674,29 @@ int l_setBPM(lua_State* L) {
   auto* ctx = getLuaContext(L);
   float bpm = static_cast<float>(luaL_checknumber(L, 1));
 
-  app::transport::TransportEvent action{};
-  action.type = app::transport::TransportEvent::Type::SetBPM;
-  action.data.setBPM.bpm = bpm;
+  app::ControlEvent evt{};
+  evt.type = app::ControlEvent::Type::SetBPM;
+  evt.data.setBPM.bpm = bpm;
 
-  if (!pushTransportAction(ctx->app, action))
-    return luaL_error(L, "transport queue full");
-
-  return CMD_SUCCESS;
+  CMD_CHECK(app::pushControlEvent(ctx->app, evt));
 }
 
 int l_setPlay(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
-  app::transport::TransportEvent action{};
-  action.type = app::transport::TransportEvent::Type::Play;
+  app::ControlEvent evt{};
+  evt.type = app::ControlEvent::Type::Play;
 
-  if (!pushTransportAction(ctx->app, action))
-    return luaL_error(L, "transport queue full");
-
-  return CMD_SUCCESS;
+  CMD_CHECK(app::pushControlEvent(ctx->app, evt));
 }
 
 int l_setStop(lua_State* L) {
   auto* ctx = getLuaContext(L);
 
-  app::transport::TransportEvent action{};
-  action.type = app::transport::TransportEvent::Type::Stop;
+  app::ControlEvent evt{};
+  evt.type = app::ControlEvent::Type::Stop;
 
-  if (!pushTransportAction(ctx->app, action))
-    return luaL_error(L, "transport queue full");
-
-  return CMD_SUCCESS;
+  CMD_CHECK(app::pushControlEvent(ctx->app, evt));
 }
 
 void registerTransportCommands(lua_State* L) {
@@ -806,19 +799,6 @@ int l_params(lua_State* L) {
       break;
     }
   }
-  return CMD_SUCCESS;
-}
-
-// =================
-// Track selection
-// =================
-int l_select(lua_State* L) {
-  int track = (int)luaL_checkinteger(L, 1);
-  auto* ctx = getLuaContext(L);
-
-  if (track < 1 || track > (int)app::MAX_TRACKS)
-    luaL_error(L, "track %d out of range (1–%d)", track, (int)app::MAX_TRACKS);
-  ctx->app->currentTrack = (uint8_t)(track - 1);
   return CMD_SUCCESS;
 }
 
@@ -974,6 +954,7 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   registerMIDICommands(L);
   registerTransportCommands(L);
   registerSeqCommands(L);
+  registerMixerBindings(L);
 
   // 6. Top-level functions (see lua-command-bindings.md)
   lua_pushcfunction(L, l_panic);
@@ -987,10 +968,6 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   lua_pushcfunction(L, l_get);
   lua_setglobal(L, "get");
   addVisibleGlobal("get");
-
-  lua_pushcfunction(L, l_select);
-  lua_setglobal(L, "select");
-  addVisibleGlobal("select");
 
   lua_pushcfunction(L, l_help);
   lua_setglobal(L, "help");

@@ -1,6 +1,7 @@
 #include "SequencerBindings.h"
 
 #include "app/Sequencer.h"
+#include "lua/bindings/LuaBindings.h"
 
 #include "synth/params/ParamUtils.h"
 
@@ -41,8 +42,6 @@ int l_seqNewPattern(lua_State* L) {
 int l_seqCommit(lua_State* L) {
   auto* ctx = getLuaContext(L);
   CMD_CHECK(seq::commitPattern(ctx->app->sequencer));
-  printf("OK\n");
-  return CMD_SUCCESS;
 }
 
 // =========================
@@ -77,8 +76,6 @@ int l_seqSetStep(lua_State* L) {
 
   auto* ctx = getLuaContext(L);
   CMD_CHECK(seq::setStep(ctx->app->sequencer, lane, step, evt));
-  printf("OK\n");
-  return CMD_SUCCESS;
 }
 
 // =========================
@@ -237,20 +234,20 @@ int l_seqSetVelocities(lua_State* L) {
 void registerSeqCommands(lua_State* L) {
   lua_newtable(L);
 
-  registerFunctionCmd(L, l_seqCopyPattern, "copyPattern");
-  registerFunctionCmd(L, l_seqNewPattern, "newPattern");
-  registerFunctionCmd(L, l_seqCommit, "commit");
-  registerFunctionCmd(L, l_seqSetStep, "setStep");
-  registerFunctionCmd(L, l_seqSetStepActive, "setStepActive");
-  registerFunctionCmd(L, l_seqSetStepNote, "setStepNote");
-  registerFunctionCmd(L, l_seqSetStepVelocity, "setStepVelocity");
-  registerFunctionCmd(L, l_seqSetStepNoteOn, "setStepNoteOn");
-  registerFunctionCmd(L, l_seqSetStepLock, "setStepLock");
-  registerFunctionCmd(L, l_seqClearStepLock, "clearStepLock");
-  registerFunctionCmd(L, l_seqClearStepLocks, "clearStepLocks");
-  registerFunctionCmd(L, l_seqSetActive, "setActive");
-  registerFunctionCmd(L, l_seqSetNotes, "setNotes");
-  registerFunctionCmd(L, l_seqSetVelocities, "setVelocities");
+  registerFunction(L, l_seqCopyPattern, "copyPattern");
+  registerFunction(L, l_seqNewPattern, "newPattern");
+  registerFunction(L, l_seqCommit, "commit");
+  registerFunction(L, l_seqSetStep, "setStep");
+  registerFunction(L, l_seqSetStepActive, "setStepActive");
+  registerFunction(L, l_seqSetStepNote, "setStepNote");
+  registerFunction(L, l_seqSetStepVelocity, "setStepVelocity");
+  registerFunction(L, l_seqSetStepNoteOn, "setStepNoteOn");
+  registerFunction(L, l_seqSetStepLock, "setStepLock");
+  registerFunction(L, l_seqClearStepLock, "clearStepLock");
+  registerFunction(L, l_seqClearStepLocks, "clearStepLocks");
+  registerFunction(L, l_seqSetActive, "setActive");
+  registerFunction(L, l_seqSetNotes, "setNotes");
+  registerFunction(L, l_seqSetVelocities, "setVelocities");
 
   lua_setglobal(L, "seq");
   addVisibleGlobal("seq");

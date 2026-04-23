@@ -11,6 +11,7 @@
 
 #include "dsp/Buffers.h"
 #include "dsp/Dynamics.h"
+#include "dsp/Math.h"
 #include "synth/Engine.h"
 
 #include <algorithm>
@@ -45,9 +46,16 @@ void sumTrackToMaster(const track::TrackState& track,
   if (!mixState.enabled)
     return;
 
+  float panL; // function overwrites existing value
+  float panR;
+  dsp::math::panToLR(mixState.pan, panL, panR);
+
+  const float gainL = mixState.gain * panL;
+  const float gainR = mixState.gain * panR;
+
   for (uint32_t i = 0; i < numFrames; ++i) {
-    master.busBuffer.left[i] += track.outputBuffer.left[i] * mixState.gain;
-    master.busBuffer.right[i] += track.outputBuffer.right[i] * mixState.gain;
+    master.busBuffer.left[i] += track.outputBuffer.left[i] * gainL;
+    master.busBuffer.right[i] += track.outputBuffer.right[i] * gainR;
   }
 }
 
@@ -80,9 +88,10 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
   // 1. Admit transport actions
   auto previousMode = ctx->transport.mode;
 
-  transport::TransportEvent transEvt;
-  while (ctx->transportQueue.pop(transEvt))
-    transport::applyTransportEvent(ctx->transport, transEvt);
+  // 1. Admit control events (transport, mixer, track selection)
+  app::ControlEvent ctrlEvt;
+  while (ctx->controlQueue.pop(ctrlEvt))
+    events::applyControlEvent(ctx, ctrlEvt);
 
   auto blockInfo = transport::advanceTransportBlock(ctx->transport, previousMode, buffer.numFrames);
 

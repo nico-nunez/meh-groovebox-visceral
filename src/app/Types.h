@@ -4,7 +4,7 @@
 #include <cstdint>
 
 #define RESULT_FIELDS                                                                              \
-  bool ok = false;                                                                                 \
+  bool ok = true;                                                                                  \
   const char* err = nullptr;
 
 #define MAKE_UINT8_ARR(name, size)                                                                 \
@@ -17,9 +17,52 @@
 
 namespace app {
 
-struct Result {
+// =================
+// Function return
+// =================
+
+struct VoidResult {
   RESULT_FIELDS
 };
+
+struct FloatResult {
+  float value{};
+  RESULT_FIELDS
+};
+
+struct DoubleResult {
+  double value{};
+  RESULT_FIELDS
+};
+
+struct IntResult {
+  int value{};
+  RESULT_FIELDS
+};
+
+struct Uint8Result {
+  uint8_t value{};
+  RESULT_FIELDS
+};
+
+struct Uint16Result {
+  uint16_t value{};
+  RESULT_FIELDS
+};
+
+struct Uint32Result {
+  uint32_t value{};
+  RESULT_FIELDS
+};
+
+struct Uint64Result {
+  uint32_t value{};
+  RESULT_FIELDS
+};
+
+// ==============
+// Arrays
+// ==============
 
 struct Uint8Arr {
   uint8_t* data;

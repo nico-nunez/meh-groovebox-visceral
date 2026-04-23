@@ -24,7 +24,7 @@ namespace lua::bindings {
 const std::vector<std::string>& getVisibleGlobals();
 void addVisibleGlobal(const char* name);
 
-inline void registerFunctionCmd(lua_State* L, lua_CFunction l_func, const char* name) {
+inline void registerFunction(lua_State* L, lua_CFunction l_func, const char* name) {
   lua_pushcfunction(L, l_func);
   lua_setfield(L, -2, name);
 }

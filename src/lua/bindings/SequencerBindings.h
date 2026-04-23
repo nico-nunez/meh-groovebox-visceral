@@ -1,6 +1,6 @@
 #pragma once
 
-#include "LuaBindings.h"
+struct lua_State;
 
 namespace lua::bindings {
 

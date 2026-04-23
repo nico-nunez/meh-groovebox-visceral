@@ -1,5 +1,6 @@
 #include "Sequencer.h"
 
+#include "app/Types.h"
 #include "synth/events/Events.h"
 
 #include <cassert>
@@ -248,7 +249,7 @@ PatternSnapshot& getWriteBuffer(SequencerState& state) {
   return state.store.buffers[writeIndex];
 }
 
-Result checkIsEditing(const SequencerState& state) {
+VoidResult checkIsEditing(const SequencerState& state) {
   const char* errMsg = state.isEditing
                            ? nullptr
                            : "no active edit session; call seq.copyPattern or seq.newPattern first";
@@ -256,18 +257,18 @@ Result checkIsEditing(const SequencerState& state) {
   return {state.isEditing, errMsg};
 }
 
-Result checkLaneBounds(uint8_t lane) {
+VoidResult checkLaneBounds(uint8_t lane) {
   const char* errMsg = lane < MAX_TRACKS ? nullptr : "lane index out of range";
   return {lane < MAX_TRACKS, errMsg};
 }
 
-Result checkStepBounds(uint8_t step) {
+VoidResult checkStepBounds(uint8_t step) {
   const char* errMsg = step < MAX_PATTERN_STEPS ? nullptr : "step index out of range";
   return {step < MAX_PATTERN_STEPS, errMsg};
 }
 
-Result validateArgs(const SequencerState& state, uint8_t lane = 0, uint8_t step = 0) {
-  Result res;
+VoidResult validateArgs(const SequencerState& state, uint8_t lane = 0, uint8_t step = 0) {
+  VoidResult res;
   res = checkIsEditing(state);
   if (!res.ok)
     return res;
@@ -361,7 +362,7 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 // TODO / IMPORTANT - Clamp input values!!!!!!
 
 // Preps write buffer
-Result beginPatternEdit(SequencerState& state, bool copy) {
+VoidResult beginPatternEdit(SequencerState& state, bool copy) {
   if (state.isEditing)
     return {false, "Editing already in progress"};
 
@@ -379,7 +380,7 @@ Result beginPatternEdit(SequencerState& state, bool copy) {
 }
 
 // Swap write -> read buffer
-Result commitPattern(SequencerState& state) {
+VoidResult commitPattern(SequencerState& state) {
   auto res = checkIsEditing(state);
   if (!res.ok)
     return res;
@@ -390,7 +391,7 @@ Result commitPattern(SequencerState& state) {
   return res;
 }
 
-Result setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt) {
+VoidResult setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
     return res;
@@ -399,7 +400,7 @@ Result setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEven
   return res;
 }
 
-Result setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active) {
+VoidResult setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
     return res;
@@ -408,7 +409,7 @@ Result setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool act
   return res;
 }
 
-Result setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note) {
+VoidResult setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
     return res;
@@ -417,7 +418,7 @@ Result setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t no
   return res;
 }
 
-Result setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity) {
+VoidResult setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
     return res;
@@ -426,7 +427,7 @@ Result setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_
   return res;
 }
 
-Result setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn) {
+VoidResult setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
     return res;
@@ -435,7 +436,7 @@ Result setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool not
   return res;
 }
 
-Result
+VoidResult
 setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, float value) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
@@ -459,7 +460,7 @@ setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, 
   return res;
 }
 
-Result clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID) {
+VoidResult clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
     return res;
@@ -477,7 +478,7 @@ Result clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t 
   return res;
 }
 
-Result clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step) {
+VoidResult clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step) {
   auto res = validateArgs(state, lane, step);
   if (!res.ok)
     return res;
@@ -487,7 +488,8 @@ Result clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step) {
 }
 
 // ===== Multi-value/full-pattern input =====
-Result setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
+VoidResult
+setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
   auto res = validateArgs(state, lane);
   if (!res.ok)
     return res;
@@ -503,7 +505,8 @@ Result setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* valu
   return res;
 }
 
-Result setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
+VoidResult
+setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
   auto res = validateArgs(state, lane);
   if (!res.ok)
     return res;
@@ -517,7 +520,7 @@ Result setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values
   return res;
 }
 
-Result
+VoidResult
 setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
   auto res = validateArgs(state, lane);
   if (!res.ok)

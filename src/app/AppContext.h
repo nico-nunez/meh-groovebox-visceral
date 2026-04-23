@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/Constants.h"
+#include "app/ControlEvents.h"
 #include "app/Mixer.h"
 #include "app/Sequencer.h"
 #include "app/Track.h"
@@ -16,12 +17,14 @@ namespace audio {
 struct DeviceInfo;
 }
 
+using events::ControlEvent;
+using events::ControlEventQueue;
+
 using dsp::buffers::StereoBufferPool;
 
 using mixer::MasterBusState;
 using mixer::MixerState;
 
-using transport::TransportEventQueue;
 using transport::TransportState;
 
 using sequencer::PatternStore;
@@ -34,7 +37,7 @@ using synth::Engine;
 
 struct AppContext {
   TransportState transport{};
-  TransportEventQueue transportQueue{};
+  ControlEventQueue controlQueue{};
 
   TrackState tracks[MAX_TRACKS]{};
   SequencerState sequencer{};
@@ -77,8 +80,10 @@ inline Engine* getTrackEngine(AppContext* ctx, uint8_t track = MAX_TRACKS) {
 // ==================
 // Event Helpers
 // ==================
-inline bool pushTransportAction(AppContext* ctx, transport::TransportEvent evt) {
-  return ctx->transportQueue.push(evt);
+inline VoidResult pushControlEvent(AppContext* ctx, ControlEvent evt) {
+  if (ctx->controlQueue.push(evt))
+    return {true, nullptr};
+  return {false, "control queue full"};
 }
 
 inline bool pushMIDIEvent(AppContext* ctx, synth::MIDIEvent evt) {

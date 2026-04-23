@@ -24,6 +24,7 @@ using synth::preset::Preset;
 
 struct LuaContext {
   AppContext* app = nullptr;
+  uint8_t currentTrack = 0;
 };
 
 inline LuaContext* getLuaContext(lua_State* L) {

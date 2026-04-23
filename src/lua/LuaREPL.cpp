@@ -1,5 +1,7 @@
 #include "LuaREPL.h"
 
+#include "lua/bindings/LuaBindings.h"
+#include "lua/bindings/MixerBindings.h"
 #include "lua/bindings/ParamBindings.h"
 
 #include "linenoise.h"
@@ -82,6 +84,13 @@ void collectIndexedProxyFields(const char* path,
   size_t prefixLen = strlen(fieldPrefix);
 
   if (const auto* fields = bindings::getParamFields(path)) {
+    for (const auto& field : *fields) {
+      if (strncmp(field.c_str(), fieldPrefix, prefixLen) == 0)
+        out.push_back(field);
+    }
+  }
+
+  if (const auto* fields = bindings::getAppParamFields(path)) {
     for (const auto& field : *fields) {
       if (strncmp(field.c_str(), fieldPrefix, prefixLen) == 0)
         out.push_back(field);

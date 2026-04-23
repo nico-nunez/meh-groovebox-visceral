@@ -1,6 +1,9 @@
 #pragma once
 
-#include "LuaBindings.h"
+#include <string>
+#include <vector>
+
+struct lua_State;
 
 namespace lua::bindings {
 

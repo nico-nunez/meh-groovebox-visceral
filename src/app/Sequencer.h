@@ -164,27 +164,30 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 // Pattern Editing
 // =====================
 
-Result beginPatternEdit(SequencerState& state, bool copy);
-Result commitPattern(SequencerState& state);
+VoidResult beginPatternEdit(SequencerState& state, bool copy);
+VoidResult commitPattern(SequencerState& state);
 
 // Per-step (set all fields at once)
-Result setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt);
+VoidResult setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt);
 
 // Per-field
-Result setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active);
-Result setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note);
-Result setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity);
-Result setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn);
+VoidResult setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active);
+VoidResult setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note);
+VoidResult setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity);
+VoidResult setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn);
 
 // P-lock editing
-Result setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, float value);
-Result clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID);
-Result clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step);
+VoidResult
+setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, float value);
+VoidResult clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID);
+VoidResult clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step);
 
 // Bulk — table length must equal numSteps exactly, otherwise error
-Result setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
-Result setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
-Result
+VoidResult
+setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
+VoidResult
+setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
+VoidResult
 setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
 
 } // namespace app::sequencer

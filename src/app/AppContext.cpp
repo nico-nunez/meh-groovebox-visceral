@@ -1,5 +1,6 @@
 #include "AppContext.h"
 
+#include "app/AppParams.h"
 #include "app/sessions/AudioSession.h"
 
 #include "dsp/Dynamics.h"
@@ -61,6 +62,11 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   }
 
   if (!initAudioBuffers(ctx)) {
+    destroyAppContext(ctx);
+    return nullptr;
+  }
+
+  if (!app::params::initAppParams(ctx).ok) {
     destroyAppContext(ctx);
     return nullptr;
   }

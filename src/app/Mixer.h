@@ -13,6 +13,7 @@ using dsp::dynamics::PeakLimiter;
 struct TrackMixState {
   bool enabled = true;
   float gain = 1.0f;
+  float pan = 0.0f; // [-1.0, 1.0];
 };
 
 struct MixerState {
