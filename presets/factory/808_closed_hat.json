@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "808 Closed Hat",
+    "author": "",
+    "category": "Drums",
+    "description": "TR-808 style closed hat approximation — filtered white noise, short decay, soft grit, and minimal tonal content."
+  },
+  "oscillators": {
+    "osc1": {
+      "bank": "square",
+      "scanPos": 0.0,
+      "mixLevel": 0.03,
+      "octaveOffset": 0,
+      "detuneAmount": 0.0,
+      "phaseMode": "random",
+      "randomRange": 1.0,
+      "resetPhase": 0.0,
+      "ratio": 1.0,
+      "fixed": true,
+      "fixedFreq": 6400.0,
+      "fmDepth": 1.0,
+      "fmRoutes": [],
+      "enabled": true
+    },
+    "osc2": {
+      "bank": "square",
+      "scanPos": 0.0,
+      "mixLevel": 0.0,
+      "octaveOffset": 0,
+      "detuneAmount": 0.0,
+      "phaseMode": "reset",
+      "randomRange": 1.0,
+      "resetPhase": 0.0,
+      "ratio": 1.0,
+      "fixed": false,
+      "fixedFreq": 440.0,
+      "fmDepth": 1.0,
+      "fmRoutes": [],
+      "enabled": false
+    },
+    "osc3": {
+      "bank": "sine",
+      "scanPos": 0.0,
+      "mixLevel": 0.0,
+      "octaveOffset": 0,
+      "detuneAmount": 0.0,
+      "phaseMode": "reset",
+      "randomRange": 1.0,
+      "resetPhase": 0.0,
+      "ratio": 1.0,
+      "fixed": false,
+      "fixedFreq": 440.0,
+      "fmDepth": 1.0,
+      "fmRoutes": [],
+      "enabled": false
+    },
+    "osc4": {
+      "bank": "sine",
+      "scanPos": 0.0,
+      "mixLevel": 0.0,
+      "octaveOffset": 0,
+      "detuneAmount": 0.0,
+      "phaseMode": "reset",
+      "randomRange": 1.0,
+      "resetPhase": 0.0,
+      "ratio": 1.0,
+      "fixed": false,
+      "fixedFreq": 440.0,
+      "fmDepth": 1.0,
+      "fmRoutes": [],
+      "enabled": false
+    },
+    "noise": {
+      "mixLevel": 1.0,
+      "type": "white",
+      "enabled": true
+    }
+  },
+  "envelopes": {
+    "ampEnv": {
+      "attackMs": 0.0,
+      "decayMs": 85.0,
+      "sustainLevel": 0.0,
+      "releaseMs": 10.0,
+      "attackCurve": -1.0,
+      "decayCurve": -7.5,
+      "releaseCurve": -7.0
+    },
+    "filterEnv": {
+      "attackMs": 0.0,
+      "decayMs": 24.0,
+      "sustainLevel": 0.0,
+      "releaseMs": 10.0,
+      "attackCurve": -1.0,
+      "decayCurve": -5.0,
+      "releaseCurve": -5.0
+    },
+    "modEnv": {
+      "attackMs": 0.0,
+      "decayMs": 20.0,
+      "sustainLevel": 0.0,
+      "releaseMs": 8.0,
+      "attackCurve": -1.0,
+      "decayCurve": -5.0,
+      "releaseCurve": -5.0
+    }
+  },
+  "filters": {
+    "svf": {
+      "mode": "hp",
+      "cutoff": 7200.0,
+      "resonance": 0.08,
+      "enabled": true
+    },
+    "ladder": {
+      "cutoff": 11200.0,
+      "resonance": 0.0,
+      "drive": 1.0,
+      "enabled": false
+    }
+  },
+  "lfos": {
+    "lfo1": {
+      "bank": "sine",
+      "rate": 1.0,
+      "amplitude": 1.0,
+      "retrigger": false,
+      "tempoSync": false,
+      "subdivision": "1/4",
+      "delayMs": 0.0,
+      "attackMs": 0.0
+    },
+    "lfo2": {
+      "bank": "sine",
+      "rate": 1.0,
+      "amplitude": 1.0,
+      "retrigger": false,
+      "tempoSync": false,
+      "subdivision": "1/4",
+      "delayMs": 0.0,
+      "attackMs": 0.0
+    },
+    "lfo3": {
+      "bank": "sine",
+      "rate": 1.0,
+      "amplitude": 1.0,
+      "retrigger": false,
+      "tempoSync": false,
+      "subdivision": "1/4",
+      "delayMs": 0.0,
+      "attackMs": 0.0
+    }
+  },
+  "modMatrix": [
+    {
+      "source": "filterEnv",
+      "destination": "svf.cutoff",
+      "amount": 0.3
+    }
+  ],
+  "signalChain": [
+    "saturator",
+    "svf",
+    "ladder"
+  ],
+  "fxChain": [
+    "distortion",
+    "chorus",
+    "phaser",
+    "delay",
+    "reverb"
+  ],
+  "fx": {
+    "distortion": {
+      "drive": 1.25,
+      "mix": 0.08,
+      "type": "soft",
+      "enabled": true
+    },
+    "chorus": {
+      "rate": 1.0,
+      "depth": 0.5,
+      "mix": 0.5,
+      "feedback": 0.0,
+      "enabled": false
+    },
+    "phaser": {
+      "stages": 4,
+      "rate": 0.5,
+      "depth": 1.0,
+      "feedback": 0.5,
+      "mix": 0.5,
+      "enabled": false
+    },
+    "delay": {
+      "time": 0.5,
+      "tempoSync": true,
+      "subdivision": "1/4",
+      "feedback": 0.2,
+      "damping": 0.7,
+      "hpDamping": 0.55,
+      "pingPong": false,
+      "mix": 0.02,
+      "enabled": false
+    },
+    "reverb": {
+      "preDelay": 0.0,
+      "decay": 0.5,
+      "damping": 0.75,
+      "lowDamping": 0.7,
+      "diffusion": 0.55,
+      "bandwidth": 0.75,
+      "modRate": 0.5,
+      "modDepth": 0.1,
+      "mix": 0.03,
+      "enabled": false
+    }
+  },
+  "voice": {
+    "saturator": {
+      "drive": 1.7,
+      "mix": 0.38,
+      "enabled": true
+    },
+    "pitchBend": {
+      "range": 2.0
+    },
+    "mono": {
+      "enabled": true,
+      "legato": false
+    },
+    "portamento": {
+      "time": 50.0,
+      "legato": true,
+      "enabled": false
+    },
+    "unison": {
+      "voices": 4,
+      "detune": 20.0,
+      "spread": 0.5,
+      "enabled": false
+    }
+  }
+}
