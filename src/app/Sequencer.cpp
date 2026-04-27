@@ -425,7 +425,7 @@ VoidResult setPatternStepsPerBeat(SequencerState& state, uint8_t lane, uint8_t s
 
 VoidResult beginPatternEdit(SequencerState& state, bool copy) {
   if (state.isEditing)
-    return {false, "Editing already in progress"};
+    return {false, "edit session already in progress"};
 
   PatternSnapshot& writeBuf = getWriteBuffer(state);
 
@@ -612,4 +612,11 @@ setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, u
   return res;
 }
 
+const LanePattern* getPendingPattern(const SequencerState& state, uint8_t lane) {
+  if (!state.isEditing || lane >= MAX_TRACKS)
+    return nullptr;
+
+  uint32_t writeIndex = 1 - state.store.readIndex.load(std::memory_order_relaxed);
+  return &state.store.buffers[writeIndex].lanes[lane];
+}
 } // namespace app::sequencer

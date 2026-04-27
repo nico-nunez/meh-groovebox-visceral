@@ -1,5 +1,6 @@
 #include "LuaBindings.h"
 
+#include "MIDIBindings.h"
 #include "ParamBindings.h"
 #include "SequencerBindings.h"
 
@@ -639,32 +640,6 @@ void registerSignalCommands(lua_State* L) {
 
   lua_setglobal(L, "signal");
   addVisibleGlobal("signal");
-}
-
-// =========================
-// MIDI Mapping
-// =========================
-int l_midiSetChannelTrack(lua_State* L) {
-  uint8_t channel = static_cast<uint8_t>(luaL_checkinteger(L, 1));
-  uint8_t track = static_cast<uint8_t>(luaL_checkinteger(L, 2));
-
-  if (channel > 15)
-    return luaL_error(L, "channel must be 0-15");
-  if (track >= app::MAX_TRACKS)
-    return luaL_error(L, "track must be 0-%d", app::MAX_TRACKS - 1);
-
-  auto* ctx = getLuaContext(L);
-  ctx->app->midiChannelMap[channel] = track;
-  return CMD_SUCCESS;
-}
-
-void registerMIDICommands(lua_State* L) {
-  lua_newtable(L);
-  lua_pushcfunction(L, l_midiSetChannelTrack);
-  lua_setfield(L, -2, "setChannelTrack");
-
-  lua_setglobal(L, "midi");
-  addVisibleGlobal("midi");
 }
 
 // =========================

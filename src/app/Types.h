@@ -16,11 +16,11 @@
   Uint32Arr name = {name##_data, size}
 
 #define CHECK_RESULT(exp)                                                                          \
-  {                                                                                                \
+  do {                                                                                             \
     auto res = (exp);                                                                              \
     if (!res.ok)                                                                                   \
       return (exp);                                                                                \
-  }
+  } while (0)
 
 namespace app {
 

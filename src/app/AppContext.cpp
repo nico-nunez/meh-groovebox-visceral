@@ -1,6 +1,7 @@
 #include "AppContext.h"
 
 #include "app/AppParams.h"
+#include "app/Constants.h"
 #include "app/sessions/AudioSession.h"
 
 #include "dsp/Dynamics.h"
@@ -47,10 +48,14 @@ bool initAudioBuffers(AppContext* ctx) {
 AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   AppContext* ctx = new AppContext();
 
-  // default: channel N → track N; channels beyond MAX_TRACKS fall back to currentTrack
+  // default: MIDI follows currently selected track
   memset(ctx->midiChannelMap, MIDI_CHANNEL_UNASSIGNED, sizeof(ctx->midiChannelMap));
-  for (uint8_t i = 0; i < MAX_TRACKS; i++)
-    ctx->midiChannelMap[i] = i;
+  ctx->midiStickyTrack = MIDI_CHANNEL_UNASSIGNED;
+
+  // default: channel N → track N; channels beyond MAX_TRACKS fall back to currentTrack
+  // memset(ctx->midiChannelMap, MIDI_CHANNEL_UNASSIGNED, sizeof(ctx->midiChannelMap));
+  // for (uint8_t i = 0; i < MAX_TRACKS; i++)
+  //   ctx->midiChannelMap[i] = i;
 
   // init engines and wire track pointers
   synth::EngineConfig engineConfig{};
@@ -91,8 +96,6 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   ctx->sequencer.numLanes = MAX_TRACKS;
 
   auto& lane0 = ctx->sequencer.store.buffers[0].lanes[0];
-  lane0.numSteps = 16;
-  lane0.stepsPerBeat = 4;
 
   // Kick on every beat (steps 0, 4, 8, 12)
   lane0.steps[0].active = true;
@@ -161,6 +164,76 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   lane1.steps[12].noteOn = true;
   lane1.steps[12].note = 67;
   lane1.steps[12].velocity = 80;
+
+  auto& lane2 = ctx->sequencer.store.buffers[0].lanes[2];
+  lane2.numSteps = 16;
+  lane2.stepsPerBeat = 4;
+
+  // Kick on every beat (steps 0, 4, 8, 12)
+  lane2.steps[0].active = true;
+  lane2.steps[0].noteOn = true;
+  lane2.steps[0].note = 64;
+  lane2.steps[0].velocity = 80;
+  lane2.steps[1].active = true;
+  lane2.steps[1].noteOn = true;
+  lane2.steps[1].note = 64;
+  lane2.steps[1].velocity = 80;
+  lane2.steps[2].active = true;
+  lane2.steps[2].noteOn = true;
+  lane2.steps[2].note = 64;
+  lane2.steps[2].velocity = 80;
+  lane2.steps[3].active = true;
+  lane2.steps[3].noteOn = true;
+  lane2.steps[3].note = 64;
+  lane2.steps[3].velocity = 80;
+  lane2.steps[4].active = true;
+  lane2.steps[4].noteOn = true;
+  lane2.steps[4].note = 67;
+  lane2.steps[4].velocity = 80;
+  lane2.steps[5].active = true;
+  lane2.steps[5].noteOn = true;
+  lane2.steps[5].note = 67;
+  lane2.steps[5].velocity = 80;
+  lane2.steps[6].active = true;
+  lane2.steps[6].noteOn = true;
+  lane2.steps[6].note = 67;
+  lane2.steps[6].velocity = 80;
+  lane2.steps[7].active = true;
+  lane2.steps[7].noteOn = true;
+  lane2.steps[7].note = 67;
+  lane2.steps[7].velocity = 80;
+  lane2.steps[8].active = true;
+  lane2.steps[8].noteOn = true;
+  lane2.steps[8].note = 67;
+  lane2.steps[8].velocity = 80;
+  lane2.steps[9].active = true;
+  lane2.steps[9].noteOn = true;
+  lane2.steps[9].note = 67;
+  lane2.steps[9].velocity = 80;
+  lane2.steps[10].active = true;
+  lane2.steps[10].noteOn = true;
+  lane2.steps[10].note = 67;
+  lane2.steps[10].velocity = 80;
+  lane2.steps[11].active = true;
+  lane2.steps[11].noteOn = true;
+  lane2.steps[11].note = 67;
+  lane2.steps[11].velocity = 80;
+  lane2.steps[12].active = true;
+  lane2.steps[12].noteOn = true;
+  lane2.steps[12].note = 67;
+  lane2.steps[12].velocity = 80;
+  lane2.steps[13].active = true;
+  lane2.steps[13].noteOn = true;
+  lane2.steps[13].note = 67;
+  lane2.steps[13].velocity = 80;
+  lane2.steps[14].active = true;
+  lane2.steps[14].noteOn = true;
+  lane2.steps[14].note = 67;
+  lane2.steps[14].velocity = 80;
+  lane2.steps[15].active = true;
+  lane2.steps[15].noteOn = true;
+  lane2.steps[15].note = 67;
+  lane2.steps[15].velocity = 80;
 
   ctx->sequencer.store.setReadIndex(0);
 

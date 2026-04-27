@@ -44,6 +44,7 @@ struct AppContext {
 
   uint8_t midiChannelMap[16];
   uint8_t currentTrack = 0;
+  uint8_t midiStickyTrack = MIDI_CHANNEL_UNASSIGNED;
 
   StereoBufferPool renderBufferPool{};
   MixerState mixer{};
@@ -87,9 +88,16 @@ inline VoidResult pushControlEvent(AppContext* ctx, ControlEvent evt) {
 }
 
 inline bool pushMIDIEvent(AppContext* ctx, synth::MIDIEvent evt) {
-  uint8_t track = ctx->midiChannelMap[evt.channel];
-  if (track == app::MIDI_CHANNEL_UNASSIGNED)
-    track = ctx->currentTrack;
+  uint8_t track = ctx->currentTrack;
+
+  if (ctx->midiStickyTrack != MIDI_CHANNEL_UNASSIGNED)
+    track = ctx->midiStickyTrack;
+
+  if (evt.channel < MAX_MIDI_CHANNELS) {
+    uint8_t mappedTrack = ctx->midiChannelMap[evt.channel];
+    if (mappedTrack != MIDI_CHANNEL_UNASSIGNED)
+      track = mappedTrack;
+  }
 
   return ctx->tracks[track].queues.midi.push(evt);
 }

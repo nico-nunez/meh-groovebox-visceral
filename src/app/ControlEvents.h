@@ -16,8 +16,15 @@ struct ControlEvent {
     SetBPM,
     Play,
     Stop,
+
     SetCurrentTrack,
+
     SetAppParam,
+
+    SetMidiStickyTrack,
+    ClearMidiStickyTrack,
+    SetMidiChannelTrack,
+    ClearMidiChannelTrack,
   } type{};
 
   union {
@@ -35,6 +42,19 @@ struct ControlEvent {
       uint8_t track;
       float value;
     } setAppParam;
+
+    struct {
+      uint8_t track;
+    } setMidiStickyTrack;
+
+    struct {
+      uint8_t channel;
+      uint8_t track;
+    } setMidiChannelTrack;
+
+    struct {
+      uint8_t channel;
+    } clearMidiChannelTrack;
 
   } data{};
 };
@@ -67,33 +87,13 @@ struct ControlEventQueue {
   }
 };
 
-// ====================
-// Event Factories
-// ====================
-
-inline ControlEvent createBPMEvent(float bpm) {
-  ControlEvent evt{};
-  evt.type = ControlEvent::Type::SetBPM;
-  evt.data.setBPM.bpm = bpm;
-
-  return evt;
-}
-
-inline ControlEvent createCurrentTrackEvent(uint8_t trackIndex) {
-  ControlEvent evt{};
-  evt.type = ControlEvent::Type::SetCurrentTrack;
-  evt.data.setCurrentTrack.track = trackIndex;
-  return evt;
-}
-
-inline ControlEvent createAppParamEvent(AppParamID id, float value, uint8_t track = 0) {
-  ControlEvent evt{};
-  evt.type = ControlEvent::Type::SetAppParam;
-  evt.data.setAppParam.id = id;
-  evt.data.setAppParam.track = track;
-  evt.data.setAppParam.value = value;
-  return evt;
-}
+ControlEvent createBPMEvent(float bpm);
+ControlEvent createCurrentTrackEvent(uint8_t trackIndex);
+ControlEvent createAppParamEvent(AppParamID id, float value, uint8_t track = 0);
+ControlEvent createMidiStickyTrackEvent(uint8_t track);
+ControlEvent createMidiUnstickyEvent();
+ControlEvent createMidiChannelTrackEvent(uint8_t channel, uint8_t track);
+ControlEvent createMidiUnchannelEvent(uint8_t channel);
 
 void applyControlEvent(AppContext* ctx, const ControlEvent& evt);
 
