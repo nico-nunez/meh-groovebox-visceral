@@ -1,4 +1,6 @@
 #include "SequencerBindings.h"
+
+#include "lua/LuaState.h"
 #include "lua/bindings/LuaBindings.h"
 
 #include "app/Sequencer.h"
@@ -6,6 +8,7 @@
 
 #include "synth/params/ParamUtils.h"
 
+#include <cassert>
 #include <cstdint>
 
 namespace lua::bindings {
@@ -169,7 +172,11 @@ VoidResult parseLuaStepEvent(lua_State* L, int index, seq::StepEvent& outEvt) {
 
 // seq.track(trackIndex)
 int l_seqTrack(lua_State* L) {
-  CHECK_ARG_COUNT(1);
+  if (lua_gettop(L) == 0) {
+    auto* ctx = getLuaContext(L);
+    lua_pushinteger(L, ctx->currentTrack + 1);
+  }
+
   uint8_t lane = luaTrackToLane(L, 1);
   pushSeqTrackRef(L, lane);
   return 1;
@@ -221,7 +228,7 @@ int l_seqTrackSetNumSteps(lua_State* L) {
     return luaL_error(L, "numSteps out of range");
 
   auto* ctx = getLuaContext(L);
-  CMD_CHECK(seq::setPatternNumSteps(ctx->app->sequencer, lane, (uint32_t)numSteps));
+  CMD_CHECK(seq::setPatternNumSteps(ctx->app->sequencer, lane, (uint8_t)numSteps));
 }
 
 // track:setStepsPerBeat(n)
@@ -374,20 +381,20 @@ int l_seqStepClearLocks(lua_State* L) {
 
 // Reads a Lua table of integers from the stack at index `stackIdx` into `out`.
 // Returns the number of entries read, or -1 on error.
-int readUint8Table(lua_State* L, int stackIdx, uint8_t* out, uint8_t maxCount) {
+int readUint8Table(lua_State* L, int stackIdx, uint8_t* out, uint8_t fillCount, uint8_t maxCount) {
   if (!lua_istable(L, stackIdx))
     return -1;
 
   int n = (int)lua_rawlen(L, stackIdx);
-  if (n > maxCount)
+  if (n > fillCount || fillCount > maxCount)
     return -1;
 
-  for (int i = 0; i < n; ++i) {
-    lua_rawgeti(L, stackIdx, i + 1);
+  for (int i = 0; i < fillCount; ++i) {
+    lua_rawgeti(L, stackIdx, ((i % n) + 1));
     out[i] = (uint8_t)lua_tointeger(L, -1);
     lua_pop(L, 1);
   }
-  return n;
+  return fillCount;
 }
 
 // seq.editPattern() (aka copy)
@@ -423,7 +430,7 @@ int l_seqTrackSetActiveSteps(lua_State* L) {
     return luaL_error(L, "no active edit session");
 
   uint8_t values[seq::MAX_PATTERN_STEPS];
-  int count = readUint8Table(L, 2, values, seq::MAX_PATTERN_STEPS);
+  int count = readUint8Table(L, 2, values, pattern->numSteps, seq::MAX_PATTERN_STEPS);
   if (count < 0) {
     luaL_error(L, "setActive: invalid table");
     return CMD_FAILURE;
@@ -444,7 +451,7 @@ int l_seqTrackSetNotes(lua_State* L) {
     return luaL_error(L, "no active edit session");
 
   uint8_t values[seq::MAX_PATTERN_STEPS];
-  int count = readUint8Table(L, 2, values, seq::MAX_PATTERN_STEPS);
+  int count = readUint8Table(L, 2, values, pattern->numSteps, seq::MAX_PATTERN_STEPS);
   if (count < 0) {
     luaL_error(L, "setNotes: invalid table");
     return CMD_FAILURE;
@@ -465,9 +472,12 @@ int l_seqTrackSetVelocities(lua_State* L) {
     return luaL_error(L, "no active edit session");
 
   uint8_t values[seq::MAX_PATTERN_STEPS];
-  int count = readUint8Table(L, 2, values, seq::MAX_PATTERN_STEPS);
-  if (count < 0 || count != (int)pattern->numSteps)
-    return luaL_error(L, "table length must match numSteps");
+
+  int count = readUint8Table(L, 2, values, pattern->numSteps, seq::MAX_PATTERN_STEPS);
+  if (count < 0) {
+    luaL_error(L, "setActive: invalid table");
+    return CMD_FAILURE;
+  }
 
   CMD_CHECK(seq::setVelocityPattern(ctx->app->sequencer, lane, values, (uint8_t)count));
 }

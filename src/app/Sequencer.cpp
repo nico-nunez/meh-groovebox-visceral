@@ -392,7 +392,7 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 // =====================
 
 // ==== Pattern-level ====
-VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint32_t numSteps) {
+VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint8_t numSteps) {
   VoidResult res{};
   CHECK_RESULT(validateArgs(state, lane));
 

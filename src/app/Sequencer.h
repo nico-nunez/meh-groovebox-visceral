@@ -24,13 +24,13 @@ inline constexpr double MIN_GATE_BEAT =
     static_cast<double>(DEFAULT_FRAMES) / (DEFAULT_SAMPLE_RATE * (DEFAULT_BPM / 60.0));
 
 // "beat" == Quarter Note
-inline constexpr uint32_t MAX_PATTERN_STEPS = 64;
-inline constexpr uint32_t DEFAULT_PATTERN_STEPS = 16;
+inline constexpr uint8_t MAX_PATTERN_STEPS = 64;
+inline constexpr uint8_t DEFAULT_PATTERN_STEPS = 16;
 
 inline constexpr uint8_t MAX_STEPS_PER_BEAT = 48;
-inline constexpr uint32_t DEFAULT_STEPS_PER_BEAT = 4;
+inline constexpr uint8_t DEFAULT_STEPS_PER_BEAT = 4;
 
-inline constexpr uint32_t MAX_LOCKS_PER_STEP = 4;
+inline constexpr uint8_t MAX_LOCKS_PER_STEP = 4;
 inline constexpr uint32_t MAX_PENDING_UNLOCKS = MAX_LOCKS_PER_STEP * MAX_PATTERN_STEPS;
 
 // ==================
@@ -73,7 +73,7 @@ struct StepEvent {
 
 struct LanePattern {
   StepEvent steps[MAX_PATTERN_STEPS]{};
-  uint32_t numSteps = DEFAULT_PATTERN_STEPS;
+  uint8_t numSteps = DEFAULT_PATTERN_STEPS;
   uint8_t stepsPerBeat = DEFAULT_STEPS_PER_BEAT;
 };
 
@@ -168,7 +168,7 @@ VoidResult beginPatternEdit(SequencerState& state, bool copy);
 VoidResult commitPattern(SequencerState& state);
 
 // ==== Pattern-level ====
-VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint32_t numSteps);
+VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint8_t numSteps);
 VoidResult setPatternStepsPerBeat(SequencerState& state, uint8_t lane, uint8_t stepsPerBeat);
 
 // ==== Step field setters ====
