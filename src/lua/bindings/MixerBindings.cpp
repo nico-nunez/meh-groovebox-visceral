@@ -7,14 +7,12 @@
 #include "dsp/Math.h"
 
 #include <cstdio>
-#include <lua.hpp>
 
 namespace lua::bindings {
 
 static std::unordered_map<std::string, std::vector<std::string>> gHostFields;
 
 namespace {
-using app::MAX_TRACKS;
 using app::pushControlEvent;
 using app::params::AppParamType;
 
@@ -29,55 +27,6 @@ void buildAppFieldIndex() {
     std::sort(fields.begin(), fields.end());
     fields.erase(std::unique(fields.begin(), fields.end()), fields.end());
   }
-}
-
-// =====================
-// Track
-// =====================
-
-int l_trackList(lua_State* L) {
-  auto* ctx = getLuaContext(L);
-  uint8_t cur = ctx->currentTrack; // use Lua shadow for * marker
-
-  printf("trk  gain   pan    mute\n");
-  for (int i = 0; i < (int)MAX_TRACKS; ++i) {
-    const auto& t = ctx->app->mixer.tracks[i];
-    printf("  %d%c %.2f  %+.2f   %s\n",
-           i + 1,
-           (i == (int)cur) ? '*' : ' ',
-           t.gain,
-           t.pan,
-           t.enabled ? "off" : "MUTE");
-  }
-  return CMD_SUCCESS;
-}
-
-int l_trackSelect(lua_State* L) {
-  int track = (int)luaL_checkinteger(L, 1);
-  auto* ctx = getLuaContext(L);
-
-  if (track < 1 || track > (int)app::MAX_TRACKS)
-    return luaL_error(L, "track %d out of range (1–%d)", track, (int)app::MAX_TRACKS);
-
-  uint8_t idx = (uint8_t)(track - 1);
-
-  // Update Lua-side shadow immediately so subsequent Lua commands target
-  // the new track without waiting for the audio callback to drain the queue.
-  ctx->currentTrack = idx;
-
-  auto evt = evt::createCurrentTrackEvent(idx);
-  if (!pushControlEvent(ctx->app, evt).ok)
-    return luaL_error(L, "control queue full");
-
-  // Display reads mixer state directly — one block behind is fine for a print.
-  const auto& t = ctx->app->mixer.tracks[idx];
-  printf("[track %d]  gain: %.2f  pan: %+.2f  mute: %s\n",
-         track,
-         t.gain,
-         t.pan,
-         t.enabled ? "off" : "MUTE");
-
-  return CMD_SUCCESS;
 }
 
 // =====================
@@ -150,10 +99,7 @@ int paramTableNewIndex(lua_State* L) {
 void registerParamProxyTable(lua_State* L, const char* tableName) {
   lua_newtable(L); // proxy
 
-  if (strcmp(tableName, "track") == 0) {
-    registerFunction(L, l_trackList, "list");
-    registerFunction(L, l_trackSelect, "select");
-  } else if (strcmp(tableName, "mixer") == 0) {
+  if (strcmp(tableName, "mixer") == 0) {
     registerFunction(L, l_masterList, "list");
   }
 
@@ -188,7 +134,6 @@ const std::vector<std::string>* getAppParamFields(const char* table) {
 void registerMixerBindings(lua_State* L) {
   buildAppFieldIndex();
 
-  registerParamProxyTable(L, "track");
   registerParamProxyTable(L, "mixer");
 }
 

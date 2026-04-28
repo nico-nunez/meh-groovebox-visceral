@@ -18,8 +18,8 @@ static constexpr const char* SEQ_STEP_METATABLE = "gb.seq.step";
 
 namespace {
 using app::VoidResult;
+namespace evt = app::events;
 namespace seq = app::sequencer;
-
 namespace sp = synth::param;
 
 struct LuaSeqTrackRef {
@@ -180,6 +180,51 @@ int l_seqTrack(lua_State* L) {
   uint8_t lane = luaTrackToLane(L, 1);
   pushSeqTrackRef(L, lane);
   return 1;
+}
+
+int l_seqListTracks(lua_State* L) {
+  auto* ctx = getLuaContext(L);
+  uint8_t cur = ctx->currentTrack; // use Lua shadow for * marker
+
+  printf("trk  gain   pan    mute\n");
+  for (int i = 0; i < (int)seq::MAX_LANES; ++i) {
+    const auto& t = ctx->app->mixer.tracks[i];
+    printf("  %d%c %.2f  %+.2f   %s\n",
+           i + 1,
+           (i == (int)cur) ? '*' : ' ',
+           t.gain,
+           t.pan,
+           t.enabled ? "off" : "MUTE");
+  }
+  return CMD_SUCCESS;
+}
+
+int l_seqSelectTrack(lua_State* L) {
+  int track = (int)luaL_checkinteger(L, 1);
+  auto* ctx = getLuaContext(L);
+
+  if (track < 1 || track > (int)app::MAX_TRACKS)
+    return luaL_error(L, "track %d out of range (1–%d)", track, (int)app::MAX_TRACKS);
+
+  uint8_t idx = (uint8_t)(track - 1);
+
+  // Update Lua-side shadow immediately so subsequent Lua commands target
+  // the new track without waiting for the audio callback to drain the queue.
+  ctx->currentTrack = idx;
+
+  auto evt = evt::createCurrentTrackEvent(idx);
+  if (!pushControlEvent(ctx->app, evt).ok)
+    return luaL_error(L, "control queue full");
+
+  // Display reads mixer state directly — one block behind is fine for a print.
+  const auto& t = ctx->app->mixer.tracks[idx];
+  printf("[track %d]  gain: %.2f  pan: %+.2f  mute: %s\n",
+         track,
+         t.gain,
+         t.pan,
+         t.enabled ? "off" : "MUTE");
+
+  return CMD_SUCCESS;
 }
 
 // =========================
@@ -530,6 +575,9 @@ void registerSeqCommands(lua_State* L) {
 
   lua_newtable(L);
   registerFunction(L, l_seqTrack, "track");
+  registerFunction(L, l_seqListTracks, "listTracks");
+  registerFunction(L, l_seqSelectTrack, "selectTrack");
+
   registerFunction(L, l_seqEditPattern, "editPattern");
   registerFunction(L, l_seqNewPattern, "newPattern");
   registerFunction(L, l_seqCommitPattern, "commitPattern");
