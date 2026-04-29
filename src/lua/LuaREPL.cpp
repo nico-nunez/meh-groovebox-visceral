@@ -1,8 +1,6 @@
 #include "LuaREPL.h"
 
 #include "lua/bindings/LuaBindings.h"
-#include "lua/bindings/MixerBindings.h"
-#include "lua/bindings/ParamBindings.h"
 
 #include "linenoise.h"
 #include "utils/KeyProcessor.h"

@@ -7,6 +7,13 @@
   bool ok = true;                                                                                  \
   const char* err = nullptr;
 
+#define DEFINE_VALUE_RESULT(T, V, Name)                                                            \
+  struct Name##Result {                                                                            \
+    T value = (V);                                                                                 \
+    bool ok = true;                                                                                \
+    const char* err = nullptr;                                                                     \
+  }
+
 #define MAKE_UINT8_ARR(name, size)                                                                 \
   uint8_t name##_data[size] = {};                                                                  \
   Uint8Arr name = {name##_data, size}
@@ -32,40 +39,13 @@ struct VoidResult {
   RESULT_FIELDS
 };
 
-struct FloatResult {
-  float value{};
-  RESULT_FIELDS
-};
-
-struct DoubleResult {
-  double value{};
-  RESULT_FIELDS
-};
-
-struct IntResult {
-  int value{};
-  RESULT_FIELDS
-};
-
-struct Uint8Result {
-  uint8_t value{};
-  RESULT_FIELDS
-};
-
-struct Uint16Result {
-  uint16_t value{};
-  RESULT_FIELDS
-};
-
-struct Uint32Result {
-  uint32_t value{};
-  RESULT_FIELDS
-};
-
-struct Uint64Result {
-  uint32_t value{};
-  RESULT_FIELDS
-};
+DEFINE_VALUE_RESULT(float, 0.0f, Float);
+DEFINE_VALUE_RESULT(double, 0.0, Double);
+DEFINE_VALUE_RESULT(int, 0, Int);
+DEFINE_VALUE_RESULT(uint8_t, 0, UInt8);
+DEFINE_VALUE_RESULT(uint16_t, 0, UInt16);
+DEFINE_VALUE_RESULT(uint32_t, 0, Uint32);
+DEFINE_VALUE_RESULT(uint64_t, 0, Uint64);
 
 // ==============
 // Arrays

@@ -1,5 +1,3 @@
-#include "MIDIBindings.h"
-
 #include "lua/bindings/LuaBindings.h"
 
 namespace lua::bindings {

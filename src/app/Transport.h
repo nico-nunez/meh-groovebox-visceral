@@ -16,6 +16,7 @@ inline constexpr float DEFAULT_BPM = 120.0f;
 enum class TransportMode : uint8_t {
   Stopped = 0,
   Playing = 1,
+  Paused = 2,
 };
 
 struct TransportState {
@@ -67,7 +68,8 @@ struct TransportEvent {
   enum class Type : uint8_t {
     SetBPM = 0,
     Play = 1,
-    Stop = 2,
+    Pause = 2,
+    Stop = 3,
   };
 
   Type type = Type::SetBPM;
@@ -118,6 +120,9 @@ struct TransportEventQueue {
 float clampBPM(float bpm);
 
 void initTransport(TransportState& rt, uint32_t sampleRate, float bpm);
+
+bool isTransportPlaying(TransportMode mode);
+
 void applyTransportEvent(TransportState& rt, const TransportEvent& action);
 
 TransportBlockInfo advanceTransportBlock(TransportState& runtime,

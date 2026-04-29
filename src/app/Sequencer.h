@@ -49,6 +49,11 @@ struct ParamUnlock {
   bool pending = false;
 };
 
+struct StepLocks {
+  const ParamLock* locks = nullptr;
+  uint8_t numLocks = 0;
+};
+
 struct PendingUnlocks {
   ParamUnlock entries[MAX_PENDING_UNLOCKS]{};
 };
@@ -106,6 +111,11 @@ struct LaneState {
   int32_t lastStep = -1;
   bool noteActive = false;
   uint8_t activeNote = 0;
+};
+
+struct PatternConfig {
+  uint8_t numSteps = 0;
+  uint8_t stepsPerBeat = 0;
 };
 
 // =================
@@ -194,6 +204,21 @@ setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8
 VoidResult
 setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
 
-const LanePattern* getPendingPattern(const SequencerState& state, uint8_t lane);
+// phase-1b
+DEFINE_VALUE_RESULT(const StepEvent*, nullptr, GetStep);
+DEFINE_VALUE_RESULT(const LanePattern*, nullptr, GetPattern);
+DEFINE_VALUE_RESULT(StepLocks, StepLocks{}, GetStepLocks);
+DEFINE_VALUE_RESULT(PatternConfig, PatternConfig{}, GetPatternConfig);
+
+GetStepResult getStep(const SequencerState& state, uint8_t lane, uint8_t step);
+GetPatternResult getPendingPattern(const SequencerState& state, uint8_t lane);
+GetPatternResult getActivePattern(const SequencerState& state, uint8_t lane);
+GetPatternConfigResult getPatternConfig(const SequencerState& state, uint8_t lane);
+
+GetStepLocksResult getStepLocks(const SequencerState& state, uint8_t lane, uint8_t step);
+
+VoidResult clearStep(SequencerState& state, uint8_t lane, uint8_t step);
+VoidResult clearTrack(SequencerState& state, uint8_t lane);
+VoidResult clearPattern(SequencerState& state, uint8_t lane);
 
 } // namespace app::sequencer

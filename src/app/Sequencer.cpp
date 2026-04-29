@@ -186,6 +186,8 @@ void fireStep(uint32_t i,
   if (static_cast<int32_t>(i) == laneState.lastStep)
     return;
 
+  laneState.lastStep = static_cast<int32_t>(i);
+
   const StepEvent& step = pattern.steps[i];
   uint32_t stepOffset = beatToSampleOffset(absStepBeat, block);
 
@@ -233,8 +235,6 @@ void fireStep(uint32_t i,
       laneState.noteOffBeat = scheduledNoteOffBeat;
     }
   }
-
-  laneState.lastStep = static_cast<int32_t>(i);
 }
 
 // =====================
@@ -612,11 +612,107 @@ setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, u
   return res;
 }
 
-const LanePattern* getPendingPattern(const SequencerState& state, uint8_t lane) {
-  if (!state.isEditing || lane >= MAX_TRACKS)
-    return nullptr;
+// ====== phase-1b =====
 
+GetPatternResult getPendingPattern(const SequencerState& state, uint8_t lane) {
+  GetPatternResult res{};
+  if (!state.isEditing) {
+    res.ok = false;
+    res.err = "no editing session in progress";
+    return res;
+  }
+  if (lane >= MAX_TRACKS) {
+    res.ok = false;
+    res.err = "lane out of range";
+    return res;
+  }
   uint32_t writeIndex = 1 - state.store.readIndex.load(std::memory_order_relaxed);
-  return &state.store.buffers[writeIndex].lanes[lane];
+  res.value = &state.store.buffers[writeIndex].lanes[lane];
+  return res;
 }
+
+GetPatternResult getActivePattern(const SequencerState& state, uint8_t lane) {
+  GetPatternResult res{};
+  if (lane >= MAX_TRACKS) {
+    res.ok = false;
+    res.err = "lane out of range";
+    return res;
+  }
+  uint32_t readIndex = state.store.readIndex.load(std::memory_order_acquire);
+  res.value = &state.store.buffers[readIndex].lanes[lane];
+  return res;
+}
+
+GetStepResult getStep(const SequencerState& state, uint8_t lane, uint8_t step) {
+  GetStepResult res{};
+  if (lane >= MAX_TRACKS) {
+    res.ok = false;
+    res.err = "step out of range";
+    return res;
+  }
+  uint32_t readIndex = state.store.readIndex.load(std::memory_order_acquire);
+  const LanePattern& pattern = state.store.buffers[readIndex].lanes[lane];
+  if (step >= pattern.numSteps) {
+    res.ok = false;
+    res.err = "step out of range";
+    return res;
+  }
+  res.value = &pattern.steps[step];
+  return res;
+}
+
+GetPatternConfigResult getPatternConfig(const SequencerState& state, uint8_t lane) {
+  GetPatternConfigResult res{};
+  auto patternRes = getActivePattern(state, lane);
+  if (!patternRes.ok) {
+    res.ok = false;
+    res.err = patternRes.err;
+    return res;
+  }
+  res.value.numSteps = patternRes.value->numSteps;
+  res.value.numSteps = patternRes.value->stepsPerBeat;
+  return res;
+}
+
+GetStepLocksResult getStepLocks(const SequencerState& state, uint8_t lane, uint8_t step) {
+  GetStepLocksResult res{};
+
+  auto stepRes = getStep(state, lane, step);
+  if (!stepRes.ok) {
+    res.ok = false;
+    res.err = stepRes.err;
+    return res;
+  }
+  res.value.numLocks = stepRes.value->numLocks;
+  res.value.locks = stepRes.value->locks;
+  return res;
+}
+
+VoidResult clearStep(SequencerState& state, uint8_t lane, uint8_t step) {
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane, step));
+
+  getWriteBuffer(state).lanes[lane].steps[step] = StepEvent{};
+  return res;
+}
+
+VoidResult clearTrack(SequencerState& state, uint8_t lane) {
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane));
+
+  LanePattern& lp = getWriteBuffer(state).lanes[lane];
+  for (uint32_t i = 0; i < MAX_PATTERN_STEPS; ++i)
+    lp.steps[i] = StepEvent{};
+
+  return res;
+}
+
+VoidResult clearPattern(SequencerState& state, uint8_t lane) {
+  VoidResult res{};
+  CHECK_RESULT(validateArgs(state, lane));
+
+  getWriteBuffer(state).lanes[lane] = LanePattern{};
+  return res;
+}
+
 } // namespace app::sequencer

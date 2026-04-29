@@ -79,6 +79,12 @@ void applyControlEvent(AppContext* ctx, const ControlEvent& evt) {
     transport::applyTransportEvent(ctx->transport, t);
     break;
   }
+  case EvtType::Pause: {
+    transport::TransportEvent t{};
+    t.type = transport::TransportEvent::Type::Pause;
+    transport::applyTransportEvent(ctx->transport, t);
+    break;
+  }
   case EvtType::Stop: {
     transport::TransportEvent t{};
     t.type = transport::TransportEvent::Type::Stop;

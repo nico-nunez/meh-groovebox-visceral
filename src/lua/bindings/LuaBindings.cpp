@@ -1,11 +1,6 @@
 #include "LuaBindings.h"
 
-#include "MIDIBindings.h"
-#include "ParamBindings.h"
-#include "SequencerBindings.h"
-
 #include "app/AppContext.h"
-#include "lua/bindings/MixerBindings.h"
 #include "utils/KeyProcessor.h"
 
 #include "dsp/fx/FXChain.h"
@@ -640,54 +635,6 @@ void registerSignalCommands(lua_State* L) {
 
   lua_setglobal(L, "signal");
   addVisibleGlobal("signal");
-}
-
-// =========================
-// Trasnport
-// =========================
-int l_setBPM(lua_State* L) {
-  auto* ctx = getLuaContext(L);
-  float bpm = static_cast<float>(luaL_checknumber(L, 1));
-
-  app::ControlEvent evt{};
-  evt.type = app::ControlEvent::Type::SetBPM;
-  evt.data.setBPM.bpm = bpm;
-
-  CMD_CHECK(app::pushControlEvent(ctx->app, evt));
-}
-
-int l_setPlay(lua_State* L) {
-  auto* ctx = getLuaContext(L);
-
-  app::ControlEvent evt{};
-  evt.type = app::ControlEvent::Type::Play;
-
-  CMD_CHECK(app::pushControlEvent(ctx->app, evt));
-}
-
-int l_setStop(lua_State* L) {
-  auto* ctx = getLuaContext(L);
-
-  app::ControlEvent evt{};
-  evt.type = app::ControlEvent::Type::Stop;
-
-  CMD_CHECK(app::pushControlEvent(ctx->app, evt));
-}
-
-void registerTransportCommands(lua_State* L) {
-  lua_newtable(L);
-
-  lua_pushcfunction(L, l_setBPM);
-  lua_setfield(L, -2, "setBPM");
-
-  lua_pushcfunction(L, l_setPlay);
-  lua_setfield(L, -2, "play");
-
-  lua_pushcfunction(L, l_setStop);
-  lua_setfield(L, -2, "stop");
-
-  lua_setglobal(L, "transport");
-  addVisibleGlobal("transport");
 }
 
 // =========================

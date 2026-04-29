@@ -1,8 +1,7 @@
-#include "MixerBindings.h"
+#include "lua/bindings/LuaBindings.h"
 
 #include "app/AppParams.h"
 #include "app/ControlEvents.h"
-#include "lua/bindings/LuaBindings.h"
 
 #include "dsp/Math.h"
 

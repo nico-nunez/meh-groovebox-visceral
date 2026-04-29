@@ -1,6 +1,3 @@
-#include "SequencerBindings.h"
-
-#include "lua/LuaState.h"
 #include "lua/bindings/LuaBindings.h"
 
 #include "app/Sequencer.h"
@@ -166,6 +163,59 @@ VoidResult parseLuaStepEvent(lua_State* L, int index, seq::StepEvent& outEvt) {
   return {true, nullptr};
 }
 
+void pushStepEvent(lua_State* L, const seq::StepEvent& evt) {
+  lua_newtable(L);
+
+  lua_pushboolean(L, evt.active);
+  lua_setfield(L, -2, "active");
+
+  lua_pushboolean(L, evt.noteOn);
+  lua_setfield(L, -2, "noteOn");
+
+  lua_pushinteger(L, evt.note);
+  lua_setfield(L, -2, "note");
+
+  lua_pushinteger(L, evt.velocity);
+  lua_setfield(L, -2, "velocity");
+
+  lua_pushnumber(L, evt.gate);
+  lua_setfield(L, -2, "gate");
+
+  lua_pushboolean(L, evt.legato);
+  lua_setfield(L, -2, "legato");
+
+  lua_newtable(L); // locks
+  for (uint8_t i = 0; i < evt.numLocks; ++i) {
+    lua_newtable(L); // loock
+
+    lua_pushstring(L, synth::param::PARAM_DEFS[evt.locks[i].paramID].name);
+    lua_setfield(L, -2, "param");
+
+    lua_pushnumber(L, evt.locks[i].value);
+    lua_setfield(L, -2, "value");
+
+    lua_rawseti(L, -2, i + 1);
+  }
+  lua_setfield(L, -2, "locks");
+}
+
+void pushLanePattern(lua_State* L, const seq::LanePattern& pattern) {
+  lua_newtable(L);
+
+  lua_pushinteger(L, pattern.numSteps);
+  lua_setfield(L, -2, "numSteps");
+
+  lua_pushinteger(L, pattern.stepsPerBeat);
+  lua_setfield(L, -2, "stepsPerBeat");
+
+  lua_newtable(L);
+  for (uint32_t i = 0; i < pattern.numSteps; ++i) {
+    pushStepEvent(L, pattern.steps[i]);
+    lua_rawseti(L, -2, (int)i + 1);
+  }
+  lua_setfield(L, -2, "steps");
+}
+
 // =====================
 // Sequencer methods
 // =====================
@@ -279,7 +329,7 @@ int l_seqTrackSetNumSteps(lua_State* L) {
 // track:setStepsPerBeat(n)
 int l_seqTrackSetStepsPerBeat(lua_State* L) {
   CHECK_ARG_COUNT(2);
-  uint8_t lane = luaTrackToLane(L, 1);
+  uint8_t lane = getSeqTrackLane(L, 1);
   int stepsPerBeat = (int)luaL_checkinteger(L, 2);
 
   if (stepsPerBeat < 1 || stepsPerBeat > (int)seq::MAX_STEPS_PER_BEAT)
@@ -287,6 +337,38 @@ int l_seqTrackSetStepsPerBeat(lua_State* L) {
 
   auto* ctx = getLuaContext(L);
   CMD_CHECK(seq::setPatternStepsPerBeat(ctx->app->sequencer, lane, (uint8_t)stepsPerBeat));
+}
+
+// track:getPattern()
+int l_seqTrackGetPattern(lua_State* L) {
+  CHECK_ARG_COUNT(1);
+  uint8_t lane = getSeqTrackLane(L, 1);
+  auto* ctx = getLuaContext(L);
+
+  auto pattern = seq::getActivePattern(ctx->app->sequencer, lane);
+  if (!pattern.ok) {
+    luaL_error(L, pattern.err);
+    return CMD_FAILURE;
+  }
+
+  pushLanePattern(L, *pattern.value);
+  return 1;
+}
+
+// track:clear()
+int l_seqTrackClear(lua_State* L) {
+  CHECK_ARG_COUNT(1);
+  uint8_t lane = getSeqTrackLane(L, 1);
+  auto* ctx = getLuaContext(L);
+  CMD_CHECK(seq::clearTrack(ctx->app->sequencer, lane));
+}
+
+// track:resetPattern()
+int l_seqTrackResetPattern(lua_State* L) {
+  CHECK_ARG_COUNT(1);
+  uint8_t lane = getSeqTrackLane(L, 1);
+  auto* ctx = getLuaContext(L);
+  CMD_CHECK(seq::clearPattern(ctx->app->sequencer, lane));
 }
 
 // ==============================
@@ -420,6 +502,30 @@ int l_seqStepClearLocks(lua_State* L) {
   CMD_CHECK(seq::clearStepLocks(ctx->app->sequencer, ref.lane, ref.step));
 }
 
+// st:get()
+int l_seqStepGet(lua_State* L) {
+  CHECK_ARG_COUNT(1);
+  auto ref = getSeqStepRef(L, 1);
+  auto* ctx = getLuaContext(L);
+
+  auto evt = seq::getStep(ctx->app->sequencer, ref.lane, ref.step);
+  if (!evt.ok) {
+    luaL_error(L, evt.err);
+    return CMD_FAILURE;
+  }
+
+  pushStepEvent(L, *evt.value);
+  return 1;
+}
+
+// st:clear()
+int l_seqStepClear(lua_State* L) {
+  CHECK_ARG_COUNT(1);
+  auto ref = getSeqStepRef(L, 1);
+  auto* ctx = getLuaContext(L);
+  CMD_CHECK(seq::clearStep(ctx->app->sequencer, ref.lane, ref.step));
+}
+
 // ===============================
 // Sequencer -> Track — bulk edit
 // ===============================
@@ -470,12 +576,14 @@ int l_seqTrackSetActiveSteps(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
 
   auto* ctx = getLuaContext(L);
-  const auto* pattern = seq::getPendingPattern(ctx->app->sequencer, lane);
-  if (!pattern)
-    return luaL_error(L, "no active edit session");
+  auto patternRes = seq::getPendingPattern(ctx->app->sequencer, lane);
+  if (!patternRes.ok) {
+    luaL_error(L, patternRes.err);
+    return CMD_FAILURE;
+  }
 
   uint8_t values[seq::MAX_PATTERN_STEPS];
-  int count = readUint8Table(L, 2, values, pattern->numSteps, seq::MAX_PATTERN_STEPS);
+  int count = readUint8Table(L, 2, values, patternRes.value->numSteps, seq::MAX_PATTERN_STEPS);
   if (count < 0) {
     luaL_error(L, "setActive: invalid table");
     return CMD_FAILURE;
@@ -491,17 +599,18 @@ int l_seqTrackSetNotes(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
 
   auto* ctx = getLuaContext(L);
-  const auto* pattern = seq::getPendingPattern(ctx->app->sequencer, lane);
-  if (!pattern)
-    return luaL_error(L, "no active edit session");
+  auto patternRes = seq::getPendingPattern(ctx->app->sequencer, lane);
+  if (!patternRes.ok) {
+    luaL_error(L, patternRes.err);
+    CMD_FAILURE;
+  }
 
   uint8_t values[seq::MAX_PATTERN_STEPS];
-  int count = readUint8Table(L, 2, values, pattern->numSteps, seq::MAX_PATTERN_STEPS);
+  int count = readUint8Table(L, 2, values, patternRes.value->numSteps, seq::MAX_PATTERN_STEPS);
   if (count < 0) {
     luaL_error(L, "setNotes: invalid table");
     return CMD_FAILURE;
   }
-
   CMD_CHECK(seq::setNotePattern(ctx->app->sequencer, lane, values, (uint8_t)count));
 }
 
@@ -512,13 +621,13 @@ int l_seqTrackSetVelocities(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
 
   auto* ctx = getLuaContext(L);
-  const auto* pattern = seq::getPendingPattern(ctx->app->sequencer, lane);
-  if (!pattern)
-    return luaL_error(L, "no active edit session");
+  auto patternRes = seq::getPendingPattern(ctx->app->sequencer, lane);
+  if (!patternRes.ok)
+    return luaL_error(L, patternRes.err);
 
   uint8_t values[seq::MAX_PATTERN_STEPS];
 
-  int count = readUint8Table(L, 2, values, pattern->numSteps, seq::MAX_PATTERN_STEPS);
+  int count = readUint8Table(L, 2, values, patternRes.value->numSteps, seq::MAX_PATTERN_STEPS);
   if (count < 0) {
     luaL_error(L, "setActive: invalid table");
     return CMD_FAILURE;
@@ -542,9 +651,14 @@ void registerSeqTrackType(lua_State* L) {
   registerFunction(L, l_seqTrackSetNumSteps, "setNumSteps");
   registerFunction(L, l_seqTrackSetStepsPerBeat, "setStepsPerBeat");
 
+  registerFunction(L, l_seqTrackGetPattern, "getPattern");
   registerFunction(L, l_seqTrackSetActiveSteps, "setPattern");
   registerFunction(L, l_seqTrackSetNotes, "setNotes");
   registerFunction(L, l_seqTrackSetVelocities, "setVelocities");
+  registerFunction(L, l_seqTrackResetPattern, "resetPattern");
+
+  registerFunction(L, l_seqTrackClear, "clear");
+
   lua_setfield(L, -2, "__methods");
 
   lua_pop(L, 1);
@@ -554,7 +668,10 @@ void registerSeqStepType(lua_State* L) {
   luaL_newmetatable(L, SEQ_STEP_METATABLE);
 
   lua_newtable(L);
+  registerFunction(L, l_seqStepGet, "get");
   registerFunction(L, l_seqStepSet, "set");
+  registerFunction(L, l_seqStepClear, "clear");
+
   registerFunction(L, l_seqStepSetActive, "setActive");
   registerFunction(L, l_seqStepSetNoteOn, "setNoteOn");
   registerFunction(L, l_seqStepSetNote, "setNote");
@@ -564,6 +681,7 @@ void registerSeqStepType(lua_State* L) {
   registerFunction(L, l_seqStepSetLock, "setLock");
   registerFunction(L, l_seqStepClearLock, "clearLock");
   registerFunction(L, l_seqStepClearLocks, "clearLocks");
+
   lua_setfield(L, -2, "__index");
 
   lua_pop(L, 1);
@@ -578,9 +696,9 @@ void registerSeqCommands(lua_State* L) {
   registerFunction(L, l_seqListTracks, "listTracks");
   registerFunction(L, l_seqSelectTrack, "selectTrack");
 
-  registerFunction(L, l_seqEditPattern, "editPattern");
-  registerFunction(L, l_seqNewPattern, "newPattern");
-  registerFunction(L, l_seqCommitPattern, "commitPattern");
+  registerFunction(L, l_seqEditPattern, "edit");
+  registerFunction(L, l_seqNewPattern, "new");
+  registerFunction(L, l_seqCommitPattern, "commit");
 
   lua_setglobal(L, "seq");
   addVisibleGlobal("seq");

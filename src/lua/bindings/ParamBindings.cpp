@@ -1,5 +1,3 @@
-#include "ParamBindings.h"
-
 #include "lua/bindings/LuaBindings.h"
 
 #include "synth/params/ParamDefs.h"

@@ -15,12 +15,10 @@ struct ControlEvent {
   enum class Type : uint8_t {
     SetBPM,
     Play,
+    Pause,
     Stop,
-
     SetCurrentTrack,
-
     SetAppParam,
-
     SetMidiStickyTrack,
     ClearMidiStickyTrack,
     SetMidiChannelTrack,
