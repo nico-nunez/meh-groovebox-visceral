@@ -360,7 +360,7 @@ int l_seqTrackClear(lua_State* L) {
   CHECK_ARG_COUNT(1);
   uint8_t lane = getSeqTrackLane(L, 1);
   auto* ctx = getLuaContext(L);
-  CMD_CHECK(seq::clearTrack(ctx->app->sequencer, lane));
+  CMD_CHECK(seq::clearPattern(ctx->app->sequencer, lane));
 }
 
 // track:resetPattern()

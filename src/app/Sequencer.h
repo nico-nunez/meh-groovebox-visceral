@@ -204,6 +204,8 @@ VoidResult commitPattern(SequencerState& state);
 VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint8_t numSteps);
 VoidResult setPatternStepsPerBeat(SequencerState& state, uint8_t lane, uint8_t stepsPerBeat);
 
+VoidResult clearPattern(SequencerState& state, uint8_t lane);
+
 // ==== Step field setters ====
 VoidResult setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt);
 VoidResult setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active);
@@ -212,6 +214,8 @@ VoidResult setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool
 VoidResult setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity);
 VoidResult setStepGate(SequencerState& state, uint8_t lane, uint8_t step, float gate);
 VoidResult setStepLegato(SequencerState& state, uint8_t lane, uint8_t step, bool legato);
+
+VoidResult clearStep(SequencerState& state, uint8_t lane, uint8_t step);
 
 // ==== P-lock editing ====
 VoidResult
@@ -227,11 +231,21 @@ setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8
 VoidResult
 setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count);
 
+VoidResult replacePatternBank(SequencerState& state, uint8_t lane, const PatternBank& bank);
+VoidResult
+replacePattern(SequencerState& state, uint8_t lane, uint8_t slot, const LanePattern& pattern);
+
+VoidResult clearPatternBankSlot(SequencerState& state, uint8_t lane, uint8_t slot);
+VoidResult setActivePatternSlot(SequencerState& state, uint8_t lane, uint8_t slot);
+
 // phase-1b
 DEFINE_VALUE_RESULT(const StepEvent*, nullptr, GetStep);
 DEFINE_VALUE_RESULT(const LanePattern*, nullptr, GetPattern);
 DEFINE_VALUE_RESULT(StepLocks, StepLocks{}, GetStepLocks);
+
 DEFINE_VALUE_RESULT(PatternConfig, PatternConfig{}, GetPatternConfig);
+DEFINE_VALUE_RESULT(const PatternBank*, nullptr, GetPatternBank);
+DEFINE_VALUE_RESULT(const PatternBankSlot*, nullptr, GetPatternBankSlot);
 
 GetStepResult getStep(const SequencerState& state, uint8_t lane, uint8_t step);
 GetPatternResult getOrCreatePendingPattern(SequencerState& state, uint8_t lane);
@@ -239,10 +253,12 @@ GetPatternResult getPendingPattern(const SequencerState& state, uint8_t lane);
 GetPatternResult getActivePattern(const SequencerState& state, uint8_t lane);
 GetPatternConfigResult getPatternConfig(const SequencerState& state, uint8_t lane);
 
-GetStepLocksResult getStepLocks(const SequencerState& state, uint8_t lane, uint8_t step);
+GetPatternBankResult getPendingPatternBank(const SequencerState& state, uint8_t lane);
+GetPatternBankResult getPatternBank(const SequencerState& state, uint8_t lane);
+GetPatternBankSlotResult getPatternBankSlot(const SequencerState& state,
+                                            uint8_t lane,
+                                            uint8_t slot);
 
-VoidResult clearStep(SequencerState& state, uint8_t lane, uint8_t step);
-VoidResult clearTrack(SequencerState& state, uint8_t lane);
-VoidResult clearPattern(SequencerState& state, uint8_t lane);
+GetStepLocksResult getStepLocks(const SequencerState& state, uint8_t lane, uint8_t step);
 
 } // namespace app::sequencer
