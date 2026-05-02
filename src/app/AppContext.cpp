@@ -2,6 +2,7 @@
 
 #include "app/AppParams.h"
 #include "app/Constants.h"
+#include "app/Sequencer.h"
 #include "app/sessions/AudioSession.h"
 
 #include "dsp/Dynamics.h"
@@ -83,17 +84,14 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
                                  100.0f // release ms
   );
 
-  // init shared transport
   transport::initTransport(ctx->transport, deviceInfo.sampleRate, 120.0f);
 
-  // init sequencer
-  for (uint8_t i = 0; i < MAX_TRACKS; i++) {
-    ctx->sequencer.laneCtxs[i].getParamCallback = getParamCallback;
-    ctx->sequencer.laneCtxs[i].getParamCtx = &ctx->tracks[i].engine;
-    ctx->sequencer.store.buffers[0].lanes[i].numSteps = 16;
-    ctx->sequencer.store.buffers[0].lanes[i].stepsPerBeat = 4;
-  }
-  ctx->sequencer.numLanes = MAX_TRACKS;
+  sequencer::InitSequencerContext seqCtx{};
+  seqCtx.tracksArr = ctx->tracks;
+  seqCtx.numTracks = MAX_TRACKS;
+  seqCtx.callback = getParamCallback;
+  sequencer::initSequencer(ctx->sequencer, seqCtx);
+
   return ctx;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/Constants.h"
+#include "app/Track.h"
 #include "app/Transport.h"
 #include "app/Types.h"
 #include "app/sessions/AudioSession.h"
@@ -19,6 +20,9 @@ using audio::DEFAULT_FRAMES;
 using audio::DEFAULT_SAMPLE_RATE;
 using transport::DEFAULT_BPM;
 
+inline constexpr uint8_t PATTERNS_PER_LANE = 8;
+inline constexpr uint8_t INVALID_PATTERN_SLOT = 0xFF;
+
 inline constexpr uint8_t MAX_LANES = MAX_TRACKS;
 inline constexpr double MIN_GATE_BEAT =
     static_cast<double>(DEFAULT_FRAMES) / (DEFAULT_SAMPLE_RATE * (DEFAULT_BPM / 60.0));
@@ -32,6 +36,8 @@ inline constexpr uint8_t DEFAULT_STEPS_PER_BEAT = 4;
 
 inline constexpr uint8_t MAX_LOCKS_PER_STEP = 4;
 inline constexpr uint32_t MAX_PENDING_UNLOCKS = MAX_LOCKS_PER_STEP * MAX_PATTERN_STEPS;
+
+using ParamCallback = float (*)(uint8_t id, void* ctx);
 
 // ==================
 // P-Lock
@@ -82,8 +88,18 @@ struct LanePattern {
   uint8_t stepsPerBeat = DEFAULT_STEPS_PER_BEAT;
 };
 
+struct PatternBankSlot {
+  bool occupied = false;
+  LanePattern pattern{};
+};
+
+struct PatternBank {
+  PatternBankSlot slots[PATTERNS_PER_LANE]{};
+  uint8_t activeSlot = INVALID_PATTERN_SLOT;
+};
+
 struct PatternSnapshot {
-  LanePattern lanes[MAX_TRACKS]{};
+  PatternBank lanes[MAX_LANES]{};
 };
 
 struct PatternStore {
@@ -168,7 +184,14 @@ struct SequencerBlockWindow {
   bool stoppedThisBlock = false;
 };
 
-void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLaneEvents& evts);
+struct InitSequencerContext {
+  track::TrackState* tracksArr;
+  size_t numTracks;
+  ParamCallback callback;
+};
+
+void initSequencer(SequencerState& seq, InitSequencerContext);
+void runSequencer(SequencerState& seq, SequencerBlockWindow block, SequencerLaneEvents& evts);
 
 // =====================
 // Pattern Editing
@@ -211,6 +234,7 @@ DEFINE_VALUE_RESULT(StepLocks, StepLocks{}, GetStepLocks);
 DEFINE_VALUE_RESULT(PatternConfig, PatternConfig{}, GetPatternConfig);
 
 GetStepResult getStep(const SequencerState& state, uint8_t lane, uint8_t step);
+GetPatternResult getOrCreatePendingPattern(SequencerState& state, uint8_t lane);
 GetPatternResult getPendingPattern(const SequencerState& state, uint8_t lane);
 GetPatternResult getActivePattern(const SequencerState& state, uint8_t lane);
 GetPatternConfigResult getPatternConfig(const SequencerState& state, uint8_t lane);

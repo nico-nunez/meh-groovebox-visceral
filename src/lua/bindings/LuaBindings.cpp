@@ -1,6 +1,7 @@
 #include "LuaBindings.h"
 
 #include "app/AppContext.h"
+#include "lua.h"
 #include "utils/KeyProcessor.h"
 
 #include "dsp/fx/FXChain.h"
@@ -904,6 +905,25 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   addVisibleGlobal("quit");
 
   finalizeCompletionMetadata();
+
+  // NOTE: temp pretty-print until UI is implemented
+  luaL_dostring(L, R"(
+    function inspect(val, indent)
+      indent = indent or ""
+      local t = type(val)
+      if t == "table" then
+        print("{")
+        local inner = indent .. "  "
+        for k, v in pairs(val) do
+          io.write(inner .. tostring(k) .. " = ")
+          inspect(v, inner)
+        end
+        print(indent .. "}")
+      else
+        print(tostring(val))
+      end
+    end
+  )");
 }
 
 } // namespace lua::bindings

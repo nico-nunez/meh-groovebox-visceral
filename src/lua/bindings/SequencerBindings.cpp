@@ -389,15 +389,13 @@ int l_seqStepSet(lua_State* L) {
   CMD_CHECK(seq::setStep(ctx->app->sequencer, ref.lane, ref.step, evt));
 }
 
-// step:setActive(?bool)
+// step:setActive(bool)
 int l_seqStepSetActive(lua_State* L) {
-  int numArgs = lua_gettop(L);
+  CHECK_ARG_COUNT(2);
   auto ref = getSeqStepRef(L, 1);
 
   auto* ctx = getLuaContext(L);
-  bool active = numArgs > 1
-                    ? lua_toboolean(L, 2)
-                    : !ctx->app->sequencer.store.buffers->lanes[ref.lane].steps[ref.step].active;
+  bool active = lua_toboolean(L, 2);
 
   CMD_CHECK(seq::setStepActive(ctx->app->sequencer, ref.lane, ref.step, active));
 }
@@ -422,15 +420,13 @@ int l_seqStepSetVelocity(lua_State* L) {
   CMD_CHECK(seq::setStepVelocity(ctx->app->sequencer, ref.lane, ref.step, velocity));
 }
 
-// step:setNoteOn(?bool)
+// step:setNoteOn(bool)
 int l_seqStepSetNoteOn(lua_State* L) {
-  int numArgs = lua_gettop(L);
+  CHECK_ARG_COUNT(2);
   auto ref = getSeqStepRef(L, 1);
 
   auto* ctx = getLuaContext(L);
-  bool noteOn = numArgs > 1
-                    ? lua_toboolean(L, 2)
-                    : !ctx->app->sequencer.store.buffers->lanes[ref.lane].steps[ref.step].noteOn;
+  bool noteOn = lua_toboolean(L, 2);
 
   CMD_CHECK(seq::setStepNoteOn(ctx->app->sequencer, ref.lane, ref.step, noteOn));
 }
@@ -445,15 +441,13 @@ int l_seqStepSetGate(lua_State* L) {
   CMD_CHECK(seq::setStepGate(ctx->app->sequencer, ref.lane, ref.step, gate));
 }
 
-// step:setLegato(?bool)
+// step:setLegato(bool)
 int l_seqStepSetLegato(lua_State* L) {
-  int numArgs = lua_gettop(L);
+  CHECK_ARG_COUNT(2);
   auto ref = getSeqStepRef(L, 1);
 
   auto* ctx = getLuaContext(L);
-  bool legato = numArgs > 1
-                    ? lua_toboolean(L, 2)
-                    : !ctx->app->sequencer.store.buffers->lanes[ref.lane].steps[ref.step].legato;
+  bool legato = lua_toboolean(L, 2);
 
   CMD_CHECK(seq::setStepLegato(ctx->app->sequencer, ref.lane, ref.step, legato));
 }
@@ -576,7 +570,7 @@ int l_seqTrackSetActiveSteps(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
 
   auto* ctx = getLuaContext(L);
-  auto patternRes = seq::getPendingPattern(ctx->app->sequencer, lane);
+  auto patternRes = seq::getOrCreatePendingPattern(ctx->app->sequencer, lane);
   if (!patternRes.ok) {
     luaL_error(L, patternRes.err);
     return CMD_FAILURE;
@@ -599,7 +593,7 @@ int l_seqTrackSetNotes(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
 
   auto* ctx = getLuaContext(L);
-  auto patternRes = seq::getPendingPattern(ctx->app->sequencer, lane);
+  auto patternRes = seq::getOrCreatePendingPattern(ctx->app->sequencer, lane);
   if (!patternRes.ok) {
     luaL_error(L, patternRes.err);
     CMD_FAILURE;
@@ -621,7 +615,7 @@ int l_seqTrackSetVelocities(lua_State* L) {
   luaL_checktype(L, 2, LUA_TTABLE);
 
   auto* ctx = getLuaContext(L);
-  auto patternRes = seq::getPendingPattern(ctx->app->sequencer, lane);
+  auto patternRes = seq::getOrCreatePendingPattern(ctx->app->sequencer, lane);
   if (!patternRes.ok)
     return luaL_error(L, patternRes.err);
 
