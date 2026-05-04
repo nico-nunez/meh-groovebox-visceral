@@ -7,6 +7,8 @@
 #include "app/Track.h"
 #include "app/Transport.h"
 
+#include "app/doc/DocAuthoringService.h"
+
 #include "dsp/Buffers.h"
 
 #include <cstdint>
@@ -35,6 +37,8 @@ using track::TrackState;
 
 using synth::Engine;
 
+using doc::DocAuthoringService;
+
 struct AppContext {
   TransportState transport{};
   ControlEventQueue controlQueue{};
@@ -49,6 +53,8 @@ struct AppContext {
   StereoBufferPool renderBufferPool{};
   MixerState mixer{};
   MasterBusState masterBus{};
+
+  DocAuthoringService docAuthoring{};
 };
 
 AppContext* createAppContext(audio::DeviceInfo deviceInfo);

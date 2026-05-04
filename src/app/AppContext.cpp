@@ -92,6 +92,8 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   seqCtx.callback = getParamCallback;
   sequencer::initSequencer(ctx->sequencer, seqCtx);
 
+  doc::initDocAuthoringService(ctx->docAuthoring);
+
   return ctx;
 }
 
