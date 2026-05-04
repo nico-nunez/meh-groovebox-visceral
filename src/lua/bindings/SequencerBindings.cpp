@@ -38,6 +38,13 @@ uint8_t luaTrackToLane(lua_State* L, int argIndex) {
   return (uint8_t)(track - 1);
 }
 
+uint8_t luaPatternSlotToIndex(lua_State* L, int argIndex) {
+  int slot = (int)luaL_checkinteger(L, argIndex);
+  if (slot < 1 || slot > (int)seq::PATTERNS_PER_LANE)
+    luaL_error(L, "pattern slot out of range (1-%d)", (int)seq::PATTERNS_PER_LANE);
+  return (uint8_t)(slot - 1);
+}
+
 uint8_t luaStepToIndex(lua_State* L, int argIndex) {
   int step = (int)luaL_checkinteger(L, argIndex);
   if (step < 1 || step > (int)seq::MAX_PATTERN_STEPS)
@@ -163,6 +170,60 @@ VoidResult parseLuaStepEvent(lua_State* L, int index, seq::StepEvent& outEvt) {
   return {true, nullptr};
 }
 
+VoidResult parseLuaLanePattern(lua_State* L, int index, seq::LanePattern& outPattern) {
+  luaL_checktype(L, index, LUA_TTABLE);
+
+  lua_getfield(L, index, "numSteps");
+  outPattern.numSteps = (uint8_t)luaL_checkinteger(L, -1);
+  lua_pop(L, 1);
+
+  lua_getfield(L, index, "stepsPerBeat");
+  outPattern.stepsPerBeat = (uint8_t)luaL_checkinteger(L, -1);
+  lua_pop(L, 1);
+
+  lua_getfield(L, index, "steps");
+  luaL_checktype(L, -1, LUA_TTABLE);
+
+  for (uint8_t i = 0; i < outPattern.numSteps; ++i) {
+    lua_rawgeti(L, -1, i + 1);
+    seq::StepEvent evt{};
+    CHECK_RESULT(parseLuaStepEvent(L, -1, evt));
+    outPattern.steps[i] = evt;
+    lua_pop(L, 1);
+  }
+
+  lua_pop(L, 1);
+  return {true, nullptr};
+}
+
+VoidResult parseLuaPatternBank(lua_State* L, int index, seq::PatternBank& outBank) {
+  luaL_checktype(L, index, LUA_TTABLE);
+
+  outBank.activeSlot = seq::INVALID_PATTERN_SLOT;
+
+  lua_getfield(L, index, "activeSlot");
+  if (!lua_isnil(L, -1))
+    outBank.activeSlot = luaPatternSlotToIndex(L, -1);
+  lua_pop(L, 1);
+
+  lua_getfield(L, index, "patterns");
+  luaL_checktype(L, -1, LUA_TTABLE);
+
+  for (uint8_t slot = 0; slot < seq::PATTERNS_PER_LANE; ++slot) {
+    lua_rawgeti(L, -1, slot + 1);
+    if (!lua_isnil(L, -1)) {
+      seq::LanePattern pattern{};
+      CHECK_RESULT(parseLuaLanePattern(L, -1, pattern));
+      outBank.slots[slot].occupied = true;
+      outBank.slots[slot].pattern = pattern;
+    }
+    lua_pop(L, 1);
+  }
+
+  lua_pop(L, 1);
+  return {true, nullptr};
+}
+
 void pushStepEvent(lua_State* L, const seq::StepEvent& evt) {
   lua_newtable(L);
 
@@ -214,6 +275,25 @@ void pushLanePattern(lua_State* L, const seq::LanePattern& pattern) {
     lua_rawseti(L, -2, (int)i + 1);
   }
   lua_setfield(L, -2, "steps");
+}
+
+void pushPatternBank(lua_State* L, const seq::PatternBank& bank) {
+  lua_newtable(L);
+
+  lua_newtable(L); // patterns
+  for (uint8_t slot = 0; slot < seq::PATTERNS_PER_LANE; ++slot) {
+    if (!bank.slots[slot].occupied)
+      continue;
+
+    pushLanePattern(L, bank.slots[slot].pattern);
+    lua_rawseti(L, -2, slot + 1);
+  }
+  lua_setfield(L, -2, "patterns");
+
+  if (bank.activeSlot != seq::INVALID_PATTERN_SLOT) {
+    lua_pushinteger(L, bank.activeSlot + 1);
+    lua_setfield(L, -2, "activeSlot");
+  }
 }
 
 // =====================
@@ -352,6 +432,20 @@ int l_seqTrackGetPattern(lua_State* L) {
   }
 
   pushLanePattern(L, *pattern.value);
+  return 1;
+}
+
+// track:getPatterns()
+int l_seqTrackGetPatterns(lua_State* L) {
+  CHECK_ARG_COUNT(1);
+  uint8_t lane = getSeqTrackLane(L, 1);
+  auto* ctx = getLuaContext(L);
+
+  auto bank = seq::getPatternBank(ctx->app->sequencer, lane);
+  if (!bank.ok)
+    return luaL_error(L, "%s", bank.err);
+
+  pushPatternBank(L, *bank.value);
   return 1;
 }
 
@@ -630,6 +724,43 @@ int l_seqTrackSetVelocities(lua_State* L) {
   CMD_CHECK(seq::setVelocityPattern(ctx->app->sequencer, lane, values, (uint8_t)count));
 }
 
+// track:replacePattern()
+int l_seqTrackReplacePattern(lua_State* L) {
+  CHECK_ARG_COUNT(3);
+  uint8_t lane = getSeqTrackLane(L, 1);
+  uint8_t slot = luaPatternSlotToIndex(L, 2);
+
+  seq::LanePattern pattern{};
+  auto parseRes = parseLuaLanePattern(L, 3, pattern);
+  if (!parseRes.ok)
+    return luaL_error(L, "%s", parseRes.err);
+
+  auto* ctx = getLuaContext(L);
+  CMD_CHECK(seq::replacePattern(ctx->app->sequencer, lane, slot, pattern));
+}
+
+// track:replacePatterns()
+int l_seqTrackReplacePatterns(lua_State* L) {
+  CHECK_ARG_COUNT(2);
+  uint8_t lane = getSeqTrackLane(L, 1);
+
+  seq::PatternBank bank{};
+  auto parseRes = parseLuaPatternBank(L, 2, bank);
+  if (!parseRes.ok)
+    return luaL_error(L, "%s", parseRes.err);
+
+  auto* ctx = getLuaContext(L);
+  CMD_CHECK(seq::replacePatternBank(ctx->app->sequencer, lane, bank));
+}
+int l_seqTrackClearPatternSlot(lua_State* L) {
+  CHECK_ARG_COUNT(2);
+  uint8_t lane = getSeqTrackLane(L, 1);
+  uint8_t slot = luaPatternSlotToIndex(L, 2);
+
+  auto* ctx = getLuaContext(L);
+  CMD_CHECK(seq::clearPatternBankSlot(ctx->app->sequencer, lane, slot));
+}
+
 } // namespace
 
 // =========================
@@ -650,6 +781,11 @@ void registerSeqTrackType(lua_State* L) {
   registerFunction(L, l_seqTrackSetNotes, "setNotes");
   registerFunction(L, l_seqTrackSetVelocities, "setVelocities");
   registerFunction(L, l_seqTrackResetPattern, "resetPattern");
+
+  registerFunction(L, l_seqTrackGetPatterns, "getPatterns");
+  registerFunction(L, l_seqTrackReplacePatterns, "replacePatterns");
+  registerFunction(L, l_seqTrackReplacePattern, "replacePattern");
+  registerFunction(L, l_seqTrackClearPatternSlot, "clearPatternSlot");
 
   registerFunction(L, l_seqTrackClear, "clear");
 
