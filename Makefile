@@ -70,4 +70,36 @@ $(BUILD_DIR)/%.o: %.c
 clean:
 	rm -rf $(TARGET) $(BUILD_DIR)
 
-.PHONY: debug release clean
+# ====================================
+# Test target
+# ====================================
+TEST_TARGET  = test_runner
+TEST_BUILD   = $(BUILD_DIR)/test
+
+TEST_CPP_SOURCES = $(ENGINE_SOURCES) \
+                   $(shell find \
+                   libs/audio_io/src \
+                   libs/device_io/src \
+                   deps/imgui \
+                   -name '*.cpp') \
+                   $(filter-out src/main.cpp, $(shell find src -name '*.cpp')) \
+                   $(shell find tests -name '*.cpp')
+
+TEST_CPP_OBJECTS = $(patsubst %.cpp,$(TEST_BUILD)/%.o,$(TEST_CPP_SOURCES))
+TEST_C_OBJECTS   = $(patsubst %.c,$(TEST_BUILD)/%.o,$(C_SOURCES))
+
+test: CXXFLAGS = $(DEBUG_FLAGS)
+test: $(TEST_TARGET)
+
+$(TEST_TARGET): $(TEST_CPP_OBJECTS) $(TEST_C_OBJECTS)
+	$(CXX) $(LDFLAGS) -o $(TEST_TARGET) $(TEST_CPP_OBJECTS) $(TEST_C_OBJECTS)
+
+$(TEST_BUILD)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -Itests -c $< -o $@
+
+$(TEST_BUILD)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) -std=c11 $(INCLUDES) -c $< -o $@
+
+.PHONY: debug release clean test

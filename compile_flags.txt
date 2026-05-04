@@ -4,6 +4,7 @@
 -Iengine/libs/dsp/include
 -Iengine/libs/json/include
 -Isrc
+-Itests
 -Ilibs/audio_io/src
 -Ilibs/audio_io/include
 -Ilibs/device_io/include
