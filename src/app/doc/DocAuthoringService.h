@@ -11,6 +11,12 @@ struct AppContext;
 
 namespace app::doc {
 
+struct ApplyRevisionResult {
+  bool ok = false;
+  ApplyOperationID applyOperationID = 0;
+  DocDiagnostics diagnostics{};
+};
+
 struct DocBufferState {
   DocID documentID = 1;
   DocRevision currentRevision = 0;
@@ -35,4 +41,8 @@ struct DocAuthoringService {
 
 void initDocAuthoringService(DocAuthoringService& service);
 
+ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
+                                           app::AppContext& app,
+                                           DocRevision revision,
+                                           const char* bufferText);
 } // namespace app::doc

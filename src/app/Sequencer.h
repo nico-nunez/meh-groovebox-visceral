@@ -199,6 +199,7 @@ void runSequencer(SequencerState& seq, SequencerBlockWindow block, SequencerLane
 
 VoidResult beginPatternEdit(SequencerState& state, bool copy);
 VoidResult commitPattern(SequencerState& state);
+VoidResult abortPatternEdit(SequencerState& state);
 
 // ==== Pattern-level ====
 VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint8_t numSteps);

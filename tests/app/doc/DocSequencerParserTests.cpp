@@ -31,7 +31,7 @@ bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const char* code
 // ---------------------------------------------------------------------------
 
 static void test_populated_patterns_with_explicit_active_slot() {
-  printf("\npopulated_patterns_with_explicit_active_slot\n");
+  TEST("populated_patterns_with_explicit_active_slot");
   auto r = parseDoc("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
                     "steps = { { active = true, note = 60, velocity = 100, gate = 0.8 } } } }, "
                     "activeSlot = 1 })");
@@ -45,7 +45,7 @@ static void test_populated_patterns_with_explicit_active_slot() {
 }
 
 static void test_omitted_patterns_is_explicit_empty() {
-  printf("\nomitted_patterns_is_explicit_empty\n");
+  TEST("omitted_patterns_is_explicit_empty");
   auto r = parseDoc("track(1, TrackSettings {})");
   CHECK("ok", r.ok);
   CHECK("hasTrackState[0]", r.model.hasTrackState[0]);
@@ -56,7 +56,7 @@ static void test_omitted_patterns_is_explicit_empty() {
 }
 
 static void test_empty_patterns_table_is_explicit_empty() {
-  printf("\nempty_patterns_table_is_explicit_empty\n");
+  TEST("empty_patterns_table_is_explicit_empty");
   auto r = parseDoc("track(1, TrackSettings { patterns = {} })");
   CHECK("ok", r.ok);
   CHECK("explicitlyAuthoredEmpty", r.model.tracks[0].explicitlyAuthoredEmpty);
@@ -66,7 +66,7 @@ static void test_empty_patterns_table_is_explicit_empty() {
 }
 
 static void test_invalid_patterns_shape_rejects_revision() {
-  printf("\ninvalid_patterns_shape_rejects_revision\n");
+  TEST("invalid_patterns_shape_rejects_revision");
   auto r = parseDoc("track(1, TrackSettings { patterns = 123 })");
   CHECK("not ok", !r.ok);
   CHECK("diagnostic sequencer.patterns.invalid_shape",
@@ -75,7 +75,7 @@ static void test_invalid_patterns_shape_rejects_revision() {
 }
 
 static void test_omitted_active_slot_is_inferred() {
-  printf("\nomitted_active_slot_is_inferred\n");
+  TEST("omitted_active_slot_is_inferred");
   auto r = parseDoc("track(1, TrackSettings { patterns = { [3] = { numSteps = 1, stepsPerBeat = 4, "
                     "steps = { { active = true } } } } })");
   CHECK("ok", r.ok);
@@ -85,7 +85,7 @@ static void test_omitted_active_slot_is_inferred() {
 }
 
 static void test_active_slot_without_patterns_rejects_revision() {
-  printf("\nactive_slot_without_patterns_rejects_revision\n");
+  TEST("active_slot_without_patterns_rejects_revision");
   auto r = parseDoc("track(1, TrackSettings { activeSlot = 1 })");
   CHECK("not ok", !r.ok);
   CHECK("diagnostic sequencer.active_slot.missing_patterns",
@@ -93,7 +93,7 @@ static void test_active_slot_without_patterns_rejects_revision() {
 }
 
 static void test_active_slot_empty_slot_rejects_revision() {
-  printf("\nactive_slot_empty_slot_rejects_revision\n");
+  TEST("active_slot_empty_slot_rejects_revision");
   auto r = parseDoc("track(1, TrackSettings { patterns = { [2] = { numSteps = 1, stepsPerBeat = 4, "
                     "steps = { { active = true } } } }, activeSlot = 1 })");
   CHECK("not ok", !r.ok);
@@ -102,7 +102,7 @@ static void test_active_slot_empty_slot_rejects_revision() {
 }
 
 static void test_pattern_slot_key_must_be_integer() {
-  printf("\npattern_slot_key_must_be_integer\n");
+  TEST("pattern_slot_key_must_be_integer");
   auto r = parseDoc("track(1, TrackSettings { patterns = { bad = { numSteps = 1, stepsPerBeat = 4, "
                     "steps = { { active = true } } } } })");
   CHECK("not ok", !r.ok);
@@ -111,7 +111,7 @@ static void test_pattern_slot_key_must_be_integer() {
 }
 
 static void test_pattern_slot_key_must_be_in_range() {
-  printf("\npattern_slot_key_must_be_in_range\n");
+  TEST("pattern_slot_key_must_be_in_range");
   auto r =
       parseDoc("track(1, TrackSettings { patterns = { [999] = { numSteps = 1, stepsPerBeat = 4, "
                "steps = { { active = true } } } } })");
@@ -121,7 +121,7 @@ static void test_pattern_slot_key_must_be_in_range() {
 }
 
 static void test_short_steps_table_rejects_pattern() {
-  printf("\nshort_steps_table_rejects_pattern\n");
+  TEST("short_steps_table_rejects_pattern");
   auto r = parseDoc("track(1, TrackSettings { patterns = { [1] = { numSteps = 2, stepsPerBeat = 4, "
                     "steps = { { active = true } } } } })");
   CHECK("not ok", !r.ok);
@@ -130,7 +130,7 @@ static void test_short_steps_table_rejects_pattern() {
 }
 
 static void test_malformed_step_rejects_pattern() {
-  printf("\nmalformed_step_rejects_pattern\n");
+  TEST("malformed_step_rejects_pattern");
   auto r = parseDoc("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
                     "steps = { { active = 'yes' } } } } })");
   CHECK("not ok", !r.ok);
@@ -139,7 +139,7 @@ static void test_malformed_step_rejects_pattern() {
 }
 
 static void test_track_index_must_be_integer() {
-  printf("\ntrack_index_must_be_integer\n");
+  TEST("track_index_must_be_integer");
   auto r = parseDoc("track('one', TrackSettings {})");
   CHECK("not ok", !r.ok);
   CHECK("diagnostic sequencer.track.invalid_index",
@@ -147,7 +147,7 @@ static void test_track_index_must_be_integer() {
 }
 
 static void test_active_slot_must_be_integer() {
-  printf("\nactive_slot_must_be_integer\n");
+  TEST("active_slot_must_be_integer");
   auto r = parseDoc("track(1, TrackSettings { patterns = {}, activeSlot = 'one' })");
   CHECK("not ok", !r.ok);
   CHECK("diagnostic sequencer.active_slot.invalid_type",
@@ -155,7 +155,7 @@ static void test_active_slot_must_be_integer() {
 }
 
 static void test_track_settings_must_be_table() {
-  printf("\ntrack_settings_must_be_table\n");
+  TEST("track_settings_must_be_table");
   auto r = parseDoc("track(1, 123)");
   CHECK("not ok", !r.ok);
   CHECK("diagnostic sequencer.track.invalid_settings",
@@ -163,7 +163,7 @@ static void test_track_settings_must_be_table() {
 }
 
 static void test_duplicate_track_last_block_wins_but_diagnostics_remain() {
-  printf("\nduplicate_track_last_block_wins_but_diagnostics_remain\n");
+  TEST("duplicate_track_last_block_wins_but_diagnostics_remain");
   auto r = parseDoc("track(1, TrackSettings { patterns = 123 }) "
                     "track(1, TrackSettings {})");
   CHECK("not ok", !r.ok);
@@ -173,7 +173,7 @@ static void test_duplicate_track_last_block_wins_but_diagnostics_remain() {
 }
 
 static void test_constructors_preserve_table_arguments() {
-  printf("\nconstructors_preserve_table_arguments\n");
+  TEST("constructors_preserve_table_arguments");
   auto r = parseDoc("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
                     "steps = { { active = true } } } } }) "
                     "SynthSettings { ignored = true } "
@@ -188,6 +188,7 @@ static void test_constructors_preserve_table_arguments() {
 // ---------------------------------------------------------------------------
 
 void runDocSequencerParserTests() {
+  SUITE("DocSequencerParser");
   test_populated_patterns_with_explicit_active_slot();
   test_omitted_patterns_is_explicit_empty();
   test_empty_patterns_table_is_explicit_empty();

@@ -746,6 +746,14 @@ VoidResult commitPattern(SequencerState& state) {
   return res;
 }
 
+VoidResult abortPatternEdit(SequencerState& state) {
+  if (!state.isEditing)
+    return {false, "no editing session in progress"};
+
+  state.isEditing = false;
+  return {true, nullptr};
+}
+
 // =====================
 // (Lane) Pattern APIs
 // =====================
