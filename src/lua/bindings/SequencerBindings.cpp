@@ -174,12 +174,21 @@ VoidResult parseLuaLanePattern(lua_State* L, int index, seq::LanePattern& outPat
   luaL_checktype(L, index, LUA_TTABLE);
 
   lua_getfield(L, index, "numSteps");
-  outPattern.numSteps = (uint8_t)luaL_checkinteger(L, -1);
+  int numSteps = (int)luaL_checkinteger(L, -1);
   lua_pop(L, 1);
 
+  if (numSteps < 1 || numSteps > (int)seq::MAX_PATTERN_STEPS)
+    return {false, "numSteps out of range"};
+
   lua_getfield(L, index, "stepsPerBeat");
-  outPattern.stepsPerBeat = (uint8_t)luaL_checkinteger(L, -1);
+  int stepsPerBeat = (int)luaL_checkinteger(L, -1);
   lua_pop(L, 1);
+
+  if (stepsPerBeat < 1 || stepsPerBeat > (int)seq::MAX_STEPS_PER_BEAT)
+    return {false, "stepsPerBeat out of range"};
+
+  outPattern.numSteps = (uint8_t)numSteps;
+  outPattern.stepsPerBeat = (uint8_t)stepsPerBeat;
 
   lua_getfield(L, index, "steps");
   luaL_checktype(L, -1, LUA_TTABLE);
