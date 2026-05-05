@@ -1,6 +1,7 @@
 #include "TestRunner.h"
 
 #include "app/Sequencer.h"
+#include "app/doc/DocMetadata.h"
 #include "app/doc/DocSequencerParser.h"
 #include "app/doc/DocTypes.h"
 
@@ -183,6 +184,35 @@ static void test_constructors_preserve_table_arguments() {
   CHECK("no diagnostics", r.diagnostics.empty());
 }
 
+static void test_metadata_authored_constructors_are_registered() {
+  TEST("metadata_authored_constructors_are_registered");
+  auto r = parseDoc("TrackSettings {} SynthSettings {} MixerSettings {}");
+  CHECK("ok", r.ok);
+  CHECK("no diagnostics", r.diagnostics.empty());
+}
+
+static void test_metadata_document_track_global_is_registered() {
+  TEST("metadata_document_track_global_is_registered");
+  auto r = parseDoc("track(1, TrackSettings {})");
+  CHECK("ok", r.ok);
+  CHECK("track 0 present", r.model.hasTrackState[0]);
+}
+
+static void test_runtime_apply_file_is_not_registered_in_authored_parser() {
+  TEST("runtime_apply_file_is_not_registered_in_authored_parser");
+  auto r = parseDoc("applyFile('song.lua')");
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic document.lua_eval_failed",
+        hasDiagnostic(r.diagnostics, app::doc::docdiag::DocumentLuaEvalFailed));
+}
+
+static void test_runtime_apply_file_snake_case_is_not_registered_in_authored_parser() {
+  TEST("runtime_apply_file_snake_case_is_not_registered_in_authored_parser");
+  auto r = parseDoc("apply_file('song.lua')");
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic document.lua_eval_failed",
+        hasDiagnostic(r.diagnostics, app::doc::docdiag::DocumentLuaEvalFailed));
+}
 // ---------------------------------------------------------------------------
 // Entry point (called from tests/main.cpp)
 // ---------------------------------------------------------------------------
@@ -205,4 +235,8 @@ void runDocSequencerParserTests() {
   test_track_settings_must_be_table();
   test_duplicate_track_last_block_wins_but_diagnostics_remain();
   test_constructors_preserve_table_arguments();
+  test_metadata_authored_constructors_are_registered();
+  test_metadata_document_track_global_is_registered();
+  test_runtime_apply_file_is_not_registered_in_authored_parser();
+  test_runtime_apply_file_snake_case_is_not_registered_in_authored_parser();
 }

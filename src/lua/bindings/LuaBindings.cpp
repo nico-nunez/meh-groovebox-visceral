@@ -836,7 +836,6 @@ int l_applyFile(lua_State* L) {
     return luaL_error(L, "%s", message);
   }
 
-  printf("OK\n");
   return CMD_SUCCESS;
 }
 

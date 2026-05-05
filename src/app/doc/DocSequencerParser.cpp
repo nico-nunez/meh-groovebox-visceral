@@ -1,4 +1,5 @@
 #include "app/doc/DocSequencerParser.h"
+#include "app/doc/DocMetadata.h"
 
 #include "lua/SequencerLuaParsing.h"
 
@@ -74,7 +75,7 @@ bool parsePatternSlot(lua_State* L,
     const std::string target = patternSlotTarget(track.trackIndex, slot);
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
-                   "sequencer.pattern.invalid_shape",
+                   docdiag::SequencerPatternInvalidShape,
                    parseRes.err,
                    track.trackSpan,
                    target.c_str());
@@ -116,7 +117,7 @@ bool parseActiveSlotField(lua_State* L,
     const std::string target = trackTarget(track.trackIndex, "activeSlot");
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
-                   "sequencer.active_slot.invalid_type",
+                   docdiag::SequencerActiveSlotInvalidType,
                    "activeSlot must be an integer",
                    track.activeSlotSpan,
                    target.c_str());
@@ -131,7 +132,7 @@ bool parseActiveSlotField(lua_State* L,
     const std::string target = trackTarget(track.trackIndex, "activeSlot");
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
-                   "sequencer.active_slot.out_of_range",
+                   docdiag::SequencerActiveSlotOutOfRange,
                    "activeSlot out of range",
                    track.activeSlotSpan,
                    target.c_str());
@@ -156,7 +157,7 @@ bool parsePatternsField(lua_State* L,
     const std::string target = trackTarget(track.trackIndex, "patterns");
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
-                   "sequencer.patterns.invalid_shape",
+                   docdiag::SequencerPatternsInvalidShape,
                    "patterns must be a table",
                    track.patternsSpan,
                    target.c_str());
@@ -174,7 +175,7 @@ bool parsePatternsField(lua_State* L,
       const std::string target = trackTarget(track.trackIndex, "patterns");
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
-                     "sequencer.pattern.slot_invalid_key",
+                     docdiag::SequencerPatternSlotInvalidKey,
                      "pattern slot key must be an integer",
                      track.patternsSpan,
                      target.c_str());
@@ -188,7 +189,7 @@ bool parsePatternsField(lua_State* L,
       const std::string target = trackTarget(track.trackIndex, "patterns");
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
-                     "sequencer.pattern.slot_out_of_range",
+                     docdiag::SequencerPatternSlotOutOfRange,
                      "pattern slot out of range",
                      track.patternsSpan,
                      target.c_str());
@@ -221,7 +222,7 @@ void finalizeTrackNormalization(LuaSequencerParseContext& ctx,
       const std::string target = trackTarget(track.trackIndex, "activeSlot");
       pushDiagnostic(ctx,
                      DiagnosticSource::Normalizer,
-                     "sequencer.active_slot.missing_patterns",
+                     docdiag::SequencerActiveSlotMissingPatterns,
                      "activeSlot requires populated patterns",
                      track.activeSlotSpan,
                      target.c_str());
@@ -242,7 +243,7 @@ void finalizeTrackNormalization(LuaSequencerParseContext& ctx,
       const std::string target = trackTarget(track.trackIndex, "activeSlot");
       pushDiagnostic(ctx,
                      DiagnosticSource::Normalizer,
-                     "sequencer.active_slot.missing_patterns",
+                     docdiag::SequencerActiveSlotMissingPatterns,
                      "activeSlot requires populated patterns",
                      track.activeSlotSpan,
                      target.c_str());
@@ -262,7 +263,7 @@ void finalizeTrackNormalization(LuaSequencerParseContext& ctx,
     const std::string target = trackTarget(track.trackIndex, "activeSlot");
     pushDiagnostic(ctx,
                    DiagnosticSource::Normalizer,
-                   "sequencer.active_slot.empty_slot",
+                   docdiag::SequencerActiveSlotEmptySlot,
                    "activeSlot points to an empty pattern slot",
                    track.activeSlotSpan,
                    target.c_str());
@@ -310,7 +311,7 @@ int l_captureTrack(lua_State* L) {
   if (!lua_isinteger(L, 1)) {
     pushDiagnostic(*ctx,
                    DiagnosticSource::Validator,
-                   "sequencer.track.invalid_index",
+                   docdiag::SequencerTrackInvalidIndex,
                    "track index must be an integer",
                    trackSpan,
                    "track");
@@ -321,7 +322,7 @@ int l_captureTrack(lua_State* L) {
   if (trackNumber < 1 || trackNumber > static_cast<int>(app::MAX_TRACKS)) {
     pushDiagnostic(*ctx,
                    DiagnosticSource::Validator,
-                   "sequencer.track.invalid_index",
+                   docdiag::SequencerTrackInvalidIndex,
                    "track index out of range",
                    trackSpan,
                    "track");
@@ -331,7 +332,7 @@ int l_captureTrack(lua_State* L) {
   if (!lua_istable(L, 2)) {
     pushDiagnostic(*ctx,
                    DiagnosticSource::Validator,
-                   "sequencer.track.invalid_settings",
+                   docdiag::SequencerTrackInvalidSettings,
                    "track settings must be a table",
                    trackSpan,
                    "track");
@@ -381,16 +382,30 @@ void registerPlainConstructor(lua_State* L, const char* name) {
   lua_setglobal(L, name);
 }
 
+bool isAuthoredConstructor(const char* name) {
+  for (const char* constructor : authoredDocumentConstructors()) {
+    if (std::strcmp(constructor, name) == 0)
+      return true;
+  }
+  return false;
+}
+
 void registerParserEnvironment(lua_State* L, LuaSequencerParseContext& ctx) {
   openParserLibraries(L);
 
-  lua_pushlightuserdata(L, &ctx);
-  lua_pushcclosure(L, l_captureTrack, 1);
-  lua_setglobal(L, "track");
+  const DocFunctionMetadata* trackFunction = findAuthoredDocumentFunction(docglobal::Track);
+  if (trackFunction && trackFunction->status == DocMetadataStatus::Implemented) {
+    lua_pushlightuserdata(L, &ctx);
+    lua_pushcclosure(L, l_captureTrack, 1);
+    lua_setglobal(L, trackFunction->name);
+  }
 
-  registerPlainConstructor(L, "TrackSettings");
-  registerPlainConstructor(L, "SynthSettings");
-  registerPlainConstructor(L, "MixerSettings");
+  if (isAuthoredConstructor(docctor::TrackSettings))
+    registerPlainConstructor(L, docctor::TrackSettings);
+  if (isAuthoredConstructor(docctor::SynthSettings))
+    registerPlainConstructor(L, docctor::SynthSettings);
+  if (isAuthoredConstructor(docctor::MixerSettings))
+    registerPlainConstructor(L, docctor::MixerSettings);
 }
 
 } // namespace
@@ -408,7 +423,7 @@ SequencerNormalizeResult parseAndNormalizeSequencerDocument(DocID documentID,
   if (!L) {
     pushDiagnostic(ctx,
                    DiagnosticSource::Parser,
-                   "document.lua_state_failed",
+                   docdiag::DocumentLuaStateFailed,
                    "failed to create authoring Lua state",
                    SourceSpan{},
                    "");
@@ -422,7 +437,7 @@ SequencerNormalizeResult parseAndNormalizeSequencerDocument(DocID documentID,
     const char* message = lua_tostring(L, -1);
     pushDiagnostic(ctx,
                    DiagnosticSource::Parser,
-                   "document.lua_eval_failed",
+                   docdiag::DocumentLuaEvalFailed,
                    message ? message : "failed to evaluate authored document",
                    SourceSpan{},
                    "");

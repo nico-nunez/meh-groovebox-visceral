@@ -1,6 +1,7 @@
 #include "app/doc/DocAuthoringService.h"
 
 #include "app/AppContext.h"
+#include "app/doc/DocMetadata.h"
 #include "app/doc/DocSequencerParser.h"
 #include "app/doc/DocSequencerPlanner.h"
 
@@ -35,7 +36,7 @@ DocDiagnostic makeSequencerAdmissionDiagnostic(DocID documentID,
   diagnostic.source = DiagnosticSource::GrooveboxAdmission;
   diagnostic.documentID = documentID;
   diagnostic.revision = revision;
-  diagnostic.code = "sequencer.admission_failed";
+  diagnostic.code = docdiag::SequencerAdmissionFailed;
   diagnostic.message = message ? message : "sequencer admission failed";
   if (track) {
     const bool activeSlotFailure = isActiveSlotAdmissionFailure(message);
@@ -58,7 +59,7 @@ DocDiagnostic makeFileReadDiagnostic(DocAuthoringService& service,
   diagnostic.source = DiagnosticSource::Parser;
   diagnostic.documentID = service.buffer.documentID;
   diagnostic.revision = revision;
-  diagnostic.code = "document.file.read_failed";
+  diagnostic.code = docdiag::DocumentFileReadFailed;
   diagnostic.message = "failed to read document file";
   diagnostic.relatedTarget = path ? path : "";
   return diagnostic;
