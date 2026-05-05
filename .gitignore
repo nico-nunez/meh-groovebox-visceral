@@ -1,5 +1,6 @@
 # Compiled executables
 main
+*test_runner*
 *.out
 *.exe
 
