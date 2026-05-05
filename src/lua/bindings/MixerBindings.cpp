@@ -1,5 +1,7 @@
 #include "lua/bindings/LuaBindings.h"
 
+#include "lua/LuaRuntimeMetadata.h"
+
 #include "app/AppParams.h"
 #include "app/ControlEvents.h"
 
@@ -98,8 +100,8 @@ int paramTableNewIndex(lua_State* L) {
 void registerParamProxyTable(lua_State* L, const char* tableName) {
   lua_newtable(L); // proxy
 
-  if (strcmp(tableName, "mixer") == 0) {
-    registerFunction(L, l_masterList, "list");
+  if (strcmp(tableName, rtglobal::Mixer) == 0) {
+    registerTableFunction(L, l_masterList, rtmethod::List);
   }
 
   lua_newtable(L); // metatable

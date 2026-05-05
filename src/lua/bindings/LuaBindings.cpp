@@ -1,4 +1,5 @@
 #include "LuaBindings.h"
+#include "lua/LuaRuntimeMetadata.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocAuthoringService.h"
@@ -233,17 +234,14 @@ int l_modList(lua_State* L) {
 
 void registerModCommands(lua_State* L) {
   lua_newtable(L);
-  lua_pushcfunction(L, l_modAdd);
-  lua_setfield(L, -2, "add");
-  lua_pushcfunction(L, l_modRemove);
-  lua_setfield(L, -2, "remove");
-  lua_pushcfunction(L, l_modClear);
-  lua_setfield(L, -2, "clear");
-  lua_pushcfunction(L, l_modList);
-  lua_setfield(L, -2, "list");
 
-  lua_setglobal(L, "mod");
-  addVisibleGlobal("mod");
+  registerTableFunction(L, l_modAdd, rtmethod::Add);
+  registerTableFunction(L, l_modRemove, rtmethod::Remove);
+  registerTableFunction(L, l_modClear, rtmethod::Clear);
+  registerTableFunction(L, l_modList, rtmethod::List);
+
+  lua_setglobal(L, rtglobal::Mod);
+  addVisibleGlobal(rtglobal::Mod);
 }
 
 // =========================
@@ -371,17 +369,14 @@ int l_fmList(lua_State* L) {
 
 void registerFMCommands(lua_State* L) {
   lua_newtable(L);
-  lua_pushcfunction(L, l_fmAdd);
-  lua_setfield(L, -2, "add");
-  lua_pushcfunction(L, l_fmRemove);
-  lua_setfield(L, -2, "remove");
-  lua_pushcfunction(L, l_fmClear);
-  lua_setfield(L, -2, "clear");
-  lua_pushcfunction(L, l_fmList);
-  lua_setfield(L, -2, "list");
 
-  lua_setglobal(L, "fm");
-  addVisibleGlobal("fm");
+  registerTableFunction(L, l_fmAdd, rtmethod::Add);
+  registerTableFunction(L, l_fmRemove, rtmethod::Remove);
+  registerTableFunction(L, l_fmClear, rtmethod::Clear);
+  registerTableFunction(L, l_fmList, rtmethod::List);
+
+  lua_setglobal(L, rtglobal::Fm);
+  addVisibleGlobal(rtglobal::Fm);
 }
 
 // =========================
@@ -479,19 +474,15 @@ int l_presetDump(lua_State* L) {
 
 void registerPresetCommands(lua_State* L) {
   lua_newtable(L);
-  lua_pushcfunction(L, l_presetLoad);
-  lua_setfield(L, -2, "load");
-  lua_pushcfunction(L, l_presetSave);
-  lua_setfield(L, -2, "save");
-  lua_pushcfunction(L, l_presetInit);
-  lua_setfield(L, -2, "init");
-  lua_pushcfunction(L, l_presetList);
-  lua_setfield(L, -2, "list");
-  lua_pushcfunction(L, l_presetDump);
-  lua_setfield(L, -2, "dump");
 
-  lua_setglobal(L, "preset");
-  addVisibleGlobal("preset");
+  registerTableFunction(L, l_presetLoad, rtmethod::Load);
+  registerTableFunction(L, l_presetSave, rtmethod::Save);
+  registerTableFunction(L, l_presetInit, rtmethod::Init);
+  registerTableFunction(L, l_presetList, rtmethod::List);
+  registerTableFunction(L, l_presetDump, rtmethod::Dump);
+
+  lua_setglobal(L, rtglobal::Preset);
+  addVisibleGlobal(rtglobal::Preset);
 }
 
 // =========================
@@ -627,15 +618,13 @@ int l_signalList(lua_State* L) {
 
 void registerSignalCommands(lua_State* L) {
   lua_newtable(L);
-  lua_pushcfunction(L, l_signalSet);
-  lua_setfield(L, -2, "set");
-  lua_pushcfunction(L, l_signalList);
-  lua_setfield(L, -2, "list");
-  lua_pushcfunction(L, l_signalClear);
-  lua_setfield(L, -2, "clear");
 
-  lua_setglobal(L, "signal");
-  addVisibleGlobal("signal");
+  registerTableFunction(L, l_signalSet, rtmethod::Set);
+  registerTableFunction(L, l_signalList, rtmethod::List);
+  registerTableFunction(L, l_signalClear, rtmethod::Clear);
+
+  lua_setglobal(L, rtglobal::Signal);
+  addVisibleGlobal(rtglobal::Signal);
 }
 
 // =========================
@@ -898,33 +887,13 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   registerMixerBindings(L);
 
   // 6. Top-level functions (see lua-command-bindings.md)
-  lua_pushcfunction(L, l_panic);
-  lua_setglobal(L, "panic");
-  addVisibleGlobal("panic");
-
-  lua_pushcfunction(L, l_params);
-  lua_setglobal(L, "params");
-  addVisibleGlobal("params");
-
-  lua_pushcfunction(L, l_get);
-  lua_setglobal(L, "get");
-  addVisibleGlobal("get");
-
-  lua_pushcfunction(L, l_help);
-  lua_setglobal(L, "help");
-  addVisibleGlobal("help");
-
-  lua_pushcfunction(L, l_applyFile);
-  lua_setglobal(L, "applyFile");
-  addVisibleGlobal("applyFile");
-
-  lua_pushcfunction(L, l_clear);
-  lua_setglobal(L, "clear");
-  addVisibleGlobal("clear");
-
-  lua_pushcfunction(L, l_quit);
-  lua_setglobal(L, "quit");
-  addVisibleGlobal("quit");
+  registerGlobalFunction(L, l_panic, rtglobal::Panic);
+  registerGlobalFunction(L, l_params, rtglobal::Params);
+  registerGlobalFunction(L, l_get, rtglobal::Get);
+  registerGlobalFunction(L, l_help, rtglobal::Help);
+  registerGlobalFunction(L, l_applyFile, rtglobal::ApplyFile);
+  registerGlobalFunction(L, l_clear, rtglobal::Clear);
+  registerGlobalFunction(L, l_quit, rtglobal::Quit);
 
   finalizeCompletionMetadata();
 

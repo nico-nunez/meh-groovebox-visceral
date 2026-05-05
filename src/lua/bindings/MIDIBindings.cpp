@@ -1,5 +1,7 @@
 #include "lua/bindings/LuaBindings.h"
 
+#include "lua/LuaRuntimeMetadata.h"
+
 namespace lua::bindings {
 
 namespace {
@@ -76,14 +78,14 @@ int l_midiRoutes(lua_State* L) {
 void registerMIDICommands(lua_State* L) {
   lua_newtable(L);
 
-  registerFunction(L, l_midiSticky, "sticky");
-  registerFunction(L, l_midiUnsticky, "unsticky");
-  registerFunction(L, l_midiChannel, "channel");
-  registerFunction(L, l_midiUnchannel, "unchannel");
-  registerFunction(L, l_midiRoutes, "routes");
+  registerTableFunction(L, l_midiSticky, rtmethod::Sticky);
+  registerTableFunction(L, l_midiUnsticky, rtmethod::Unsticky);
+  registerTableFunction(L, l_midiChannel, rtmethod::Channel);
+  registerTableFunction(L, l_midiUnchannel, rtmethod::Unchannel);
+  registerTableFunction(L, l_midiRoutes, rtmethod::Routes);
 
-  lua_setglobal(L, "midi");
-  addVisibleGlobal("midi");
+  lua_setglobal(L, rtglobal::Midi);
+  addVisibleGlobal(rtglobal::Midi);
 }
 
 } // namespace lua::bindings

@@ -33,9 +33,15 @@ const std::vector<std::string>& getVisibleGlobals();
 void addVisibleGlobal(const char* name);
 
 // IMPORTANT:  table must be top of stack! <- improve at some point...
-inline void registerFunction(lua_State* L, lua_CFunction l_func, const char* name) {
+inline void registerTableFunction(lua_State* L, lua_CFunction l_func, const char* name) {
   lua_pushcfunction(L, l_func);
   lua_setfield(L, -2, name);
+}
+
+inline void registerGlobalFunction(lua_State* L, lua_CFunction l_func, const char* name) {
+  lua_pushcfunction(L, l_func);
+  lua_setglobal(L, name);
+  addVisibleGlobal(name);
 }
 
 // ==== Params ====

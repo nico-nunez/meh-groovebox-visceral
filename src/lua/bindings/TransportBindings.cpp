@@ -1,4 +1,5 @@
 #include "LuaBindings.h"
+#include "lua/LuaRuntimeMetadata.h"
 
 namespace lua::bindings {
 
@@ -46,13 +47,13 @@ int l_setStop(lua_State* L) {
 void registerTransportCommands(lua_State* L) {
   lua_newtable(L);
 
-  registerFunction(L, l_setBPM, "setBPM");
-  registerFunction(L, l_setPlay, "play");
-  registerFunction(L, l_setPause, "pause");
-  registerFunction(L, l_setStop, "stop");
+  registerTableFunction(L, l_setBPM, rtmethod::SetBPM);
+  registerTableFunction(L, l_setPlay, rtmethod::Play);
+  registerTableFunction(L, l_setPause, rtmethod::Pause);
+  registerTableFunction(L, l_setStop, rtmethod::Stop);
 
-  lua_setglobal(L, "transport");
-  addVisibleGlobal("transport");
+  lua_setglobal(L, rtglobal::Transport);
+  addVisibleGlobal(rtglobal::Transport);
 }
 
 } // namespace lua::bindings

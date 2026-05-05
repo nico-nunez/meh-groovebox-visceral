@@ -1,4 +1,6 @@
 #include "lua/SequencerLuaParsing.h"
+
+#include "lua/LuaRuntimeMetadata.h"
 #include "lua/bindings/LuaBindings.h"
 
 #include "app/Sequencer.h"
@@ -266,7 +268,7 @@ int l_seqTrackIndex(lua_State* L) {
   auto* ref = checkSeqTrackRef(L, 1);
   const char* key = luaL_checkstring(L, 2);
 
-  if (strcmp(key, "step") == 0) {
+  if (strcmp(key, rtmethod::Step) == 0) {
     lua_pushinteger(L, ref->lane);
     lua_pushcclosure(L, l_seqTrackSelectStep, 1);
     return 1;
@@ -663,24 +665,21 @@ void registerSeqTrackType(lua_State* L) {
   lua_setfield(L, -2, "__index");
 
   lua_newtable(L);
-  registerFunction(L, l_seqTrackSetNumSteps, "setNumSteps");
-  registerFunction(L, l_seqTrackSetStepsPerBeat, "setStepsPerBeat");
 
-  registerFunction(L, l_seqTrackGetPattern, "getPattern");
-  registerFunction(L, l_seqTrackSetActiveSteps, "setPattern");
-  registerFunction(L, l_seqTrackSetNotes, "setNotes");
-  registerFunction(L, l_seqTrackSetVelocities, "setVelocities");
-  registerFunction(L, l_seqTrackResetPattern, "resetPattern");
-
-  registerFunction(L, l_seqTrackGetPatterns, "getPatterns");
-  registerFunction(L, l_seqTrackReplacePatterns, "replacePatterns");
-  registerFunction(L, l_seqTrackReplacePattern, "replacePattern");
-  registerFunction(L, l_seqTrackClearPatternSlot, "clearPatternSlot");
-
-  registerFunction(L, l_seqTrackClear, "clear");
+  registerTableFunction(L, l_seqTrackSetNumSteps, rtmethod::SetNumSteps);
+  registerTableFunction(L, l_seqTrackSetStepsPerBeat, rtmethod::SetStepsPerBeat);
+  registerTableFunction(L, l_seqTrackGetPattern, rtmethod::GetPattern);
+  registerTableFunction(L, l_seqTrackSetActiveSteps, rtmethod::SetPattern);
+  registerTableFunction(L, l_seqTrackSetNotes, rtmethod::SetNotes);
+  registerTableFunction(L, l_seqTrackSetVelocities, rtmethod::SetVelocities);
+  registerTableFunction(L, l_seqTrackResetPattern, rtmethod::ResetPattern);
+  registerTableFunction(L, l_seqTrackGetPatterns, rtmethod::GetPatterns);
+  registerTableFunction(L, l_seqTrackReplacePatterns, rtmethod::ReplacePatterns);
+  registerTableFunction(L, l_seqTrackReplacePattern, rtmethod::ReplacePattern);
+  registerTableFunction(L, l_seqTrackClearPatternSlot, rtmethod::ClearPatternSlot);
+  registerTableFunction(L, l_seqTrackClear, rtmethod::Clear);
 
   lua_setfield(L, -2, "__methods");
-
   lua_pop(L, 1);
 }
 
@@ -688,22 +687,20 @@ void registerSeqStepType(lua_State* L) {
   luaL_newmetatable(L, SEQ_STEP_METATABLE);
 
   lua_newtable(L);
-  registerFunction(L, l_seqStepGet, "get");
-  registerFunction(L, l_seqStepSet, "set");
-  registerFunction(L, l_seqStepClear, "clear");
-
-  registerFunction(L, l_seqStepSetActive, "setActive");
-  registerFunction(L, l_seqStepSetNoteOn, "setNoteOn");
-  registerFunction(L, l_seqStepSetNote, "setNote");
-  registerFunction(L, l_seqStepSetVelocity, "setVelocity");
-  registerFunction(L, l_seqStepSetGate, "setGate");
-  registerFunction(L, l_seqStepSetLegato, "setLegato");
-  registerFunction(L, l_seqStepSetLock, "setLock");
-  registerFunction(L, l_seqStepClearLock, "clearLock");
-  registerFunction(L, l_seqStepClearLocks, "clearLocks");
+  registerTableFunction(L, l_seqStepGet, rtmethod::Get);
+  registerTableFunction(L, l_seqStepSet, rtmethod::Set);
+  registerTableFunction(L, l_seqStepClear, rtmethod::Clear);
+  registerTableFunction(L, l_seqStepSetActive, rtmethod::SetActive);
+  registerTableFunction(L, l_seqStepSetNoteOn, rtmethod::SetNoteOn);
+  registerTableFunction(L, l_seqStepSetNote, rtmethod::SetNote);
+  registerTableFunction(L, l_seqStepSetVelocity, rtmethod::SetVelocity);
+  registerTableFunction(L, l_seqStepSetGate, rtmethod::SetGate);
+  registerTableFunction(L, l_seqStepSetLegato, rtmethod::SetLegato);
+  registerTableFunction(L, l_seqStepSetLock, rtmethod::SetLock);
+  registerTableFunction(L, l_seqStepClearLock, rtmethod::ClearLock);
+  registerTableFunction(L, l_seqStepClearLocks, rtmethod::ClearLocks);
 
   lua_setfield(L, -2, "__index");
-
   lua_pop(L, 1);
 }
 
@@ -712,16 +709,16 @@ void registerSeqCommands(lua_State* L) {
   registerSeqStepType(L);
 
   lua_newtable(L);
-  registerFunction(L, l_seqTrack, "track");
-  registerFunction(L, l_seqListTracks, "listTracks");
-  registerFunction(L, l_seqSelectTrack, "selectTrack");
 
-  registerFunction(L, l_seqEditPattern, "edit");
-  registerFunction(L, l_seqNewPattern, "new");
-  registerFunction(L, l_seqCommitPattern, "commit");
+  registerTableFunction(L, l_seqTrack, rtmethod::Track);
+  registerTableFunction(L, l_seqListTracks, rtmethod::ListTracks);
+  registerTableFunction(L, l_seqSelectTrack, rtmethod::SelectTrack);
+  registerTableFunction(L, l_seqEditPattern, rtmethod::Edit);
+  registerTableFunction(L, l_seqNewPattern, rtmethod::New);
+  registerTableFunction(L, l_seqCommitPattern, rtmethod::Commit);
 
-  lua_setglobal(L, "seq");
-  addVisibleGlobal("seq");
+  lua_setglobal(L, rtglobal::Seq);
+  addVisibleGlobal(rtglobal::Seq);
 }
 
 } // namespace lua::bindings
