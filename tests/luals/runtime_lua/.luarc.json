@@ -1,0 +1,7 @@
+{
+  "workspace.library": [
+    "../../../generated/luals/runtime_lua"
+  ],
+  "runtime.version": "Lua 5.4",
+  "diagnostics.globals": []
+}

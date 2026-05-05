@@ -28,6 +28,7 @@ void runDocAuthoringServiceLifecycleTests();
 void runDocMetadataTests();
 void runDocSequencerParserTests();
 void runDocSequencerPlannerTests();
+void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
 
 int main(int argc, char* argv[]) {
@@ -50,6 +51,7 @@ int main(int argc, char* argv[]) {
   runDocMetadataTests();
   runDocSequencerParserTests();
   runDocSequencerPlannerTests();
+  runLuaLSStubGenerationTests();
   runLuaRuntimeMetadataTests();
 
   printSuiteResult();

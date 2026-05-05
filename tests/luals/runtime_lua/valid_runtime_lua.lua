@@ -1,0 +1,6 @@
+applyFile("song.lua")
+transport.setBPM(128)
+transport.play()
+midi.routes()
+preset.list()
+params()

@@ -103,3 +103,26 @@ $(TEST_BUILD)/%.o: %.c
 	$(CC) -std=c11 $(INCLUDES) -c $< -o $@
 
 .PHONY: debug release clean test
+
+# ====================================
+# LuaLS Stub Generation
+# ====================================
+LUALS_STUB_GENERATOR = $(BUILD_DIR)/generate_luals_stubs
+
+LUALS_STUB_GENERATOR_SOURCES = \
+	tools/luals/generate_luals_stubs.cpp \
+	src/app/doc/DocMetadata.cpp \
+	src/lua/LuaRuntimeMetadata.cpp \
+	src/app/AppParams.cpp
+
+$(LUALS_STUB_GENERATOR): $(LUALS_STUB_GENERATOR_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(DEBUG_FLAGS) $(INCLUDES) -o $@ $(LUALS_STUB_GENERATOR_SOURCES)
+
+luals-stubs: $(LUALS_STUB_GENERATOR)
+	$(LUALS_STUB_GENERATOR) --out generated/luals
+
+check-luals-stubs: $(LUALS_STUB_GENERATOR)
+	$(LUALS_STUB_GENERATOR) --out generated/luals --check
+
+.PHONY: debug release clean test luals-stubs check-luals-stubs
