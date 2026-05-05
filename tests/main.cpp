@@ -30,6 +30,7 @@ void runDocSequencerParserTests();
 void runDocSequencerPlannerTests();
 void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
+void runMetadataVerificationTests();
 
 int main(int argc, char* argv[]) {
   int buildSecs = -1;
@@ -53,6 +54,7 @@ int main(int argc, char* argv[]) {
   runDocSequencerPlannerTests();
   runLuaLSStubGenerationTests();
   runLuaRuntimeMetadataTests();
+  runMetadataVerificationTests();
 
   printSuiteResult();
 
