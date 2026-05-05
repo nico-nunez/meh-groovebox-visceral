@@ -47,7 +47,7 @@ static void test_successful_non_empty_apply_admits_and_commits() {
 
   auto result = app::doc::applySequencerRevision(service, app, 1, kNonEmptyTrack1);
   CHECK("ok", result.ok);
-  CHECK("status Admitted", service.apply.status == app::doc::ApplyStatus::Admitted);
+  CHECK("status Completed", service.apply.status == app::doc::ApplyStatus::Completed);
   CHECK("lastAdmittedRevision == 1", service.buffer.lastAdmittedRevision == 1);
   CHECK("has admitted model", service.apply.hasLastAdmittedSequencerModel);
   CHECK("admitted track 0 present", service.apply.lastAdmittedSeqModel.hasTrackState[0]);
@@ -69,7 +69,7 @@ static void test_successful_no_op_apply_does_not_require_staging() {
   // Empty text produces a valid no-op revision (no track calls)
   auto result = app::doc::applySequencerRevision(service, app, 2, "");
   CHECK("ok", result.ok);
-  CHECK("status Admitted", service.apply.status == app::doc::ApplyStatus::Admitted);
+  CHECK("status Completed", service.apply.status == app::doc::ApplyStatus::Completed);
   CHECK("unrelated isEditing still true", app.sequencer.isEditing);
   CHECK("admitted revision == 2", service.apply.lastAdmittedSeqModel.revision == 2);
   CHECK("track 0 preserved", service.apply.lastAdmittedSeqModel.hasTrackState[0]);
@@ -88,7 +88,7 @@ static void test_omitted_track_preserves_previous_admitted_target() {
   // Admit only track 2 (index 1) as explicit empty
   auto result = app::doc::applySequencerRevision(service, app, 2, "track(2, TrackSettings {})");
   CHECK("ok", result.ok);
-  CHECK("status Admitted", service.apply.status == app::doc::ApplyStatus::Admitted);
+  CHECK("status Completed", service.apply.status == app::doc::ApplyStatus::Completed);
   CHECK("track 0 still present", service.apply.lastAdmittedSeqModel.hasTrackState[0]);
   CHECK("track 1 present", service.apply.lastAdmittedSeqModel.hasTrackState[1]);
   CHECK("track 0 slot 0 preserved",

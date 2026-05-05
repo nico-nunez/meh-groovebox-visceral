@@ -28,6 +28,7 @@ struct DocBufferState {
 struct DocApplyState {
   ApplyOperationID nextApplyOperationID = 1;
   ApplyOperationID activeApplyOperationID = 0;
+  ApplyOperationID lastSupersededApplyOperationID = 0;
   ApplyStatus status = ApplyStatus::Idle;
   DocDiagnostics diagnostics{};
   AuthoredSeqDocModel lastAdmittedSeqModel{};
@@ -45,4 +46,20 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
                                            app::AppContext& app,
                                            DocRevision revision,
                                            const char* bufferText);
+
+ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
+                                       app::AppContext& app,
+                                       const char* path);
+
+inline const DocDiagnostics& getDocDiagnostics(const DocAuthoringService& service) {
+  return service.apply.diagnostics;
+}
+
+inline ApplyStatus getApplyStatus(const DocAuthoringService& service) {
+  return service.apply.status;
+}
+
+inline DocRevision getLastAdmittedRevision(const DocAuthoringService& service) {
+  return service.buffer.lastAdmittedRevision;
+}
 } // namespace app::doc

@@ -5,7 +5,10 @@
 #include "app/doc/DocSequencerPlanner.h"
 
 #include <cstdint>
+#include <fstream>
+#include <sstream>
 #include <string>
+
 namespace app::doc {
 namespace {
 
@@ -47,9 +50,51 @@ DocDiagnostic makeSequencerAdmissionDiagnostic(DocID documentID,
   return diagnostic;
 }
 
-void failApply(DocAuthoringService& service, DocDiagnostics diagnostics) {
-  service.apply.diagnostics = diagnostics;
+DocDiagnostic makeFileReadDiagnostic(DocAuthoringService& service,
+                                     DocRevision revision,
+                                     const char* path) {
+  DocDiagnostic diagnostic{};
+  diagnostic.severity = DiagnosticSeverity::Error;
+  diagnostic.source = DiagnosticSource::Parser;
+  diagnostic.documentID = service.buffer.documentID;
+  diagnostic.revision = revision;
+  diagnostic.code = "document.file.read_failed";
+  diagnostic.message = "failed to read document file";
+  diagnostic.relatedTarget = path ? path : "";
+  return diagnostic;
+}
+
+ApplyOperationID beginApplyOperation(DocAuthoringService& service) {
+  if (service.apply.activeApplyOperationID != 0) {
+    service.apply.lastSupersededApplyOperationID = service.apply.activeApplyOperationID;
+    service.apply.status = ApplyStatus::Superseded;
+    service.apply.activeApplyOperationID = 0;
+  }
+
+  const ApplyOperationID id = service.apply.nextApplyOperationID++;
+  service.apply.activeApplyOperationID = id;
+  service.apply.status = ApplyStatus::Started;
+  service.apply.diagnostics.clear();
+  return id;
+}
+
+void markApplyFailed(DocAuthoringService& service, ApplyOperationID id) {
+  if (service.apply.activeApplyOperationID == id)
+    service.apply.activeApplyOperationID = 0;
   service.apply.status = ApplyStatus::Failed;
+}
+
+void markApplyCompleted(DocAuthoringService& service, ApplyOperationID id) {
+  if (service.apply.activeApplyOperationID == id)
+    service.apply.activeApplyOperationID = 0;
+  service.apply.status = ApplyStatus::Completed;
+}
+
+void failApply(DocAuthoringService& service,
+               ApplyOperationID operationID,
+               DocDiagnostics diagnostics) {
+  service.apply.diagnostics = diagnostics;
+  markApplyFailed(service, operationID);
 }
 
 bool submitSequencerPlan(DocAuthoringService& service,
@@ -129,37 +174,38 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
                                            DocRevision revision,
                                            const char* bufferText) {
   ApplyRevisionResult result{};
-  result.applyOperationID = service.apply.nextApplyOperationID++;
+  const ApplyOperationID operationID = beginApplyOperation(service);
+  result.applyOperationID = operationID;
 
   service.buffer.currentRevision = revision;
   service.buffer.bufferText = bufferText ? bufferText : "";
-  service.apply.activeApplyOperationID = result.applyOperationID;
-  service.apply.diagnostics.clear();
-  service.apply.status = ApplyStatus::Validated;
 
   SequencerNormalizeResult normalize =
       parseAndNormalizeSequencerDocument(service.buffer.documentID,
                                          revision,
                                          service.buffer.bufferText.c_str());
   if (!normalize.ok) {
-    failApply(service, normalize.diagnostics);
+    failApply(service, operationID, normalize.diagnostics);
+    result.diagnostics = service.apply.diagnostics;
+    return result;
+  }
+
+  service.apply.status = ApplyStatus::Validated;
+
+  const AuthoredSeqDocModel* previous =
+      service.apply.hasLastAdmittedSequencerModel ? &service.apply.lastAdmittedSeqModel : nullptr;
+  PlannedSequencerApply plan = planSequencerApply(normalize.model, previous);
+  if (!plan.ok) {
+    failApply(service, operationID, plan.diagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
 
   service.apply.status = ApplyStatus::Planned;
-  const AuthoredSeqDocModel* previous =
-      service.apply.hasLastAdmittedSequencerModel ? &service.apply.lastAdmittedSeqModel : nullptr;
-  PlannedSequencerApply plan = planSequencerApply(normalize.model, previous);
-  if (!plan.ok) {
-    failApply(service, plan.diagnostics);
-    result.diagnostics = service.apply.diagnostics;
-    return result;
-  }
 
   DocDiagnostics admissionDiagnostics{};
   if (!submitSequencerPlan(service, app, revision, normalize.model, plan, admissionDiagnostics)) {
-    failApply(service, admissionDiagnostics);
+    failApply(service, operationID, admissionDiagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
@@ -168,11 +214,37 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   service.apply.hasLastAdmittedSequencerModel = true;
   service.buffer.lastAdmittedRevision = revision;
   service.apply.status = ApplyStatus::Admitted;
+  markApplyCompleted(service, operationID);
 
   result.ok = true;
   result.diagnostics = service.apply.diagnostics;
   return result;
 }
+
+ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
+                                       app::AppContext& app,
+                                       const char* path) {
+  const DocRevision revision = service.buffer.currentRevision + 1;
+  service.buffer.path = path ? path : "";
+
+  std::ifstream input(service.buffer.path);
+  if (!input) {
+    ApplyRevisionResult result{};
+    const ApplyOperationID operationID = beginApplyOperation(service);
+    result.applyOperationID = operationID;
+    service.buffer.currentRevision = revision;
+    service.apply.diagnostics.push_back(makeFileReadDiagnostic(service, revision, path));
+    markApplyFailed(service, operationID);
+    result.diagnostics = service.apply.diagnostics;
+    return result;
+  }
+
+  std::ostringstream buffer;
+  buffer << input.rdbuf();
+  const std::string fileText = buffer.str();
+  return applySequencerRevision(service, app, revision, fileText.c_str());
+}
+
 void initDocAuthoringService(DocAuthoringService& service) {
   service = DocAuthoringService{};
 }

@@ -1,7 +1,7 @@
 #include "LuaBindings.h"
 
 #include "app/AppContext.h"
-#include "lua.h"
+#include "app/doc/DocAuthoringService.h"
 #include "utils/KeyProcessor.h"
 
 #include "dsp/fx/FXChain.h"
@@ -822,6 +822,25 @@ int l_help(lua_State* L) {
 }
 
 // =================
+// File Parsing
+// =================
+int l_applyFile(lua_State* L) {
+  CHECK_ARG_COUNT(1);
+  const char* path = luaL_checkstring(L, 1);
+
+  auto* ctx = getLuaContext(L);
+  auto result = app::doc::applySequencerFile(ctx->app->docAuthoring, *ctx->app, path);
+  if (!result.ok) {
+    const char* message = result.diagnostics.empty() ? "document apply failed"
+                                                     : result.diagnostics.front().message.c_str();
+    return luaL_error(L, "%s", message);
+  }
+
+  printf("OK\n");
+  return CMD_SUCCESS;
+}
+
+// =================
 // Clear (terminal)
 // =================
 int l_clear(lua_State*) {
@@ -895,6 +914,10 @@ void registerSynthBindings(lua_State* L, AppContext& appCtx) {
   lua_pushcfunction(L, l_help);
   lua_setglobal(L, "help");
   addVisibleGlobal("help");
+
+  lua_pushcfunction(L, l_applyFile);
+  lua_setglobal(L, "applyFile");
+  addVisibleGlobal("applyFile");
 
   lua_pushcfunction(L, l_clear);
   lua_setglobal(L, "clear");
