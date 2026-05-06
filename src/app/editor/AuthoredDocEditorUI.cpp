@@ -1,0 +1,249 @@
+#include "app/editor/AuthoredDocEditorUI.h"
+
+#include "app/AppContext.h"
+#include "app/doc/DocDiagnostics.h"
+#include "app/editor/AuthoredDocEditor.h"
+
+#include "imgui.h"
+
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <vector>
+
+namespace app::editor {
+namespace {
+
+constexpr std::size_t kTextCapacity = 64 * 1024;
+constexpr std::size_t kPathCapacity = 1024;
+
+struct EditorUiScratch {
+  std::vector<char> textBuffer = std::vector<char>(kTextCapacity, '\0');
+  char pathBuffer[kPathCapacity]{};
+  bool initialized = false;
+};
+
+EditorUiScratch gScratch{};
+
+const char* severityLabel(app::doc::DiagnosticSeverity severity) {
+  switch (severity) {
+  case app::doc::DiagnosticSeverity::Error:
+    return "error";
+  case app::doc::DiagnosticSeverity::Warning:
+    return "warning";
+  case app::doc::DiagnosticSeverity::Info:
+    return "info";
+  }
+  return "unknown";
+}
+
+std::size_t countBufferLines(const char* text) {
+  std::size_t lines = 1;
+  for (const char* cursor = text; *cursor != '\0'; ++cursor) {
+    if (*cursor == '\n')
+      ++lines;
+  }
+  return lines;
+}
+
+float lineNumberGutterWidth(std::size_t lineCount) {
+  char lastLine[32]{};
+  std::snprintf(lastLine, sizeof(lastLine), "%zu", lineCount);
+  return ImGui::CalcTextSize(lastLine).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+}
+
+void drawLineNumberGutter(std::size_t lineCount, float gutterWidth, float editorHeight) {
+  ImGui::BeginChild("AuthoredDocumentLineNumbers",
+                    ImVec2(gutterWidth, editorHeight),
+                    false,
+                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+  for (std::size_t line = 1; line <= lineCount; ++line) {
+    char label[32]{};
+    std::snprintf(label, sizeof(label), "%zu", line);
+
+    const float labelWidth = ImGui::CalcTextSize(label).x;
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + gutterWidth - labelWidth -
+                         ImGui::GetStyle().FramePadding.x);
+    ImGui::TextUnformatted(label);
+  }
+  ImGui::PopStyleColor();
+
+  ImGui::EndChild();
+}
+
+void syncScratchFromState(const AuthoredDocEditorState& editor) {
+  if (!gScratch.initialized) {
+    std::fill(gScratch.textBuffer.begin(), gScratch.textBuffer.end(), '\0');
+    const std::size_t copySize =
+        std::min(editor.buffer.text.size(), gScratch.textBuffer.size() - 1);
+    std::memcpy(gScratch.textBuffer.data(), editor.buffer.text.data(), copySize);
+
+    std::snprintf(gScratch.pathBuffer,
+                  sizeof(gScratch.pathBuffer),
+                  "%s",
+                  editor.buffer.filePath.c_str());
+    gScratch.initialized = true;
+  }
+}
+
+void forceScratchText(const std::string& text) {
+  std::fill(gScratch.textBuffer.begin(), gScratch.textBuffer.end(), '\0');
+  const std::size_t copySize = std::min(text.size(), gScratch.textBuffer.size() - 1);
+  std::memcpy(gScratch.textBuffer.data(), text.data(), copySize);
+}
+
+void forceScratchPath(const std::string& path) {
+  std::snprintf(gScratch.pathBuffer, sizeof(gScratch.pathBuffer), "%s", path.c_str());
+}
+
+void drawFileControls(AuthoredDocEditorState& editor) {
+  ImGui::InputText("Path", gScratch.pathBuffer, sizeof(gScratch.pathBuffer));
+
+  if (ImGui::Button("New")) {
+    newBlankDocument(editor);
+    forceScratchText(editor.buffer.text);
+    forceScratchPath(editor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("New Template")) {
+    newTemplateDocument(editor);
+    forceScratchText(editor.buffer.text);
+    forceScratchPath(editor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Open")) {
+    if (loadDocument(editor, gScratch.pathBuffer)) {
+      forceScratchText(editor.buffer.text);
+      forceScratchPath(editor.buffer.filePath);
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Save")) {
+    if (editor.buffer.hasFilePath)
+      saveDocument(editor);
+    else
+      saveDocumentAs(editor, gScratch.pathBuffer);
+    forceScratchPath(editor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Save As")) {
+    saveDocumentAs(editor, gScratch.pathBuffer);
+    forceScratchPath(editor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Reload")) {
+    if (reloadDocument(editor)) {
+      forceScratchText(editor.buffer.text);
+      forceScratchPath(editor.buffer.filePath);
+    }
+  }
+}
+
+void drawStatusLine(const AuthoredDocEditorState& editor) {
+  ImGui::Text("revision %u  last applied %u  %s",
+              editor.buffer.applyRevision,
+              editor.buffer.lastAppliedRevision,
+              editor.buffer.dirty ? "dirty" : "clean");
+
+  if (!editor.fileMessage.text.empty())
+    ImGui::TextUnformatted(editor.fileMessage.text.c_str());
+  if (!editor.applyMessage.text.empty())
+    ImGui::TextUnformatted(editor.applyMessage.text.c_str());
+}
+
+void drawDiagnosticList(AuthoredDocEditorState& editor) {
+  ImGui::SeparatorText("Backend diagnostics");
+
+  if (editor.backendDiagnostics.empty()) {
+    ImGui::TextDisabled("No backend diagnostics");
+    return;
+  }
+
+  for (std::size_t i = 0; i < editor.backendDiagnostics.size(); ++i) {
+    const auto& diagnostic = editor.backendDiagnostics[i];
+    ImGui::PushID(static_cast<int>(i));
+    const bool hasSpan = diagnostic.span.line != 0;
+    if (!hasSpan)
+      ImGui::BeginDisabled();
+
+    const std::string label = std::string(severityLabel(diagnostic.severity)) + " " +
+                              diagnostic.code + "  line " + std::to_string(diagnostic.span.line) +
+                              ":" + std::to_string(diagnostic.span.column);
+
+    if (ImGui::Selectable(label.c_str(), false) && hasSpan)
+      requestDiagnosticJump(editor, diagnostic);
+
+    if (!hasSpan)
+      ImGui::EndDisabled();
+
+    if (!diagnostic.message.empty())
+      ImGui::TextWrapped("%s", diagnostic.message.c_str());
+    if (!diagnostic.relatedTarget.empty())
+      ImGui::TextDisabled("%s", diagnostic.relatedTarget.c_str());
+
+    ImGui::PopID();
+  }
+}
+
+void consumeJumpRequest(AuthoredDocEditorState& editor) {
+  if (!editor.jumpRequest.pending)
+    return;
+
+  // InputTextMultiline does not expose stable public caret positioning.
+  // Slice 1 satisfies click-to-jump by scrolling the editor child to the line.
+  // If a later text widget exposes caret control, keep this request shape and
+  // upgrade the implementation behind it.
+  const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+  const float line =
+      editor.jumpRequest.line > 0 ? static_cast<float>(editor.jumpRequest.line - 1) : 0.0f;
+  ImGui::SetScrollY(line * lineHeight);
+  clearDiagnosticJump(editor);
+}
+
+} // namespace
+
+void drawAuthoredDocEditor(AppContext& app) {
+  AuthoredDocEditorState& editor = app.authoredEditor;
+  syncScratchFromState(editor);
+
+  ImGui::SeparatorText("Authored Document");
+  drawFileControls(editor);
+
+  const std::size_t lineCount = countBufferLines(gScratch.textBuffer.data());
+  const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+  const float editorHeight = std::max(lineHeight * 22.0f,
+                                      lineHeight * static_cast<float>(lineCount + 1) +
+                                          ImGui::GetStyle().FramePadding.y * 2.0f);
+  const float gutterWidth = lineNumberGutterWidth(lineCount);
+
+  ImGui::BeginChild("AuthoredDocumentText",
+                    ImVec2(0.0f, ImGui::GetTextLineHeight() * 22.0f),
+                    ImGuiChildFlags_Borders,
+                    ImGuiWindowFlags_HorizontalScrollbar);
+  consumeJumpRequest(editor);
+  drawLineNumberGutter(lineCount, gutterWidth, editorHeight);
+  ImGui::SameLine();
+
+  const float editorWidth =
+      std::max(360.0f, ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x);
+  if (ImGui::InputTextMultiline("##authored-document-buffer",
+                                gScratch.textBuffer.data(),
+                                gScratch.textBuffer.size(),
+                                ImVec2(editorWidth, editorHeight),
+                                ImGuiInputTextFlags_AllowTabInput)) {
+    markBufferEdited(editor, gScratch.textBuffer.data());
+  }
+  ImGui::EndChild();
+
+  if (ImGui::Button("Apply")) {
+    applyEditorBuffer(editor, app);
+  }
+
+  drawStatusLine(editor);
+  drawDiagnosticList(editor);
+}
+
+} // namespace app::editor

@@ -8,6 +8,7 @@
 #include "app/Transport.h"
 
 #include "app/doc/DocAuthoringService.h"
+#include "app/editor/AuthoredDocEditor.h"
 
 #include "dsp/Buffers.h"
 
@@ -38,6 +39,7 @@ using track::TrackState;
 using synth::Engine;
 
 using doc::DocAuthoringService;
+using editor::AuthoredDocEditorState;
 
 struct AppContext {
   TransportState transport{};
@@ -55,6 +57,7 @@ struct AppContext {
   MasterBusState masterBus{};
 
   DocAuthoringService docAuthoring{};
+  AuthoredDocEditorState authoredEditor{};
 };
 
 AppContext* createAppContext(audio::DeviceInfo deviceInfo);

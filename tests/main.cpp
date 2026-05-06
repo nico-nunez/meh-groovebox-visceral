@@ -28,9 +28,11 @@ void runDocAuthoringServiceLifecycleTests();
 void runDocMetadataTests();
 void runDocSequencerParserTests();
 void runDocSequencerPlannerTests();
+void runSequencerPlaybackTests();
 void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
 void runMetadataVerificationTests();
+void runAuthoredDocEditorTests();
 
 int main(int argc, char* argv[]) {
   int buildSecs = -1;
@@ -49,10 +51,12 @@ int main(int argc, char* argv[]) {
   runDocApplyFileBindingTests();
   runDocAuthoringServiceSeqApplyTests();
   runDocAuthoringServiceLifecycleTests();
-  runDocMetadataTests();
+  runAuthoredDocEditorTests();
   runDocSequencerParserTests();
   runDocSequencerPlannerTests();
+  runSequencerPlaybackTests();
   runLuaLSStubGenerationTests();
+  runDocMetadataTests();
   runLuaRuntimeMetadataTests();
   runMetadataVerificationTests();
 

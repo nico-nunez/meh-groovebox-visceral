@@ -125,6 +125,7 @@ struct LaneState {
   PendingUnlocks unlocks{};
   double noteOffBeat = -1.0;
   int32_t lastStep = -1;
+  int64_t lastStepCycle = -1;
   bool noteActive = false;
   uint8_t activeNote = 0;
 };

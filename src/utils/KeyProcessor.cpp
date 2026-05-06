@@ -1,6 +1,7 @@
 #include "KeyProcessor.h"
 
 #include "app/AppContext.h"
+#include "app/editor/AuthoredDocEditorUI.h"
 
 #include "device_io/MidiCapture.h"
 #include "synth/events/Events.h"
@@ -20,7 +21,13 @@
 namespace app::utils {
 namespace evt = synth::events;
 
+enum class MainView {
+  Display,
+  Editor,
+};
+
 static GLFWwindow* g_window = nullptr;
+static MainView g_activeView = MainView::Editor;
 
 void requestQuit() {
   if (g_window) {
@@ -28,16 +35,37 @@ void requestQuit() {
   }
 }
 
-static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
+static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int mods) {
   if (action == GLFW_REPEAT) {
     return;
   }
 
   auto* ctx = static_cast<AppContext*>(glfwGetWindowUserPointer(window));
 
+  const bool commandModifier = (mods & GLFW_MOD_SUPER) != 0 || (mods & GLFW_MOD_CONTROL) != 0;
+  if (action == GLFW_PRESS && commandModifier) {
+    if (key == GLFW_KEY_1) {
+      g_activeView = MainView::Display;
+      return;
+    }
+    if (key == GLFW_KEY_2) {
+      g_activeView = MainView::Editor;
+      return;
+    }
+  }
+
+  ImGuiIO& io = ImGui::GetIO();
+  if (io.WantCaptureKeyboard) {
+    return;
+  }
+
   if (action == GLFW_PRESS) {
     if (key == GLFW_KEY_ESCAPE) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
+      return;
+    }
+
+    if (g_activeView != MainView::Display) {
       return;
     }
 
@@ -59,6 +87,10 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
       return;
     }
 
+    if (g_activeView != MainView::Display) {
+      return;
+    }
+
     uint8_t note = asciiToMidi(static_cast<char>(tolower(key)));
     if (note == 0) {
       return;
@@ -69,6 +101,49 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
     event.data.noteOff = {note, 0};
     event.channel = MIDI_CHANNEL_UNASSIGNED;
     pushMIDIEvent(ctx, event);
+  }
+}
+
+static void drawDisplayView() {
+  ImGui::SeparatorText("Display");
+  ImGui::TextUnformatted("Meh Groovebox");
+  ImGui::Separator();
+  ImGui::TextUnformatted("Press 'z' to go down an octive and 'x' to go up an octive");
+  ImGui::TextUnformatted("");
+  ImGui::TextUnformatted("================= Keyboard Layout ================");
+  ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
+  ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
+  ImGui::TextUnformatted("|    | w |   | E |   |   | T |   | Y |   | U |   |");
+  ImGui::TextUnformatted("|    |___|   |___|   |   |___|   |___|   |___|   |");
+  ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
+  ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
+  ImGui::TextUnformatted("|  A   |   S   |  D  |  F  |   G   |   H   |  J  |");
+  ImGui::TextUnformatted("|______|_______|_____|_____|_______|_______|_____|");
+  ImGui::TextUnformatted("");
+  ImGui::TextUnformatted("Press keys... (ESC to quit)");
+}
+
+static void drawViewSwitcher() {
+  if (g_activeView == MainView::Display) {
+    ImGui::BeginDisabled();
+  }
+  if (ImGui::Button("Display")) {
+    g_activeView = MainView::Display;
+  }
+  if (g_activeView == MainView::Display) {
+    ImGui::EndDisabled();
+  }
+
+  ImGui::SameLine();
+
+  if (g_activeView == MainView::Editor) {
+    ImGui::BeginDisabled();
+  }
+  if (ImGui::Button("Editor")) {
+    g_activeView = MainView::Editor;
+  }
+  if (g_activeView == MainView::Editor) {
+    ImGui::EndDisabled();
   }
 }
 
@@ -110,33 +185,22 @@ int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
     ImGui::SetNextWindowPos(viewport->Pos);
     ImGui::SetNextWindowSize(viewport->Size);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 16.0f));
-
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                              ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
                              ImGuiWindowFlags_NoSavedSettings;
-
-    ImGui::Begin("Meh Synth", nullptr, flags);
-    ImGui::TextUnformatted("Super Synth");
-    ImGui::TextUnformatted("");
-    ImGui::TextUnformatted("Press 'z' to go down an octive and 'x' to go up an octive");
-    ImGui::TextUnformatted("");
-    ImGui::TextUnformatted("================= Keyboard Layout ================");
-    ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
-    ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
-    ImGui::TextUnformatted("|    | w |   | E |   |   | T |   | Y |   | U |   |");
-    ImGui::TextUnformatted("|    |___|   |___|   |   |___|   |___|   |___|   |");
-    ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
-    ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
-    ImGui::TextUnformatted("|  A   |   S   |  D  |  F  |   G   |   H   |  J  |");
-    ImGui::TextUnformatted("|______|_______|_____|_____|_______|_______|_____|");
-    ImGui::TextUnformatted("");
-    ImGui::TextUnformatted("Press keys... (ESC to quit)");
+    ImGui::Begin("Meh Groovebox", nullptr, flags);
+    drawViewSwitcher();
+    ImGui::Separator();
+    ImGui::BeginChild("MainView", ImVec2(0.0f, 0.0f), false);
+    if (g_activeView == MainView::Display) {
+      drawDisplayView();
+    } else {
+      app::editor::drawAuthoredDocEditor(*ctx);
+    }
+    ImGui::EndChild();
     ImGui::End();
-    ImGui::PopStyleVar(3);
 
+    // ImGui::PopStyleVar(3);
     ImGui::Render();
 
     int w = 0;
@@ -146,6 +210,7 @@ int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
     glfwSwapBuffers(g_window);
   }
 

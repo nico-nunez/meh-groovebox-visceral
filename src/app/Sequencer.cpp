@@ -175,6 +175,35 @@ void fireAllPendingUnlocks(LaneState& laneState, LaneEvents& laneOut) {
 // Step Processor
 // =====================
 
+struct StepOccurrence {
+  uint32_t stepIndex = 0;
+  int64_t cycleIndex = 0;
+  double absoluteBeat = 0.0;
+};
+
+bool shouldSkipStepOccurrence(const LaneState& laneState, const StepOccurrence& occurrence) {
+  return laneState.lastStep == static_cast<int32_t>(occurrence.stepIndex) &&
+         laneState.lastStepCycle == occurrence.cycleIndex;
+}
+
+void markStepOccurrenceFired(LaneState& laneState, const StepOccurrence& occurrence) {
+  laneState.lastStep = static_cast<int32_t>(occurrence.stepIndex);
+  laneState.lastStepCycle = occurrence.cycleIndex;
+}
+
+bool beatIsInsideBlock(double beat, const SequencerBlockWindow& block) {
+  return beat >= block.startBeat && beat < block.endBeat;
+}
+
+int64_t firstPatternCycleInBlock(const SequencerBlockWindow& block, double patternLengthBeats) {
+  return static_cast<int64_t>(std::floor(block.startBeat / patternLengthBeats));
+}
+
+int64_t lastPatternCycleInBlock(const SequencerBlockWindow& block, double patternLengthBeats) {
+  constexpr double kEndBeatEpsilon = 1e-9;
+  return static_cast<int64_t>(std::floor((block.endBeat - kEndBeatEpsilon) / patternLengthBeats));
+}
+
 void fireStep(uint32_t i,
               const LanePattern* pattern,
               LaneState& laneState,
@@ -183,10 +212,6 @@ void fireStep(uint32_t i,
               double absStepBeat,
               double stepLengthBeats,
               const SequencerBlockWindow& block) {
-  if (static_cast<int32_t>(i) == laneState.lastStep)
-    return;
-
-  laneState.lastStep = static_cast<int32_t>(i);
 
   const StepEvent& step = pattern->steps[i];
   uint32_t stepOffset = beatToSampleOffset(absStepBeat, block);
@@ -664,6 +689,7 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
       laneState.noteActive = false;
       laneState.noteOffBeat = -1.0;
       laneState.lastStep = -1;
+      laneState.lastStepCycle = -1;
       continue;
     }
 
@@ -681,35 +707,38 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 
     const double stepLengthBeats = 1.0 / pattern->stepsPerBeat;
     const double patternLengthBeats = pattern->numSteps * stepLengthBeats;
-    const double blockDuration = block.endBeat - block.startBeat;
-    const double localStart = std::fmod(block.startBeat, patternLengthBeats);
-    const double localEnd = localStart + blockDuration;
-    const bool wraps = localEnd >= patternLengthBeats;
 
-    if (!wraps) {
-      for (uint32_t i = 0; i < pattern->numSteps; ++i) {
-        const double stepBeat = i * stepLengthBeats;
+    if (block.endBeat <= block.startBeat)
+      continue;
 
-        if (stepBeat >= localStart && stepBeat < localEnd) {
-          double abs = block.startBeat + (stepBeat - localStart);
-          fireStep(i, pattern, laneState, laneOut, ctx, abs, stepLengthBeats, block);
-        }
-      }
-    } else {
-      const double headEnd = localEnd - patternLengthBeats;
+    const int64_t firstCycle = firstPatternCycleInBlock(block, patternLengthBeats);
+    const int64_t lastCycle = lastPatternCycleInBlock(block, patternLengthBeats);
 
-      for (uint32_t i = 0; i < pattern->numSteps; ++i) {
-        const double stepBeat = i * stepLengthBeats;
+    for (int64_t cycle = firstCycle; cycle <= lastCycle; ++cycle) {
+      const double cycleStartBeat = static_cast<double>(cycle) * patternLengthBeats;
 
-        if (stepBeat >= localStart) { // tail
-          double abs = block.startBeat + (stepBeat - localStart);
-          fireStep(i, pattern, laneState, laneOut, ctx, abs, stepLengthBeats, block);
-        }
+      for (uint32_t stepIndex = 0; stepIndex < pattern->numSteps; ++stepIndex) {
+        const double stepBeat = static_cast<double>(stepIndex) * stepLengthBeats;
+        StepOccurrence occurrence{};
+        occurrence.stepIndex = stepIndex;
+        occurrence.cycleIndex = cycle;
+        occurrence.absoluteBeat = cycleStartBeat + stepBeat;
 
-        if (stepBeat < headEnd) { // head
-          double abs = block.startBeat + (patternLengthBeats - localStart) + stepBeat;
-          fireStep(i, pattern, laneState, laneOut, ctx, abs, stepLengthBeats, block);
-        }
+        if (!beatIsInsideBlock(occurrence.absoluteBeat, block))
+          continue;
+
+        if (shouldSkipStepOccurrence(laneState, occurrence))
+          continue;
+
+        fireStep(stepIndex,
+                 pattern,
+                 laneState,
+                 laneOut,
+                 ctx,
+                 occurrence.absoluteBeat,
+                 stepLengthBeats,
+                 block);
+        markStepOccurrenceFired(laneState, occurrence);
       }
     }
   }
