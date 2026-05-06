@@ -3,6 +3,7 @@
 #include "app/AppContext.h"
 #include "app/doc/DocDiagnostics.h"
 #include "app/editor/AuthoredDocEditor.h"
+#include "app/editor/LuaLSDiagnostics.h"
 
 #include "imgui.h"
 
@@ -203,11 +204,74 @@ void consumeJumpRequest(AuthoredDocEditorState& editor) {
   clearDiagnosticJump(editor);
 }
 
+// ====================
+// LuaLS Diagnostics
+// ====================
+const char* lualsStatusLabel(LanguageServiceStatus status) {
+  switch (status) {
+  case LanguageServiceStatus::Unavailable:
+    return "unavailable";
+  case LanguageServiceStatus::Idle:
+    return "idle";
+  case LanguageServiceStatus::Pending:
+    return "pending";
+  case LanguageServiceStatus::Running:
+    return "running";
+  case LanguageServiceStatus::Succeeded:
+    return "clean";
+  case LanguageServiceStatus::Failed:
+    return "diagnostics";
+  }
+  return "unknown";
+}
+
+ImVec4 diagnosticColor(const std::string& severity) {
+  if (severity == "Error")
+    return ImVec4(0.95f, 0.25f, 0.20f, 1.0f);
+  if (severity == "Warning")
+    return ImVec4(0.95f, 0.70f, 0.20f, 1.0f);
+  if (severity == "Information" || severity == "Info")
+    return ImVec4(0.35f, 0.65f, 1.0f, 1.0f);
+  if (severity == "Hint")
+    return ImVec4(0.55f, 0.55f, 0.55f, 1.0f);
+  return ImGui::GetStyleColorVec4(ImGuiCol_Text);
+}
+
+void drawLuaLSDiagnostics(const AuthoredDocEditorState& editor) {
+  ImGui::SeparatorText("LuaLS diagnostics");
+  ImGui::Text("LuaLS: %s", lualsStatusLabel(editor.luals.status));
+  if (!editor.luals.message.empty())
+    ImGui::TextDisabled("%s", editor.luals.message.c_str());
+
+  if (editor.luals.diagnostics.empty()) {
+    ImGui::TextDisabled("No LuaLS diagnostics");
+    return;
+  }
+
+  for (std::size_t i = 0; i < editor.luals.diagnostics.size(); ++i) {
+    const auto& diagnostic = editor.luals.diagnostics[i];
+    ImGui::PushID(static_cast<int>(i));
+
+    const ImVec4 color = diagnosticColor(diagnostic.severity);
+    ImGui::TextColored(color,
+                       "%s line %u:%u",
+                       diagnostic.severity.c_str(),
+                       diagnostic.line,
+                       diagnostic.column);
+    ImGui::SameLine();
+    ImGui::TextUnformatted(diagnostic.message.c_str());
+
+    ImGui::PopID();
+  }
+}
 } // namespace
 
 void drawAuthoredDocEditor(AppContext& app) {
   AuthoredDocEditorState& editor = app.authoredEditor;
   syncScratchFromState(editor);
+
+  collectFinishedLuaLSDiagnostics(editor);
+  maybeStartLuaLSDiagnostics(editor);
 
   ImGui::SeparatorText("Authored Document");
   drawFileControls(editor);
@@ -244,6 +308,7 @@ void drawAuthoredDocEditor(AppContext& app) {
 
   drawStatusLine(editor);
   drawDiagnosticList(editor);
+  drawLuaLSDiagnostics(editor);
 }
 
 } // namespace app::editor

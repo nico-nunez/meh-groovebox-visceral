@@ -71,6 +71,8 @@ void initAuthoredDocumentEditor(AuthoredDocEditorState& editor) {
 void markBufferEdited(AuthoredDocEditorState& editor, std::string text) {
   editor.buffer.text = std::move(text);
   editor.buffer.dirty = true;
+  editor.editSerial++;
+  editor.luals.status = LanguageServiceStatus::Pending;
 }
 
 void newBlankDocument(AuthoredDocEditorState& editor) {

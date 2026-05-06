@@ -33,6 +33,7 @@ void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
 void runMetadataVerificationTests();
 void runAuthoredDocEditorTests();
+void runLuaLSDiagnosticsTests();
 
 int main(int argc, char* argv[]) {
   int buildSecs = -1;
@@ -52,6 +53,7 @@ int main(int argc, char* argv[]) {
   runDocAuthoringServiceSeqApplyTests();
   runDocAuthoringServiceLifecycleTests();
   runAuthoredDocEditorTests();
+  runLuaLSDiagnosticsTests();
   runDocSequencerParserTests();
   runDocSequencerPlannerTests();
   runSequencerPlaybackTests();

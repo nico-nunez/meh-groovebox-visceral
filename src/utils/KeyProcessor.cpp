@@ -157,7 +157,7 @@ int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-  g_window = glfwCreateWindow(800, 500, "Meh Synth", nullptr, nullptr);
+  g_window = glfwCreateWindow(1280, 800, "Meh Synth", nullptr, nullptr);
   if (!g_window) {
     glfwTerminate();
     return 1;
@@ -171,6 +171,13 @@ int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+
+  ImGuiIO& io = ImGui::GetIO();
+  ImFont* font = io.Fonts->AddFontFromFileTTF("/System/Library/Fonts/Menlo.ttc", 14.0f);
+  if (font) {
+    io.FontDefault = font;
+  }
+
   ImGui_ImplGlfw_InitForOpenGL(g_window, true);
   ImGui_ImplOpenGL3_Init("#version 150");
 

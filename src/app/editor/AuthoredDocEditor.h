@@ -12,6 +12,32 @@ struct AppContext;
 
 namespace app::editor {
 
+enum class LanguageServiceStatus : uint8_t {
+  Unavailable,
+  Idle,
+  Pending,
+  Running,
+  Succeeded,
+  Failed,
+};
+
+struct LuaLSDiagnostic {
+  std::string severity{};
+  std::string code{};
+  std::string message{};
+  uint32_t line = 0;
+  uint32_t column = 0;
+};
+
+struct LuaLSDiagnosticState {
+  LanguageServiceStatus status = LanguageServiceStatus::Idle;
+  std::string message{};
+  std::vector<LuaLSDiagnostic> diagnostics{};
+  uint64_t requestedSerial = 0;
+  uint64_t completedSerial = 0;
+  bool running = false;
+};
+
 enum class EditorCommandStatus : uint8_t {
   Idle,
   Succeeded,
@@ -51,6 +77,8 @@ struct AuthoredDocEditorState {
   EditorMessage applyMessage{};
   EditorApplyStatus applyStatus = EditorApplyStatus::Idle;
   DiagnosticJumpRequest jumpRequest{};
+  LuaLSDiagnosticState luals{};
+  uint64_t editSerial = 0;
 };
 
 constexpr const char* authoredDocumentTemplate();
