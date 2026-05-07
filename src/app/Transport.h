@@ -10,6 +10,16 @@ inline constexpr float MIN_BPM = 20.0f;
 inline constexpr float MAX_BPM = 300.0f;
 inline constexpr float DEFAULT_BPM = 120.0f;
 
+inline constexpr double BEATS_PER_BAR = 4.0;
+
+struct MusicalPosition {
+  uint64_t bar = 1;
+  uint8_t beat = 1;
+  double beatFraction = 0.0;
+};
+
+MusicalPosition formatMusicalPosition(double beatPosition);
+
 // =====================
 // Transport Runtime
 // =====================

@@ -7,6 +7,7 @@
 #include "app/Track.h"
 #include "app/Transport.h"
 
+#include "app/display/DisplayState.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/editor/AuthoredDocEditor.h"
 
@@ -19,6 +20,7 @@ namespace app {
 namespace audio {
 struct DeviceInfo;
 }
+using display::DisplayPublication;
 
 using events::ControlEvent;
 using events::ControlEventQueue;
@@ -58,6 +60,8 @@ struct AppContext {
 
   DocAuthoringService docAuthoring{};
   AuthoredDocEditorState authoredEditor{};
+
+  DisplayPublication displayPublication{};
 };
 
 AppContext* createAppContext(audio::DeviceInfo deviceInfo);
@@ -108,7 +112,11 @@ inline bool pushMIDIEvent(AppContext* ctx, synth::MIDIEvent evt) {
       track = mappedTrack;
   }
 
-  return ctx->tracks[track].queues.midi.push(evt);
+  const bool ok = ctx->tracks[track].queues.midi.push(evt);
+  if (ok)
+    app::display::recordDisplayMIDIEvent(ctx->displayPublication, track, evt);
+
+  return ok;
 }
 
 inline bool pushParamEvent(AppContext* ctx, synth::ParamEvent evt, uint8_t track = MAX_TRACKS) {

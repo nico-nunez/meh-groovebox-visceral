@@ -1,6 +1,8 @@
 #include "KeyProcessor.h"
 
 #include "app/AppContext.h"
+#include "app/display/DisplayState.h"
+#include "app/display/DisplayView.h"
 #include "app/editor/AuthoredDocEditorUI.h"
 
 #include "device_io/MidiCapture.h"
@@ -22,7 +24,11 @@ namespace app::utils {
 namespace evt = synth::events;
 
 enum class MainView {
-  Display,
+  Synth,
+  Mixer,
+  Sequencer,
+  Transport,
+  Routing,
   Editor,
 };
 
@@ -35,6 +41,10 @@ void requestQuit() {
   }
 }
 
+static bool currentViewAcceptsKeyboardMIDI() {
+  return g_activeView != MainView::Editor;
+}
+
 static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int mods) {
   if (action == GLFW_REPEAT) {
     return;
@@ -45,10 +55,26 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
   const bool commandModifier = (mods & GLFW_MOD_SUPER) != 0 || (mods & GLFW_MOD_CONTROL) != 0;
   if (action == GLFW_PRESS && commandModifier) {
     if (key == GLFW_KEY_1) {
-      g_activeView = MainView::Display;
+      g_activeView = MainView::Synth;
       return;
     }
     if (key == GLFW_KEY_2) {
+      g_activeView = MainView::Mixer;
+      return;
+    }
+    if (key == GLFW_KEY_3) {
+      g_activeView = MainView::Sequencer;
+      return;
+    }
+    if (key == GLFW_KEY_4) {
+      g_activeView = MainView::Transport;
+      return;
+    }
+    if (key == GLFW_KEY_5) {
+      g_activeView = MainView::Routing;
+      return;
+    }
+    if (key == GLFW_KEY_6) {
       g_activeView = MainView::Editor;
       return;
     }
@@ -59,13 +85,16 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
     return;
   }
 
+  if (!currentViewAcceptsKeyboardMIDI())
+    return;
+
   if (action == GLFW_PRESS) {
     if (key == GLFW_KEY_ESCAPE) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
       return;
     }
 
-    if (g_activeView != MainView::Display) {
+    if (g_activeView == MainView::Editor) {
       return;
     }
 
@@ -87,7 +116,7 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
       return;
     }
 
-    if (g_activeView != MainView::Display) {
+    if (g_activeView == MainView::Editor) {
       return;
     }
 
@@ -104,47 +133,51 @@ static void keyCallback(GLFWwindow* window, int key, int /*scancode*/, int actio
   }
 }
 
-static void drawDisplayView() {
-  ImGui::SeparatorText("Display");
-  ImGui::TextUnformatted("Meh Groovebox");
-  ImGui::Separator();
-  ImGui::TextUnformatted("Press 'z' to go down an octive and 'x' to go up an octive");
-  ImGui::TextUnformatted("");
-  ImGui::TextUnformatted("================= Keyboard Layout ================");
-  ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
-  ImGui::TextUnformatted("|    |   |   |   |   |   |   |   |   |   |   |   |");
-  ImGui::TextUnformatted("|    | w |   | E |   |   | T |   | Y |   | U |   |");
-  ImGui::TextUnformatted("|    |___|   |___|   |   |___|   |___|   |___|   |");
-  ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
-  ImGui::TextUnformatted("|      |       |     |     |       |       |     |");
-  ImGui::TextUnformatted("|  A   |   S   |  D  |  F  |   G   |   H   |  J  |");
-  ImGui::TextUnformatted("|______|_______|_____|_____|_______|_______|_____|");
-  ImGui::TextUnformatted("");
-  ImGui::TextUnformatted("Press keys... (ESC to quit)");
+static void drawFeatureView(AppContext& ctx) {
+  const auto snapshot = app::display::makeDisplayDashboardSnapshot(ctx);
+
+  switch (g_activeView) {
+  case MainView::Synth:
+    app::display::drawSynthView(ctx, snapshot);
+    break;
+  case MainView::Mixer:
+    app::display::drawMixerView(ctx, snapshot);
+    break;
+  case MainView::Sequencer:
+    app::display::drawSequencerView(ctx, snapshot);
+    break;
+  case MainView::Transport:
+    app::display::drawTransportView(ctx, snapshot);
+    break;
+  case MainView::Routing:
+    app::display::drawRoutingView(ctx, snapshot);
+    break;
+  case MainView::Editor:
+    app::editor::drawAuthoredDocEditor(ctx);
+    break;
+  }
+}
+
+static void drawViewButton(const char* label, MainView view) {
+  const bool active = g_activeView == view;
+  ImGui::BeginDisabled(active);
+  if (ImGui::Button(label))
+    g_activeView = view;
+  ImGui::EndDisabled();
 }
 
 static void drawViewSwitcher() {
-  if (g_activeView == MainView::Display) {
-    ImGui::BeginDisabled();
-  }
-  if (ImGui::Button("Display")) {
-    g_activeView = MainView::Display;
-  }
-  if (g_activeView == MainView::Display) {
-    ImGui::EndDisabled();
-  }
-
+  drawViewButton("Synth", MainView::Synth);
   ImGui::SameLine();
-
-  if (g_activeView == MainView::Editor) {
-    ImGui::BeginDisabled();
-  }
-  if (ImGui::Button("Editor")) {
-    g_activeView = MainView::Editor;
-  }
-  if (g_activeView == MainView::Editor) {
-    ImGui::EndDisabled();
-  }
+  drawViewButton("Mixer", MainView::Mixer);
+  ImGui::SameLine();
+  drawViewButton("Sequencer", MainView::Sequencer);
+  ImGui::SameLine();
+  drawViewButton("Transport", MainView::Transport);
+  ImGui::SameLine();
+  drawViewButton("Routing", MainView::Routing);
+  ImGui::SameLine();
+  drawViewButton("Editor", MainView::Editor);
 }
 
 int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
@@ -215,12 +248,9 @@ int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
     ImGui::Begin("Meh Groovebox", nullptr, flags);
     drawViewSwitcher();
     ImGui::Separator();
+
     ImGui::BeginChild("MainView", ImVec2(0.0f, 0.0f), false);
-    if (g_activeView == MainView::Display) {
-      drawDisplayView();
-    } else {
-      app::editor::drawAuthoredDocEditor(*ctx);
-    }
+    drawFeatureView(*ctx);
     ImGui::EndChild();
     ImGui::End();
 

@@ -10,6 +10,7 @@ namespace app::events {
 // Event Factories
 // ====================
 
+// ==== Transport ====
 ControlEvent createBPMEvent(float bpm) {
   ControlEvent evt{};
   evt.type = ControlEvent::Type::SetBPM;
@@ -18,22 +19,25 @@ ControlEvent createBPMEvent(float bpm) {
   return evt;
 }
 
-ControlEvent createCurrentTrackEvent(uint8_t trackIndex) {
+ControlEvent createPlayEvent() {
   ControlEvent evt{};
-  evt.type = ControlEvent::Type::SetCurrentTrack;
-  evt.data.setCurrentTrack.track = trackIndex;
+  evt.type = ControlEvent::Type::Play;
   return evt;
 }
 
-ControlEvent createAppParamEvent(AppParamID id, float value, uint8_t track) {
+ControlEvent createPauseEvent() {
   ControlEvent evt{};
-  evt.type = ControlEvent::Type::SetAppParam;
-  evt.data.setAppParam.id = id;
-  evt.data.setAppParam.track = track;
-  evt.data.setAppParam.value = value;
+  evt.type = ControlEvent::Type::Pause;
   return evt;
 }
 
+ControlEvent createStopEvent() {
+  ControlEvent evt{};
+  evt.type = ControlEvent::Type::Stop;
+  return evt;
+}
+
+// ==== MIDI ====
 ControlEvent createMidiStickyTrackEvent(uint8_t track) {
   ControlEvent evt{};
   evt.type = ControlEvent::Type::SetMidiStickyTrack;
@@ -59,6 +63,23 @@ ControlEvent createMidiUnchannelEvent(uint8_t channel) {
   ControlEvent evt{};
   evt.type = ControlEvent::Type::ClearMidiChannelTrack;
   evt.data.clearMidiChannelTrack.channel = channel;
+  return evt;
+}
+
+// ==== App ====
+ControlEvent createCurrentTrackEvent(uint8_t trackIndex) {
+  ControlEvent evt{};
+  evt.type = ControlEvent::Type::SetCurrentTrack;
+  evt.data.setCurrentTrack.track = trackIndex;
+  return evt;
+}
+
+ControlEvent createAppParamEvent(AppParamID id, float value, uint8_t track) {
+  ControlEvent evt{};
+  evt.type = ControlEvent::Type::SetAppParam;
+  evt.data.setAppParam.id = id;
+  evt.data.setAppParam.track = track;
+  evt.data.setAppParam.value = value;
   return evt;
 }
 

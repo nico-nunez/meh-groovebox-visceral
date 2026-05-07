@@ -85,13 +85,21 @@ struct ControlEventQueue {
   }
 };
 
+// ==== Transport ====
 ControlEvent createBPMEvent(float bpm);
-ControlEvent createCurrentTrackEvent(uint8_t trackIndex);
-ControlEvent createAppParamEvent(AppParamID id, float value, uint8_t track = 0);
+ControlEvent createPlayEvent();
+ControlEvent createPauseEvent();
+ControlEvent createStopEvent();
+
+// ==== MIDI ====
 ControlEvent createMidiStickyTrackEvent(uint8_t track);
 ControlEvent createMidiUnstickyEvent();
 ControlEvent createMidiChannelTrackEvent(uint8_t channel, uint8_t track);
 ControlEvent createMidiUnchannelEvent(uint8_t channel);
+
+// ==== App ====
+ControlEvent createCurrentTrackEvent(uint8_t trackIndex);
+ControlEvent createAppParamEvent(AppParamID id, float value, uint8_t track = 0);
 
 void applyControlEvent(AppContext* ctx, const ControlEvent& evt);
 

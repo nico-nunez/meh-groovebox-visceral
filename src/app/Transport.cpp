@@ -4,7 +4,6 @@
 
 namespace app::transport {
 namespace {
-constexpr double BEATS_PER_BAR = 4.0;
 
 double calcBeatsPerSample(float bpm, uint32_t sampleRate) {
   return static_cast<double>(bpm) / (60.0 * static_cast<double>(sampleRate));
@@ -25,6 +24,18 @@ void resetTransportPosition(TransportState& rt) {
 }
 
 } // namespace
+
+MusicalPosition formatMusicalPosition(double beatPosition) {
+  if (beatPosition < 0.0)
+    beatPosition = 0.0;
+
+  const auto wholeBeat = static_cast<uint64_t>(std::floor(beatPosition));
+  MusicalPosition pos{};
+  pos.bar = (wholeBeat / static_cast<uint64_t>(BEATS_PER_BAR)) + 1;
+  pos.beat = static_cast<uint8_t>((wholeBeat % static_cast<uint64_t>(BEATS_PER_BAR)) + 1);
+  pos.beatFraction = beatPosition - static_cast<double>(wholeBeat);
+  return pos;
+}
 
 float clampBPM(float bpm) {
   return std::clamp(bpm, MIN_BPM, MAX_BPM);

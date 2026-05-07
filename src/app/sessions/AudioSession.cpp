@@ -4,6 +4,7 @@
 #include "app/BlockScheduler.h"
 #include "app/Constants.h"
 #include "app/Transport.h"
+#include "app/display/DisplayState.h"
 
 #include "audio_io/AudioIO.h"
 #include "audio_io/AudioIOTypes.h"
@@ -133,6 +134,9 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
                                     masterBus.busBuffer,
                                     buffer.numFrames,
                                     mixer.limiterThreshold);
+
+  display::publishDisplayRuntimeTelemetry(ctx->displayPublication,
+                                          display::makeDisplayRuntimeTelemetry(*ctx));
 
   writeMasterBusToDevice(masterBus, buffer);
 }

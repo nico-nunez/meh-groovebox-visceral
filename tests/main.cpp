@@ -25,14 +25,20 @@ void printSuiteResult() {
 void runDocApplyFileBindingTests();
 void runDocAuthoringServiceSeqApplyTests();
 void runDocAuthoringServiceLifecycleTests();
-void runDocMetadataTests();
+void runAuthoredDocEditorTests();
+
+void runDisplayPublicationTests();
+void runSynthDisplayStateTests();
+void runDisplayDashboardSnapshotTests();
+
 void runDocSequencerParserTests();
 void runDocSequencerPlannerTests();
 void runSequencerPlaybackTests();
+
+void runDocMetadataTests();
+void runMetadataVerificationTests();
 void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
-void runMetadataVerificationTests();
-void runAuthoredDocEditorTests();
 void runLuaLSDiagnosticsTests();
 
 int main(int argc, char* argv[]) {
@@ -53,14 +59,20 @@ int main(int argc, char* argv[]) {
   runDocAuthoringServiceSeqApplyTests();
   runDocAuthoringServiceLifecycleTests();
   runAuthoredDocEditorTests();
-  runLuaLSDiagnosticsTests();
+
+  runDisplayPublicationTests();
+  runSynthDisplayStateTests();
+  runDisplayDashboardSnapshotTests();
+
   runDocSequencerParserTests();
   runDocSequencerPlannerTests();
   runSequencerPlaybackTests();
-  runLuaLSStubGenerationTests();
+
   runDocMetadataTests();
-  runLuaRuntimeMetadataTests();
   runMetadataVerificationTests();
+  runLuaRuntimeMetadataTests();
+  runLuaLSStubGenerationTests();
+  runLuaLSDiagnosticsTests();
 
   printSuiteResult();
 
