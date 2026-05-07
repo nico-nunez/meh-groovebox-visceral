@@ -51,6 +51,13 @@ static void test_authored_stub_contains_document_surface() {
   checkContains(authored, "function SynthSettings(", "SynthSettings");
   checkContains(authored, "function MixerSettings(", "MixerSettings");
   checkContains(authored, "---@class", "class declarations");
+
+  checkContains(authored, "function synth(", "document synth");
+  checkContains(authored, "---@class SynthSettings", "SynthSettings class");
+  checkContains(authored, "---@class SynthOscSettings", "SynthOscSettings class");
+  checkContains(authored, "---@field synth? SynthSettings", "TrackSettings synth field");
+  checkContains(authored, "---@field osc1? SynthOscSettings", "SynthSettings osc1 field");
+  checkContains(authored, "---@field fx? SynthFXSettings", "SynthSettings fx field");
 }
 
 static void test_authored_stub_excludes_runtime_surface() {
@@ -90,6 +97,7 @@ static void test_runtime_stub_excludes_authored_surface() {
   checkNotContains(runtime, "function SynthSettings(", "no SynthSettings");
   checkNotContains(runtime, "function MixerSettings(", "no MixerSettings");
   checkNotContains(runtime, "function track(", "no document track");
+  checkNotContains(runtime, "function synth(", "no document synth");
 }
 
 static void test_generated_stubs_have_no_timestamps() {
@@ -145,14 +153,59 @@ static void test_generated_readme_documents_commands() {
   checkNotContains(readme, ".json", "no JSON metadata direction");
 }
 
+static void test_authored_stub_contains_first_slice_synth_surface() {
+  TEST("authored_stub_contains_first_slice_synth_surface");
+
+  const std::string authored = readRequiredFile(kAuthoredStubPath);
+
+  checkContains(authored, "function synth(", "document synth");
+  checkContains(authored, "function SynthSettings(", "SynthSettings constructor");
+  checkContains(authored, "---@class SynthSettings", "SynthSettings class");
+  checkContains(authored, "---@class SynthOscSettings", "SynthOscSettings class");
+  checkContains(authored, "---@class SynthAmpEnvSettings", "SynthAmpEnvSettings class");
+  checkContains(authored, "---@class SynthSVFSettings", "SynthSVFSettings class");
+  checkContains(authored, "---@class SynthFXSettings", "SynthFXSettings class");
+  checkContains(authored, "---@field synth? SynthSettings", "TrackSettings synth field");
+  checkContains(authored, "---@field osc1? SynthOscSettings", "osc1 field");
+  checkContains(authored, "---@field ampEnv? SynthAmpEnvSettings", "ampEnv field");
+  checkContains(authored, "---@field svf? SynthSVFSettings", "svf field");
+  checkContains(authored, "---@field fx? SynthFXSettings", "fx field");
+  checkContains(authored, "---@field mix? number", "mix field");
+  checkContains(authored, "---@field cutoff? number", "cutoff field");
+}
+
+static void test_authored_stub_excludes_deferred_synth_domains() {
+  TEST("authored_stub_excludes_deferred_synth_domains");
+
+  const std::string authored = readRequiredFile(kAuthoredStubPath);
+
+  checkNotContains(authored, "lfo1", "no lfo1");
+  checkNotContains(authored, "modMatrix", "no modMatrix");
+  checkNotContains(authored, "signalChain", "no signalChain");
+  checkNotContains(authored, "fxChain", "no fxChain");
+}
+
+static void test_runtime_stub_excludes_authored_synth_surface() {
+  TEST("runtime_stub_excludes_authored_synth_surface");
+
+  const std::string runtime = readRequiredFile(kRuntimeStubPath);
+  checkNotContains(runtime, "function synth(", "no document synth");
+  checkNotContains(runtime, "function SynthSettings(", "no SynthSettings constructor");
+  checkNotContains(runtime, "---@class SynthSettings", "no SynthSettings class");
+  checkNotContains(runtime, "---@field synth? SynthSettings", "no TrackSettings synth field");
+}
+
 void runLuaLSStubGenerationTests() {
   SUITE("LuaLSStubGeneration");
   test_authored_stub_contains_document_surface();
   test_authored_stub_excludes_runtime_surface();
   test_runtime_stub_contains_runtime_surface();
   test_runtime_stub_excludes_authored_surface();
+  test_runtime_stub_excludes_authored_synth_surface();
   test_generated_stubs_have_no_timestamps();
   test_generated_stubs_are_nonempty();
   test_authored_stub_mentions_static_bounds();
+  test_authored_stub_contains_first_slice_synth_surface();
+  test_authored_stub_excludes_deferred_synth_domains();
   test_generated_readme_documents_commands();
 }

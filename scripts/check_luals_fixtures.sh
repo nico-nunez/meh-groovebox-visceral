@@ -100,8 +100,13 @@ RUNTIME_LIBRARY="$PWD/generated/luals/runtime_lua"
 
 expect_clean \
   "tests/luals/authored_document" \
+  "valid_synth_doc.lua" \
+  "$AUTHORED_LIBRARY"
+expect_clean \
+  "tests/luals/authored_document" \
   "valid_sequencer_doc.lua" \
   "$AUTHORED_LIBRARY"
+
 expect_clean \
   "tests/luals/runtime_lua" \
   "valid_runtime_lua.lua" \

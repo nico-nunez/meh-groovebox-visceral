@@ -4,6 +4,7 @@
 #include "app/doc/DocMetadata.h"
 #include "app/doc/DocSequencerParser.h"
 #include "app/doc/DocSequencerPlanner.h"
+#include "app/doc/DocSynthPlanner.h"
 
 #include <cstdint>
 #include <fstream>
@@ -21,6 +22,52 @@ std::string trackTarget(uint8_t trackIndex, const char* suffix) {
     target += suffix;
   }
   return target;
+}
+
+std::string synthTarget(uint8_t trackIndex, const AuthoredSynthParamField* field) {
+  std::string target = "synth:";
+  target += std::to_string(static_cast<int>(trackIndex) + 1);
+  if (field && field->authoredPath && field->authoredPath[0] != '\0') {
+    target += ".";
+    target += field->authoredPath;
+  }
+  return target;
+}
+
+DocDiagnostic makeSynthAdmissionDiagnostic(DocAuthoringService& service,
+                                           DocRevision revision,
+                                           const PlannedSynthParamOp& op,
+                                           const char* message) {
+  DocDiagnostic diagnostic{};
+  diagnostic.severity = DiagnosticSeverity::Error;
+  diagnostic.source = DiagnosticSource::GrooveboxAdmission;
+  diagnostic.documentID = service.buffer.documentID;
+  diagnostic.revision = revision;
+  diagnostic.code = docdiag::SynthAdmissionFailed;
+  diagnostic.message = message ? message : "synth param admission failed";
+  diagnostic.span = op.span;
+  diagnostic.relatedTarget = synthTarget(op.trackIndex, op.field);
+  return diagnostic;
+}
+
+bool submitSynthPlan(DocAuthoringService& service,
+                     app::AppContext& app,
+                     DocRevision revision,
+                     const PlannedSynthApply& plan,
+                     DocDiagnostics& diagnostics) {
+  for (const PlannedSynthParamOp& op : plan.paramOps) {
+    synth::ParamEvent event{};
+    event.id = static_cast<uint8_t>(op.paramID);
+    event.value = op.value;
+
+    if (!pushParamEvent(&app, event, op.trackIndex)) {
+      diagnostics.push_back(
+          makeSynthAdmissionDiagnostic(service, revision, op, "synth param queue full"));
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool isActiveSlotAdmissionFailure(const char* message) {
@@ -168,6 +215,17 @@ AuthoredSeqDocModel buildAdmittedTargetModel(const AuthoredSeqDocModel& nextMode
   return admitted;
 }
 
+AuthoredDocModel buildAdmittedDocumentTargetModel(const AuthoredDocModel& nextModel,
+                                                  const AuthoredDocModel* previousAdmittedModel) {
+  AuthoredDocModel admitted = buildAdmittedSynthTargetModel(nextModel, previousAdmittedModel);
+
+  const AuthoredSeqDocModel* previousSeq =
+      previousAdmittedModel ? &previousAdmittedModel->sequencer : nullptr;
+  admitted.sequencer = buildAdmittedTargetModel(nextModel.sequencer, previousSeq);
+
+  return admitted;
+}
+
 } // namespace
 
 ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
@@ -181,10 +239,11 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   service.buffer.currentRevision = revision;
   service.buffer.bufferText = bufferText ? bufferText : "";
 
-  SequencerNormalizeResult normalize =
-      parseAndNormalizeSequencerDocument(service.buffer.documentID,
-                                         revision,
-                                         service.buffer.bufferText.c_str());
+  AuthoredDocumentNormalizeResult normalize =
+      parseAndNormalizeAuthoredDocument(service.buffer.documentID,
+                                        revision,
+                                        service.buffer.bufferText.c_str());
+
   if (!normalize.ok) {
     failApply(service, operationID, normalize.diagnostics);
     result.diagnostics = service.apply.diagnostics;
@@ -193,11 +252,21 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
 
   service.apply.status = ApplyStatus::Validated;
 
-  const AuthoredSeqDocModel* previous =
-      service.apply.hasLastAdmittedSequencerModel ? &service.apply.lastAdmittedSeqModel : nullptr;
-  PlannedSequencerApply plan = planSequencerApply(normalize.model, previous);
-  if (!plan.ok) {
-    failApply(service, operationID, plan.diagnostics);
+  const AuthoredDocModel* previousDoc =
+      service.apply.hasLastAdmittedDocModel ? &service.apply.lastAdmittedDocModel : nullptr;
+
+  const AuthoredSeqDocModel* previousSeq = previousDoc ? &previousDoc->sequencer : nullptr;
+
+  PlannedSynthApply synthPlan = planSynthApply(normalize.model, previousDoc);
+  if (!synthPlan.ok) {
+    failApply(service, operationID, synthPlan.diagnostics);
+    result.diagnostics = service.apply.diagnostics;
+    return result;
+  }
+
+  PlannedSequencerApply seqPlan = planSequencerApply(normalize.model.sequencer, previousSeq);
+  if (!seqPlan.ok) {
+    failApply(service, operationID, seqPlan.diagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
@@ -205,15 +274,28 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   service.apply.status = ApplyStatus::Planned;
 
   DocDiagnostics admissionDiagnostics{};
-  if (!submitSequencerPlan(service, app, revision, normalize.model, plan, admissionDiagnostics)) {
+  if (!submitSynthPlan(service, app, revision, synthPlan, admissionDiagnostics)) {
     failApply(service, operationID, admissionDiagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
 
-  service.apply.lastAdmittedSeqModel = buildAdmittedTargetModel(normalize.model, previous);
-  service.apply.hasLastAdmittedSequencerModel = true;
+  if (!submitSequencerPlan(service,
+                           app,
+                           revision,
+                           normalize.model.sequencer,
+                           seqPlan,
+                           admissionDiagnostics)) {
+    failApply(service, operationID, admissionDiagnostics);
+    result.diagnostics = service.apply.diagnostics;
+    return result;
+  }
+
+  service.apply.lastAdmittedDocModel =
+      buildAdmittedDocumentTargetModel(normalize.model, previousDoc);
+  service.apply.hasLastAdmittedDocModel = true;
   service.buffer.lastAdmittedRevision = revision;
+
   service.apply.status = ApplyStatus::Admitted;
   markApplyCompleted(service, operationID);
 

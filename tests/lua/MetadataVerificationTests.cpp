@@ -179,11 +179,14 @@ static void test_document_track_and_runtime_seq_track_do_not_collapse() {
   checkContains(authored, "function track(", "authored function track");
   checkContains(runtime, "function seq.track(", "runtime seq.track");
   checkNotContains(runtime, "function track(", "runtime no top-level track");
+
+  CHECK("authored metadata synth", hasAuthoredFunction(app::doc::docglobal::Synth));
+  checkContains(authored, "function synth(", "authored function synth");
+  checkNotContains(runtime, "function synth(", "runtime no top-level synth");
 }
 
 static void test_diagnostic_catalog_covers_parser_service_codes() {
   TEST("diagnostic_catalog_covers_parser_service_codes");
-
   const char* codes[] = {
       app::doc::docdiag::SequencerTrackInvalidIndex,
       app::doc::docdiag::SequencerTrackInvalidSettings,
@@ -199,6 +202,14 @@ static void test_diagnostic_catalog_covers_parser_service_codes() {
       app::doc::docdiag::DocumentLuaStateFailed,
       app::doc::docdiag::DocumentLuaEvalFailed,
       app::doc::docdiag::DocumentFileReadFailed,
+      app::doc::docdiag::SynthTrackInvalidIndex,
+      app::doc::docdiag::SynthSettingsInvalidShape,
+      app::doc::docdiag::SynthParamUnknown,
+      app::doc::docdiag::SynthParamTypeMismatch,
+      app::doc::docdiag::SynthParamEnumUnknown,
+      app::doc::docdiag::SynthParamOutOfRange,
+      app::doc::docdiag::SynthParamDuplicateWrite,
+      app::doc::docdiag::SynthAdmissionFailed,
   };
 
   for (const char* code : codes) {
@@ -347,6 +358,21 @@ static void test_runtime_visible_globals_match_metadata() {
   CHECK("preset.list", luaTableHasFunction(fixture.L, lua::rtglobal::Preset, lua::rtmethod::List));
 }
 
+static void test_document_synth_and_runtime_param_surfaces_do_not_collapse() {
+  TEST("document_synth_and_runtime_param_surfaces_do_not_collapse");
+
+  const std::string authored = readRequiredFile(kAuthoredStubPath);
+  const std::string runtime = readRequiredFile(kRuntimeStubPath);
+
+  CHECK("authored metadata synth", hasAuthoredFunction(app::doc::docglobal::Synth));
+  CHECK("runtime metadata no top-level synth", !hasRuntimeGlobal(app::doc::docglobal::Synth));
+
+  checkContains(authored, "function synth(", "authored function synth");
+  checkNotContains(runtime, "function synth(", "runtime no top-level synth");
+  checkContains(authored, "function SynthSettings(", "authored SynthSettings");
+  checkNotContains(runtime, "function SynthSettings(", "runtime no SynthSettings");
+}
+
 void runMetadataVerificationTests() {
   SUITE("LuaMetadataVerification");
   test_canonical_apply_file_only_exists_in_runtime_surface();
@@ -358,4 +384,5 @@ void runMetadataVerificationTests() {
   test_generated_outputs_are_marked_do_not_edit();
   test_param_proxy_generation_has_representative_fields();
   test_runtime_visible_globals_match_metadata();
+  test_document_synth_and_runtime_param_surfaces_do_not_collapse();
 }

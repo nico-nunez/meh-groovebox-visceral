@@ -31,11 +31,11 @@ static void test_successful_apply_completes_lifecycle() {
   auto result = app::doc::applySequencerRevision(service, app, 1, kOneTrackDocument);
   CHECK("ok", result.ok);
   CHECK("applyOperationID == 1", result.applyOperationID == 1);
-  CHECK("status Completed",
-        app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
+  CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
   CHECK("activeApplyOperationID == 0", service.apply.activeApplyOperationID == 0);
   CHECK("lastAdmittedRevision == 1", app::doc::getLastAdmittedRevision(service) == 1);
-  CHECK("admitted model has track 0", service.apply.lastAdmittedSeqModel.hasTrackState[0]);
+  CHECK("admitted model has track 0",
+        service.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
 }
 
 static void test_parse_failure_fails_lifecycle() {
@@ -45,12 +45,11 @@ static void test_parse_failure_fails_lifecycle() {
 
   auto result = app::doc::applySequencerRevision(service, app, 1, "track('bad', TrackSettings {})");
   CHECK("not ok", !result.ok);
-  CHECK("status Failed",
-        app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
+  CHECK("status Failed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
   CHECK("activeApplyOperationID == 0", service.apply.activeApplyOperationID == 0);
   CHECK("diagnostic sequencer.track.invalid_index",
         hasDiagnostic(result.diagnostics, "sequencer.track.invalid_index"));
-  CHECK("no admitted model", !service.apply.hasLastAdmittedSequencerModel);
+  CHECK("no admitted model", !service.apply.hasLastAdmittedDocModel);
 }
 
 static void test_supersedes_existing_active_operation() {
@@ -64,11 +63,9 @@ static void test_supersedes_existing_active_operation() {
   auto result = app::doc::applySequencerRevision(service, app, 1, kOneTrackDocument);
   CHECK("ok", result.ok);
   CHECK("applyOperationID == 1", result.applyOperationID == 1);
-  CHECK("status Completed",
-        app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
+  CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
   CHECK("active operation cleared", service.apply.activeApplyOperationID == 0);
-  CHECK("lastSupersededApplyOperationID == 41",
-        service.apply.lastSupersededApplyOperationID == 41);
+  CHECK("lastSupersededApplyOperationID == 41", service.apply.lastSupersededApplyOperationID == 41);
 }
 
 static void test_file_apply_success_uses_buffer_pipeline() {
@@ -82,12 +79,12 @@ static void test_file_apply_success_uses_buffer_pipeline() {
 
   auto result = app::doc::applySequencerFile(service, app, kTempFilePath);
   CHECK("ok", result.ok);
-  CHECK("status Completed",
-        app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
+  CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
   CHECK("buffer.path == tmpPath", service.buffer.path == kTempFilePath);
   CHECK("buffer.currentRevision == 1", service.buffer.currentRevision == 1);
   CHECK("lastAdmittedRevision == 1", app::doc::getLastAdmittedRevision(service) == 1);
-  CHECK("admitted model has track 0", service.apply.lastAdmittedSeqModel.hasTrackState[0]);
+  CHECK("admitted model has track 0",
+        service.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
 }
 
 static void test_file_read_failure_is_failed_apply_operation() {
@@ -98,12 +95,11 @@ static void test_file_read_failure_is_failed_apply_operation() {
   auto result = app::doc::applySequencerFile(service, app, "/path/that/does/not/exist.lua");
   CHECK("not ok", !result.ok);
   CHECK("applyOperationID non-zero", result.applyOperationID != 0);
-  CHECK("status Failed",
-        app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
+  CHECK("status Failed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
   CHECK("active operation cleared", service.apply.activeApplyOperationID == 0);
   CHECK("diagnostic document.file.read_failed",
         hasDiagnostic(result.diagnostics, "document.file.read_failed"));
-  CHECK("no admitted model", !service.apply.hasLastAdmittedSequencerModel);
+  CHECK("no admitted model", !service.apply.hasLastAdmittedDocModel);
   CHECK("lastAdmittedRevision == 0", app::doc::getLastAdmittedRevision(service) == 0);
 }
 
@@ -116,12 +112,10 @@ static void test_query_helpers_return_service_state() {
 
   CHECK("getDocDiagnostics matches",
         &app::doc::getDocDiagnostics(service) == &service.apply.diagnostics);
-  CHECK("getApplyStatus matches",
-        app::doc::getApplyStatus(service) == service.apply.status);
+  CHECK("getApplyStatus matches", app::doc::getApplyStatus(service) == service.apply.status);
   CHECK("getLastAdmittedRevision matches",
         app::doc::getLastAdmittedRevision(service) == service.buffer.lastAdmittedRevision);
-  CHECK("status is Failed",
-        app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
+  CHECK("status is Failed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
   CHECK("lastAdmittedRevision is 0", app::doc::getLastAdmittedRevision(service) == 0);
 }
 

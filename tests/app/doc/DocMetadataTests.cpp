@@ -46,6 +46,10 @@ bool hasDiagnostic(const char* code) {
   return app::doc::findDocumentDiagnostic(code) != nullptr;
 }
 
+const app::doc::DocFunctionMetadata* findFunction(const char* name) {
+  return app::doc::findAuthoredDocumentFunction(name);
+}
+
 } // namespace
 
 static void test_authored_surface_contains_only_document_globals() {
@@ -65,9 +69,7 @@ static void test_reserved_constructors_are_narrow() {
   const auto* mixer = app::doc::findAuthoredDocumentType(app::doc::doctype::MixerSettings);
   CHECK("SynthSettings type exists", synth != nullptr);
   CHECK("MixerSettings type exists", mixer != nullptr);
-  CHECK("SynthSettings reserved", synth && synth->status == app::doc::DocMetadataStatus::Reserved);
   CHECK("MixerSettings reserved", mixer && mixer->status == app::doc::DocMetadataStatus::Reserved);
-  CHECK("SynthSettings no fields", synth && synth->fields.empty());
   CHECK("MixerSettings no fields", mixer && mixer->fields.empty());
 }
 
@@ -93,7 +95,7 @@ static void test_track_settings_fields_match_parser_surface() {
   CHECK("activeSlot optional", activeSlot && !activeSlot->required);
   CHECK("activeSlot max slot",
         activeSlot && activeSlot->integerBounds.max == app::sequencer::PATTERNS_PER_LANE);
-  CHECK("no synth field", type && findField(*type, "synth") == nullptr);
+  CHECK("synth field", type && findField(*type, "synth") != nullptr);
   CHECK("no mixer field", type && findField(*type, "mixer") == nullptr);
 }
 
@@ -144,6 +146,16 @@ static void test_diagnostic_catalog_contains_emitted_codes() {
   CHECK("lua state failed", hasDiagnostic(app::doc::docdiag::DocumentLuaStateFailed));
   CHECK("lua eval failed", hasDiagnostic(app::doc::docdiag::DocumentLuaEvalFailed));
   CHECK("file read failed", hasDiagnostic(app::doc::docdiag::DocumentFileReadFailed));
+
+  CHECK("synth track invalid index", hasDiagnostic(app::doc::docdiag::SynthTrackInvalidIndex));
+  CHECK("synth settings invalid shape",
+        hasDiagnostic(app::doc::docdiag::SynthSettingsInvalidShape));
+  CHECK("synth param unknown", hasDiagnostic(app::doc::docdiag::SynthParamUnknown));
+  CHECK("synth param type mismatch", hasDiagnostic(app::doc::docdiag::SynthParamTypeMismatch));
+  CHECK("synth param enum unknown", hasDiagnostic(app::doc::docdiag::SynthParamEnumUnknown));
+  CHECK("synth param out of range", hasDiagnostic(app::doc::docdiag::SynthParamOutOfRange));
+  CHECK("synth param duplicate write", hasDiagnostic(app::doc::docdiag::SynthParamDuplicateWrite));
+  CHECK("synth admission failed", hasDiagnostic(app::doc::docdiag::SynthAdmissionFailed));
 }
 
 static void test_diagnostic_catalog_has_unique_codes() {
@@ -178,10 +190,16 @@ static void test_parser_emitted_diagnostics_are_cataloged() {
       "steps = { { active = true } } } }, activeSlot = 1 })",
       "applyFile('song.lua')",
       "apply_file('song.lua')",
+      "synth('one', SynthSettings {})",
+      "synth(1, 123)",
+      "synth(1, SynthSettings { nope = 1 })",
+      "synth(1, SynthSettings { osc1 = { enabled = 1 } })",
+      "synth(1, SynthSettings { osc1 = { bank = 'not_a_bank' } })",
+      "synth(1, SynthSettings { svf = { cutoff = 999999 } })",
   };
 
   for (const char* text : invalidDocs) {
-    auto r = app::doc::parseAndNormalizeSequencerDocument(1, 7, text);
+    auto r = app::doc::parseAndNormalizeAuthoredDocument(1, 7, text);
     CHECK("not ok", !r.ok);
     CHECK("has diagnostics", !r.diagnostics.empty());
     CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(r.diagnostics));
@@ -214,6 +232,55 @@ static void test_file_apply_emitted_diagnostics_are_cataloged() {
   CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(result.diagnostics));
 }
 
+static void test_mixer_constructor_remains_reserved() {
+  TEST("mixer_constructor_remains_reserved");
+  const auto* mixer = app::doc::findAuthoredDocumentType(app::doc::doctype::MixerSettings);
+  CHECK("MixerSettings type exists", mixer != nullptr);
+  CHECK("MixerSettings reserved", mixer && mixer->status == app::doc::DocMetadataStatus::Reserved);
+  CHECK("MixerSettings no fields", mixer && mixer->fields.empty());
+}
+
+static void test_synth_settings_metadata_is_implemented() {
+  TEST("synth_settings_metadata_is_implemented");
+
+  const auto* track = app::doc::findAuthoredDocumentType(app::doc::doctype::TrackSettings);
+  const auto* synth = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthSettings);
+  const auto* osc = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthOscSettings);
+  const auto* svf = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthSVFSettings);
+  const auto* ladder = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthLadderSettings);
+  const auto* fx = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthFXSettings);
+
+  CHECK("TrackSettings synth field", track && findField(*track, "synth") != nullptr);
+  CHECK("SynthSettings exists", synth != nullptr);
+  CHECK("SynthSettings implemented",
+        synth && synth->status == app::doc::DocMetadataStatus::Implemented);
+  CHECK("SynthSettings has osc1", synth && findField(*synth, "osc1") != nullptr);
+  CHECK("SynthSettings has ampEnv", synth && findField(*synth, "ampEnv") != nullptr);
+  CHECK("SynthSettings has fx", synth && findField(*synth, "fx") != nullptr);
+  CHECK("SynthOscSettings exists", osc != nullptr);
+  CHECK("SynthOscSettings has bank", osc && findField(*osc, "bank") != nullptr);
+  CHECK("SynthOscSettings has mix", osc && findField(*osc, "mix") != nullptr);
+  CHECK("SynthSVFSettings has mode", svf && findField(*svf, "mode") != nullptr);
+  CHECK("SynthSVFSettings no drive", svf && findField(*svf, "drive") == nullptr);
+  CHECK("SynthLadderSettings has drive", ladder && findField(*ladder, "drive") != nullptr);
+  CHECK("SynthLadderSettings no mode", ladder && findField(*ladder, "mode") == nullptr);
+  CHECK("SynthFXSettings exists", fx != nullptr);
+  CHECK("SynthFXSettings has delay", fx && findField(*fx, "delay") != nullptr);
+}
+
+static void test_synth_function_metadata_is_registered() {
+  TEST("synth_function_metadata_is_registered");
+
+  const auto* synth = findFunction(app::doc::docglobal::Synth);
+  CHECK("synth function", synth != nullptr);
+  CHECK("synth implemented", synth && synth->status == app::doc::DocMetadataStatus::Implemented);
+  CHECK("synth has 2 args", synth && synth->args.size == 2);
+  CHECK("synth track min", synth && synth->args.data[0].integerBounds.min == 1);
+  CHECK("synth track max", synth && synth->args.data[0].integerBounds.max == app::MAX_TRACKS);
+  CHECK("synth settings type",
+        synth && strEq(synth->args.data[1].typeName, app::doc::doctype::SynthSettings));
+}
+
 void runDocMetadataTests() {
   SUITE("DocMetadata");
   test_authored_surface_contains_only_document_globals();
@@ -227,4 +294,7 @@ void runDocMetadataTests() {
   test_parser_emitted_diagnostics_are_cataloged();
   test_service_emitted_diagnostics_are_cataloged();
   test_file_apply_emitted_diagnostics_are_cataloged();
+  test_mixer_constructor_remains_reserved();
+  test_synth_settings_metadata_is_implemented();
+  test_synth_function_metadata_is_registered();
 }

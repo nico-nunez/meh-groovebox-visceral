@@ -13,8 +13,8 @@
 
 namespace {
 
-app::doc::SequencerNormalizeResult parseDoc(const char* text) {
-  return app::doc::parseAndNormalizeSequencerDocument(1, 7, text);
+app::doc::AuthoredDocumentNormalizeResult parseDoc(const char* text) {
+  return app::doc::parseAndNormalizeAuthoredDocument(1, 7, text);
 }
 
 bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const char* code) {
@@ -37,11 +37,12 @@ static void test_populated_patterns_with_explicit_active_slot() {
                     "steps = { { active = true, note = 60, velocity = 100, gate = 0.8 } } } }, "
                     "activeSlot = 1 })");
   CHECK("ok", r.ok);
-  CHECK("hasTrackState[0]", r.model.hasTrackState[0]);
-  CHECK("patterns[0].occupied", r.model.tracks[0].patterns[0].occupied);
-  CHECK("activeSlot == 0", r.model.tracks[0].activeSlot == 0);
+  CHECK("hasTrackState[0]", r.model.sequencer.hasTrackState[0]);
+  CHECK("patterns[0].occupied", r.model.sequencer.tracks[0].patterns[0].occupied);
+  CHECK("activeSlot == 0", r.model.sequencer.tracks[0].activeSlot == 0);
   CHECK("activeSlotSource == Explicit",
-        r.model.tracks[0].activeSlotSource == app::doc::ActivePatternSlotSource::Explicit);
+        r.model.sequencer.tracks[0].activeSlotSource ==
+            app::doc::ActivePatternSlotSource::Explicit);
   CHECK("no diagnostics", r.diagnostics.empty());
 }
 
@@ -49,10 +50,10 @@ static void test_omitted_patterns_is_explicit_empty() {
   TEST("omitted_patterns_is_explicit_empty");
   auto r = parseDoc("track(1, TrackSettings {})");
   CHECK("ok", r.ok);
-  CHECK("hasTrackState[0]", r.model.hasTrackState[0]);
-  CHECK("explicitlyAuthoredEmpty", r.model.tracks[0].explicitlyAuthoredEmpty);
+  CHECK("hasTrackState[0]", r.model.sequencer.hasTrackState[0]);
+  CHECK("explicitlyAuthoredEmpty", r.model.sequencer.tracks[0].explicitlyAuthoredEmpty);
   CHECK("activeSlot == INVALID",
-        r.model.tracks[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
+        r.model.sequencer.tracks[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
   CHECK("no diagnostics", r.diagnostics.empty());
 }
 
@@ -60,9 +61,9 @@ static void test_empty_patterns_table_is_explicit_empty() {
   TEST("empty_patterns_table_is_explicit_empty");
   auto r = parseDoc("track(1, TrackSettings { patterns = {} })");
   CHECK("ok", r.ok);
-  CHECK("explicitlyAuthoredEmpty", r.model.tracks[0].explicitlyAuthoredEmpty);
+  CHECK("explicitlyAuthoredEmpty", r.model.sequencer.tracks[0].explicitlyAuthoredEmpty);
   CHECK("activeSlot == INVALID",
-        r.model.tracks[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
+        r.model.sequencer.tracks[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
   CHECK("no diagnostics", r.diagnostics.empty());
 }
 
@@ -72,7 +73,7 @@ static void test_invalid_patterns_shape_rejects_revision() {
   CHECK("not ok", !r.ok);
   CHECK("diagnostic sequencer.patterns.invalid_shape",
         hasDiagnostic(r.diagnostics, "sequencer.patterns.invalid_shape"));
-  CHECK("explicitlyAuthoredEmpty == false", !r.model.tracks[0].explicitlyAuthoredEmpty);
+  CHECK("explicitlyAuthoredEmpty == false", !r.model.sequencer.tracks[0].explicitlyAuthoredEmpty);
 }
 
 static void test_omitted_active_slot_is_inferred() {
@@ -80,9 +81,10 @@ static void test_omitted_active_slot_is_inferred() {
   auto r = parseDoc("track(1, TrackSettings { patterns = { [3] = { numSteps = 1, stepsPerBeat = 4, "
                     "steps = { { active = true } } } } })");
   CHECK("ok", r.ok);
-  CHECK("activeSlot == 2", r.model.tracks[0].activeSlot == 2);
+  CHECK("activeSlot == 2", r.model.sequencer.tracks[0].activeSlot == 2);
   CHECK("activeSlotSource == Inferred",
-        r.model.tracks[0].activeSlotSource == app::doc::ActivePatternSlotSource::Inferred);
+        r.model.sequencer.tracks[0].activeSlotSource ==
+            app::doc::ActivePatternSlotSource::Inferred);
 }
 
 static void test_active_slot_without_patterns_rejects_revision() {
@@ -170,7 +172,8 @@ static void test_duplicate_track_last_block_wins_but_diagnostics_remain() {
   CHECK("not ok", !r.ok);
   CHECK("diagnostic sequencer.patterns.invalid_shape",
         hasDiagnostic(r.diagnostics, "sequencer.patterns.invalid_shape"));
-  CHECK("final explicitlyAuthoredEmpty == true", r.model.tracks[0].explicitlyAuthoredEmpty);
+  CHECK("final explicitlyAuthoredEmpty == true",
+        r.model.sequencer.tracks[0].explicitlyAuthoredEmpty);
 }
 
 static void test_constructors_preserve_table_arguments() {
@@ -180,7 +183,7 @@ static void test_constructors_preserve_table_arguments() {
                     "SynthSettings { ignored = true } "
                     "MixerSettings { ignored = true }");
   CHECK("ok", r.ok);
-  CHECK("patterns[0].occupied", r.model.tracks[0].patterns[0].occupied);
+  CHECK("patterns[0].occupied", r.model.sequencer.tracks[0].patterns[0].occupied);
   CHECK("no diagnostics", r.diagnostics.empty());
 }
 
@@ -195,7 +198,7 @@ static void test_metadata_document_track_global_is_registered() {
   TEST("metadata_document_track_global_is_registered");
   auto r = parseDoc("track(1, TrackSettings {})");
   CHECK("ok", r.ok);
-  CHECK("track 0 present", r.model.hasTrackState[0]);
+  CHECK("track 0 present", r.model.sequencer.hasTrackState[0]);
 }
 
 static void test_runtime_apply_file_is_not_registered_in_authored_parser() {

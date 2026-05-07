@@ -1,7 +1,12 @@
 #include "app/doc/DocSequencerParser.h"
-#include "app/doc/DocMetadata.h"
 
+#include "app/doc/DocMetadata.h"
+#include "app/doc/DocSynthSettingsMetadata.h"
 #include "lua/SequencerLuaParsing.h"
+#include "synth/params/ParamUtils.h"
+
+#include <cmath>
+#include <string>
 
 namespace app::doc {
 namespace {
@@ -9,7 +14,7 @@ namespace {
 struct LuaSequencerParseContext {
   DocID documentID = 0;
   DocRevision revision = 0;
-  AuthoredSeqDocModel model{};
+  AuthoredDocModel model{};
   DocDiagnostics diagnostics{};
 };
 
@@ -29,6 +34,16 @@ std::string patternSlotTarget(uint8_t trackIndex, uint8_t slot) {
   target += ".patterns[";
   target += std::to_string(static_cast<int>(slot) + 1);
   target += "]";
+  return target;
+}
+
+std::string synthTarget(uint8_t trackIndex, const char* authoredPath) {
+  std::string target = "synth:";
+  target += std::to_string(static_cast<int>(trackIndex) + 1);
+  if (authoredPath && authoredPath[0] != '\0') {
+    target += ".";
+    target += authoredPath;
+  }
   return target;
 }
 
@@ -270,6 +285,217 @@ void finalizeTrackNormalization(LuaSequencerParseContext& ctx,
   }
 }
 
+bool finiteNumber(lua_State* L, int index) {
+  return lua_isnumber(L, index) && std::isfinite(lua_tonumber(L, index));
+}
+
+bool appendSynthWrite(LuaSequencerParseContext& ctx,
+                      AuthoredTrackSynthPatch& patch,
+                      const AuthoredSynthParamField& field,
+                      float value,
+                      SourceSpan span) {
+  for (const auto& existing : patch.writes) {
+    if (existing.paramID != field.paramID)
+      continue;
+
+    if (existing.value == value)
+      return true;
+
+    const std::string target = synthTarget(patch.trackIndex, field.authoredPath);
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SynthParamDuplicateWrite,
+                   "synth param written more than once",
+                   span,
+                   target.c_str());
+    return false;
+  }
+
+  patch.writes.push_back({field.paramID, value, &field, span});
+  return true;
+}
+
+bool parseSynthScalarValue(lua_State* L,
+                           int valueIndex,
+                           LuaSequencerParseContext& ctx,
+                           uint8_t trackIndex,
+                           const AuthoredSynthParamField& field,
+                           SourceSpan span,
+                           float& outValue) {
+  const auto& def = synth::param::PARAM_DEFS[field.paramID];
+  const std::string target = synthTarget(trackIndex, field.authoredPath);
+
+  switch (field.valueKind) {
+  case DocLuaValueKind::Boolean:
+    if (!lua_isboolean(L, valueIndex)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SynthParamTypeMismatch,
+                     "synth param must be a boolean",
+                     span,
+                     target.c_str());
+      return false;
+    }
+    outValue = lua_toboolean(L, valueIndex) ? 1.0f : 0.0f;
+    return true;
+
+  case DocLuaValueKind::Integer:
+    if (!lua_isinteger(L, valueIndex)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SynthParamTypeMismatch,
+                     "synth param must be an integer",
+                     span,
+                     target.c_str());
+      return false;
+    }
+    outValue = static_cast<float>(lua_tointeger(L, valueIndex));
+    break;
+
+  case DocLuaValueKind::Number:
+    if (!finiteNumber(L, valueIndex)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SynthParamTypeMismatch,
+                     "synth param must be a finite number",
+                     span,
+                     target.c_str());
+      return false;
+    }
+    outValue = static_cast<float>(lua_tonumber(L, valueIndex));
+    break;
+
+  case DocLuaValueKind::String: {
+    if (!lua_isstring(L, valueIndex)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SynthParamTypeMismatch,
+                     "synth enum param must be a string",
+                     span,
+                     target.c_str());
+      return false;
+    }
+    const char* token = lua_tostring(L, valueIndex);
+    auto parsed = synth::param::utils::parseEnum(def.type, token);
+    if (!parsed.ok) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SynthParamEnumUnknown,
+                     parsed.error ? parsed.error : "unknown synth enum token",
+                     span,
+                     target.c_str());
+      return false;
+    }
+    outValue = static_cast<float>(parsed.value);
+    break;
+  }
+
+  default:
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SynthParamTypeMismatch,
+                   "unsupported synth param value kind",
+                   span,
+                   target.c_str());
+    return false;
+  }
+
+  if (outValue < def.min || outValue > def.max) {
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SynthParamOutOfRange,
+                   "synth param value out of range",
+                   span,
+                   target.c_str());
+    return false;
+  }
+
+  return true;
+}
+
+bool parseSynthGroup(lua_State* L,
+                     int tableIndex,
+                     LuaSequencerParseContext& ctx,
+                     AuthoredTrackSynthPatch& patch,
+                     const std::string& prefix,
+                     SourceSpan span) {
+  const int absTableIndex = lua_absindex(L, tableIndex);
+  bool ok = true;
+
+  lua_pushnil(L);
+  while (lua_next(L, absTableIndex) != 0) {
+    if (!lua_isstring(L, -2)) {
+      const std::string target = synthTarget(patch.trackIndex, prefix.c_str());
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SynthParamUnknown,
+                     "synth field key must be a string",
+                     span,
+                     target.c_str());
+      lua_pop(L, 1);
+      ok = false;
+      continue;
+    }
+
+    const char* key = lua_tostring(L, -2);
+    std::string path = prefix.empty() ? key : prefix + "." + key;
+
+    if (lua_istable(L, -1)) {
+      ok = parseSynthGroup(L, lua_absindex(L, -1), ctx, patch, path, span) && ok;
+      lua_pop(L, 1);
+      continue;
+    }
+
+    const auto* field = findAuthoredSynthParamField(path.c_str());
+    if (!field) {
+      const std::string target = synthTarget(patch.trackIndex, path.c_str());
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SynthParamUnknown,
+                     "unknown or deferred synth param",
+                     span,
+                     target.c_str());
+      lua_pop(L, 1);
+      ok = false;
+      continue;
+    }
+
+    float value = 0.0f;
+    if (parseSynthScalarValue(L, lua_absindex(L, -1), ctx, patch.trackIndex, *field, span, value))
+      ok = appendSynthWrite(ctx, patch, *field, value, span) && ok;
+    else
+      ok = false;
+
+    lua_pop(L, 1);
+  }
+
+  return ok;
+}
+
+bool parseSynthSettingsForTrack(lua_State* L,
+                                int settingsIndex,
+                                LuaSequencerParseContext& ctx,
+                                uint8_t trackIndex,
+                                SourceSpan span) {
+  if (!lua_istable(L, settingsIndex)) {
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SynthSettingsInvalidShape,
+                   "SynthSettings must be a table",
+                   span,
+                   "synth");
+    return false;
+  }
+
+  ctx.model.hasSynthState[trackIndex] = true;
+  AuthoredTrackSynthPatch& patch = ctx.model.synthTracks[trackIndex];
+  patch.hasPatch = true;
+  patch.trackIndex = trackIndex;
+  patch.trackSpan = span;
+
+  return parseSynthGroup(L, settingsIndex, ctx, patch, "", span);
+}
+
 bool parseTrackSettings(lua_State* L,
                         int settingsIndex,
                         LuaSequencerParseContext& ctx,
@@ -287,6 +513,17 @@ bool parseTrackSettings(lua_State* L,
   bool ok = true;
   bool parsedValidPatternsTable = false;
 
+  lua_getfield(L, absSettingsIndex, "synth");
+  const bool synthFieldPresent = !lua_isnil(L, -1);
+  if (synthFieldPresent)
+    ok = parseSynthSettingsForTrack(L,
+                                    lua_absindex(L, -1),
+                                    ctx,
+                                    track.trackIndex,
+                                    track.trackSpan) &&
+         ok;
+  lua_pop(L, 1);
+
   if (patternsFieldPresent)
     ok = parsePatternsField(L, absSettingsIndex, ctx, track, parsedValidPatternsTable) && ok;
 
@@ -299,6 +536,49 @@ bool parseTrackSettings(lua_State* L,
                              parsedValidPatternsTable,
                              activeSlotFieldPresent);
   return ok;
+}
+
+int l_captureSynth(lua_State* L) {
+  auto* ctx = static_cast<LuaSequencerParseContext*>(lua_touserdata(L, lua_upvalueindex(1)));
+  if (!ctx)
+    return luaL_error(L, "missing authored document parse context");
+
+  const SourceSpan span = currentLuaCallSpan(L);
+
+  if (!lua_isinteger(L, 1)) {
+    pushDiagnostic(*ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SynthTrackInvalidIndex,
+                   "synth track index must be an integer",
+                   span,
+                   "synth");
+    return 0;
+  }
+
+  const int trackNumber = static_cast<int>(lua_tointeger(L, 1));
+  if (trackNumber < 1 || trackNumber > static_cast<int>(app::MAX_TRACKS)) {
+    pushDiagnostic(*ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SynthTrackInvalidIndex,
+                   "synth track index out of range",
+                   span,
+                   "synth");
+    return 0;
+  }
+
+  if (!lua_istable(L, 2)) {
+    pushDiagnostic(*ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SynthSettingsInvalidShape,
+                   "synth settings must be a table",
+                   span,
+                   "synth");
+    return 0;
+  }
+
+  const uint8_t trackIndex = static_cast<uint8_t>(trackNumber - 1);
+  parseSynthSettingsForTrack(L, 2, *ctx, trackIndex, span);
+  return 0;
 }
 
 int l_captureTrack(lua_State* L) {
@@ -340,9 +620,9 @@ int l_captureTrack(lua_State* L) {
   }
 
   const uint8_t trackIndex = static_cast<uint8_t>(trackNumber - 1);
-  ctx->model.hasTrackState[trackIndex] = true;
+  ctx->model.sequencer.hasTrackState[trackIndex] = true;
 
-  AuthoredTrackSeqModel& track = ctx->model.tracks[trackIndex];
+  AuthoredTrackSeqModel& track = ctx->model.sequencer.tracks[trackIndex];
   track = AuthoredTrackSeqModel{};
   track.trackIndex = trackIndex;
   track.trackSpan = trackSpan;
@@ -400,6 +680,13 @@ void registerParserEnvironment(lua_State* L, LuaSequencerParseContext& ctx) {
     lua_setglobal(L, trackFunction->name);
   }
 
+  const DocFunctionMetadata* synthFunction = findAuthoredDocumentFunction(docglobal::Synth);
+  if (synthFunction && synthFunction->status == DocMetadataStatus::Implemented) {
+    lua_pushlightuserdata(L, &ctx);
+    lua_pushcclosure(L, l_captureSynth, 1);
+    lua_setglobal(L, synthFunction->name);
+  }
+
   if (isAuthoredConstructor(docctor::TrackSettings))
     registerPlainConstructor(L, docctor::TrackSettings);
   if (isAuthoredConstructor(docctor::SynthSettings))
@@ -410,14 +697,14 @@ void registerParserEnvironment(lua_State* L, LuaSequencerParseContext& ctx) {
 
 } // namespace
 
-SequencerNormalizeResult parseAndNormalizeSequencerDocument(DocID documentID,
-                                                            DocRevision revision,
-                                                            const char* bufferText) {
+AuthoredDocumentNormalizeResult parseAndNormalizeAuthoredDocument(DocID documentID,
+                                                                  DocRevision revision,
+                                                                  const char* bufferText) {
   LuaSequencerParseContext ctx{};
-  ctx.documentID = documentID;
-  ctx.revision = revision;
   ctx.model.documentID = documentID;
   ctx.model.revision = revision;
+  ctx.model.sequencer.documentID = documentID;
+  ctx.model.sequencer.revision = revision;
 
   lua_State* L = luaL_newstate();
   if (!L) {
@@ -446,7 +733,7 @@ SequencerNormalizeResult parseAndNormalizeSequencerDocument(DocID documentID,
 
   lua_close(L);
 
-  SequencerNormalizeResult result{};
+  AuthoredDocumentNormalizeResult result{};
   result.ok = ctx.diagnostics.empty();
   result.model = ctx.model;
   result.diagnostics = ctx.diagnostics;

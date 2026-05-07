@@ -25,6 +25,7 @@ void printSuiteResult() {
 void runDocApplyFileBindingTests();
 void runDocAuthoringServiceSeqApplyTests();
 void runDocAuthoringServiceLifecycleTests();
+void runDocAuthoredSynthEndToEndTests();
 void runAuthoredDocEditorTests();
 
 void runDisplayPublicationTests();
@@ -32,10 +33,15 @@ void runSynthDisplayStateTests();
 void runDisplayDashboardSnapshotTests();
 
 void runDocSequencerParserTests();
+void runDocSynthSettingsParserTests();
+
+void runDocSynthPlannerTests();
 void runDocSequencerPlannerTests();
+
 void runSequencerPlaybackTests();
 
 void runDocMetadataTests();
+void runDocSynthSettingsMetadataTests();
 void runMetadataVerificationTests();
 void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
@@ -58,6 +64,7 @@ int main(int argc, char* argv[]) {
   runDocApplyFileBindingTests();
   runDocAuthoringServiceSeqApplyTests();
   runDocAuthoringServiceLifecycleTests();
+  runDocAuthoredSynthEndToEndTests();
   runAuthoredDocEditorTests();
 
   runDisplayPublicationTests();
@@ -65,10 +72,15 @@ int main(int argc, char* argv[]) {
   runDisplayDashboardSnapshotTests();
 
   runDocSequencerParserTests();
+  runDocSynthSettingsParserTests();
+
+  runDocSynthPlannerTests();
   runDocSequencerPlannerTests();
+
   runSequencerPlaybackTests();
 
   runDocMetadataTests();
+  runDocSynthSettingsMetadataTests();
   runMetadataVerificationTests();
   runLuaRuntimeMetadataTests();
   runLuaLSStubGenerationTests();

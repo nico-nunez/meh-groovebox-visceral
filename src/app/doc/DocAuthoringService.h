@@ -1,7 +1,7 @@
 #pragma once
 
+#include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
-#include "app/doc/DocSequencerModel.h"
 
 #include <string>
 
@@ -31,8 +31,9 @@ struct DocApplyState {
   ApplyOperationID lastSupersededApplyOperationID = 0;
   ApplyStatus status = ApplyStatus::Idle;
   DocDiagnostics diagnostics{};
-  AuthoredSeqDocModel lastAdmittedSeqModel{};
-  bool hasLastAdmittedSequencerModel = false;
+
+  AuthoredDocModel lastAdmittedDocModel{};
+  bool hasLastAdmittedDocModel = false;
 };
 
 struct DocAuthoringService {

@@ -44,9 +44,7 @@ struct LuaFixture {
   }
 
   // Returns true if the Lua string executed without error.
-  bool exec(const char* code) {
-    return luaL_dostring(L, code) == LUA_OK;
-  }
+  bool exec(const char* code) { return luaL_dostring(L, code) == LUA_OK; }
 
   // Returns the top-of-stack string (error message after a failed exec).
   std::string topString() {
@@ -72,7 +70,7 @@ static void test_apply_file_success_calls_document_service() {
   CHECK("status Completed",
         fixture.app.docAuthoring.apply.status == app::doc::ApplyStatus::Completed);
   CHECK("track 0 admitted",
-        fixture.app.docAuthoring.apply.lastAdmittedSeqModel.hasTrackState[0]);
+        fixture.app.docAuthoring.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
 }
 
 static void test_apply_file_failure_surfaces_first_diagnostic() {
