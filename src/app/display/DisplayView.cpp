@@ -92,18 +92,6 @@ void drawTransportSection(AppContext& app, const TransportSnapshot& snapshot) {
     lastSnapshotBpm = bpmEdit;
     bpmEditing = false;
   }
-
-  // static float bpmEdit = app::transport::DEFAULT_BPM;
-  // bpmEdit = snapshot.bpm;
-  // ImGui::SetNextItemWidth(120.0f);
-  // if (ImGui::InputFloat("BPM",
-  //                       &bpmEdit,
-  //                       1.0f,
-  //                       10.0f,
-  //                       "%.2f",
-  //                       ImGuiInputTextFlags_EnterReturnsTrue)) {
-  //   drawQueueResult(app::pushControlEvent(&app, app::events::createBPMEvent(bpmEdit)));
-  // }
 }
 
 void drawTrackSection(AppContext& app, const TrackSnapshot& snapshot) {
