@@ -24,8 +24,14 @@ Already present in the codebase:
 - Track-oriented app scaffolding in the host runtime
 - Preset loading/saving infrastructure
 - Keyboard and MIDI note input
+- Built-in code editor with an authored Lua document system (buffer-first, explicit apply)
+- LuaLS language server integration for authored-document diagnostics and completion
+- Authored step sequencer state via `track()` / `TrackSettings` / pattern definitions
+- Authored per-track synth settings via `synth()` / `SynthSettings` constructors
+- Authored per-track mixer settings via `mixer()` / `MixerSettings` constructors (gain, pan, mute)
+- Static metadata layer and generated LuaLS stubs keeping authored and runtime Lua surfaces separate
 
-Important limitations: the host now renders and mixes multiple tracks, and the step sequencer/p-lock runtime is present, but the groovebox layer is still incomplete. Pattern management and switching are still minimal, session recall is not in place, solo/performance-mix behavior is unfinished, and the current ImGui window is still a basic runtime shell rather than a real performance display.
+Important limitations: the host now renders and mixes multiple tracks, and the step sequencer/p-lock runtime is present, but the groovebox layer is still incomplete. Pattern management and switching are still minimal, session recall is not in place, solo/performance-mix behavior is unfinished, and the ImGui window is a functional but early-stage editor shell rather than a full performance display.
 
 ## Planned Groovebox Features
 
