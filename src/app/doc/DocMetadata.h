@@ -148,7 +148,7 @@ inline constexpr const char* MixerParamUnknown = "mixer.param.unknown";
 inline constexpr const char* MixerParamTypeMismatch = "mixer.param.type_mismatch";
 inline constexpr const char* MixerParamOutOfRange = "mixer.param.out_of_range";
 inline constexpr const char* MixerParamDuplicateWrite = "mixer.param.duplicate_write";
-inline constexpr const char* MixerApplyNotImplemented = "mixer.apply_not_implemented";
+inline constexpr const char* MixerAdmissionFailed = "mixer.admission_failed";
 
 inline constexpr const char* SynthTrackInvalidIndex = "synth.track.invalid_index";
 inline constexpr const char* SynthSettingsInvalidShape = "synth.settings.invalid_shape";

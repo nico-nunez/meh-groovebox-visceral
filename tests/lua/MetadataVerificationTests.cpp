@@ -372,7 +372,27 @@ static void test_document_synth_and_runtime_param_surfaces_do_not_collapse() {
   checkContains(authored, "function SynthSettings(", "authored SynthSettings");
   checkNotContains(runtime, "function SynthSettings(", "runtime no SynthSettings");
 }
+static void test_mixer_admission_diagnostic_is_cataloged() {
+  TEST("mixer_admission_diagnostic_is_cataloged");
+  const auto* d = app::doc::findDocumentDiagnostic(app::doc::docdiag::MixerAdmissionFailed);
+  CHECK("found", d != nullptr);
+  CHECK("severity", d && d->severity == app::doc::DiagnosticSeverity::Error);
+  CHECK("source", d && d->source == app::doc::DiagnosticSource::GrooveboxAdmission);
+}
 
+static void test_all_mixer_diagnostic_codes_are_cataloged() {
+  TEST("all_mixer_diagnostic_codes_are_cataloged");
+  namespace dd = app::doc::docdiag;
+  CHECK("invalid index", app::doc::findDocumentDiagnostic(dd::MixerTrackInvalidIndex) != nullptr);
+  CHECK("invalid shape",
+        app::doc::findDocumentDiagnostic(dd::MixerSettingsInvalidShape) != nullptr);
+  CHECK("unknown", app::doc::findDocumentDiagnostic(dd::MixerParamUnknown) != nullptr);
+  CHECK("type mismatch", app::doc::findDocumentDiagnostic(dd::MixerParamTypeMismatch) != nullptr);
+  CHECK("out of range", app::doc::findDocumentDiagnostic(dd::MixerParamOutOfRange) != nullptr);
+  CHECK("duplicate write",
+        app::doc::findDocumentDiagnostic(dd::MixerParamDuplicateWrite) != nullptr);
+  CHECK("admission failed", app::doc::findDocumentDiagnostic(dd::MixerAdmissionFailed) != nullptr);
+}
 void runMetadataVerificationTests() {
   SUITE("LuaMetadataVerification");
   test_canonical_apply_file_only_exists_in_runtime_surface();
@@ -385,4 +405,6 @@ void runMetadataVerificationTests() {
   test_param_proxy_generation_has_representative_fields();
   test_runtime_visible_globals_match_metadata();
   test_document_synth_and_runtime_param_surfaces_do_not_collapse();
+  test_mixer_admission_diagnostic_is_cataloged();
+  test_all_mixer_diagnostic_codes_are_cataloged();
 }

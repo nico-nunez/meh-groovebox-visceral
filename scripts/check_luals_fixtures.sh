@@ -102,9 +102,15 @@ expect_clean \
   "tests/luals/authored_document" \
   "valid_synth_doc.lua" \
   "$AUTHORED_LIBRARY"
+
 expect_clean \
   "tests/luals/authored_document" \
   "valid_sequencer_doc.lua" \
+  "$AUTHORED_LIBRARY"
+
+expect_clean \
+  "tests/luals/authored_document" \
+  "valid_mixer_doc.lua" \
   "$AUTHORED_LIBRARY"
 
 expect_clean \
@@ -117,6 +123,7 @@ expect_undefined_global \
   "invalid_runtime_symbol.lua" \
   "$AUTHORED_LIBRARY" \
   "applyFile"
+
 expect_undefined_global \
   "tests/luals/runtime_lua" \
   "invalid_document_symbol.lua" \

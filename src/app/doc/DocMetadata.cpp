@@ -501,29 +501,16 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
      DocMetadataStatus::Implemented,
      spanOf(kSynthFXUnitFields),
      "FX unit settings."},
-    // {
-    //     doctype::MixerSettings,
-    //     DocMetadataSurface::AuthoredDocument,
-    //     DocMetadataStatus::Reserved,
-    //     {},
-    //     "Reserved constructor; authored mixer semantics are not implemented.",
-
-    // },
-    {
-        doctype::MixerSettings,
-        DocMetadataSurface::AuthoredDocument,
-        DocMetadataStatus::Implemented,
-        spanOf(kMixerTrackSettingsFields),
-        "Patch-style authored track mixer settings.",
-    },
-    {
-        doctype::MixerTrackSettings,
-        DocMetadataSurface::AuthoredDocument,
-        DocMetadataStatus::Implemented,
-        spanOf(kMixerTrackSettingsFields),
-        "Track-scoped mixer settings (gain, pan, mute).",
-    },
-
+    {doctype::MixerSettings,
+     DocMetadataSurface::AuthoredDocument,
+     DocMetadataStatus::Implemented,
+     spanOf(kMixerTrackSettingsFields),
+     "Patch-style authored track mixer settings."},
+    {doctype::MixerTrackSettings,
+     DocMetadataSurface::AuthoredDocument,
+     DocMetadataStatus::Implemented,
+     spanOf(kMixerTrackSettingsFields),
+     "Track-scoped mixer settings (gain, pan, mute)."},
 };
 
 constexpr DocFunctionArgMetadata kSynthArgs[] = {
@@ -641,13 +628,13 @@ constexpr DocDiagnosticMetadata kDiagnostics[] = {
         "Mixer parameter is written more than once with conflicting values.",
     },
     {
-        docdiag::MixerApplyNotImplemented,
+        docdiag::MixerAdmissionFailed,
         DiagnosticSeverity::Error,
-        DiagnosticSource::Planner,
+        DiagnosticSource::GrooveboxAdmission,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
-        "mixer:N",
-        "Authored mixer settings parsed but mixer apply is not yet implemented.",
+        "mixer:N.param",
+        "Mixer param could not be admitted (control queue full).",
     },
     {
         docdiag::SequencerTrackInvalidIndex,

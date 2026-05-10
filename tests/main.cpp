@@ -25,8 +25,10 @@ void printSuiteResult() {
 void runDocApplyFileBindingTests();
 void runDocAuthoringServiceSeqApplyTests();
 void runDocAuthoringServiceLifecycleTests();
-void runDocAuthoredSynthEndToEndTests();
 void runAuthoredDocEditorTests();
+
+void runDocAuthoredSynthEndToEndTests();
+void runDocAuthoredMixerEndToEndTests();
 
 void runDisplayPublicationTests();
 void runSynthDisplayStateTests();
@@ -67,8 +69,10 @@ int main(int argc, char* argv[]) {
   runDocApplyFileBindingTests();
   runDocAuthoringServiceSeqApplyTests();
   runDocAuthoringServiceLifecycleTests();
-  runDocAuthoredSynthEndToEndTests();
   runAuthoredDocEditorTests();
+
+  runDocAuthoredSynthEndToEndTests();
+  runDocAuthoredMixerEndToEndTests();
 
   runDisplayPublicationTests();
   runSynthDisplayStateTests();

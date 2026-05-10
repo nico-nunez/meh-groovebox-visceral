@@ -213,6 +213,19 @@ static void test_runtime_stubs_do_not_contain_authored_mixer_function() {
   checkNotContains(runtime, "function mixer(trackNumber", "no authored mixer fn");
 }
 
+static void test_authored_stubs_gain_field_present() {
+  TEST("authored_stubs_gain_field_present");
+  const std::string authored = readRequiredFile(kAuthoredStubPath);
+  checkContains(authored, "gain", "gain");
+}
+
+static void test_authored_stubs_track_settings_has_mixer_field() {
+  TEST("authored_stubs_track_settings_has_mixer_field");
+  const std::string authored = readRequiredFile(kAuthoredStubPath);
+  const bool hasMixer = contains(authored, "mixer?") || contains(authored, "---@field mixer");
+  CHECK("mixer field", hasMixer);
+}
+
 void runLuaLSStubGenerationTests() {
   SUITE("LuaLSStubGeneration");
   test_authored_stub_contains_document_surface();
@@ -229,4 +242,6 @@ void runLuaLSStubGenerationTests() {
   test_authored_stubs_contain_mixer_function();
   test_authored_stubs_contain_mixer_settings_class();
   test_runtime_stubs_do_not_contain_authored_mixer_function();
+  test_authored_stubs_gain_field_present();
+  test_authored_stubs_track_settings_has_mixer_field();
 }

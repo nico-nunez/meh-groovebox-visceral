@@ -2,6 +2,7 @@
 
 #include "app/AppContext.h"
 #include "app/doc/DocMetadata.h"
+#include "app/doc/DocMixerPlanner.h"
 #include "app/doc/DocSequencerParser.h"
 #include "app/doc/DocSequencerPlanner.h"
 #include "app/doc/DocSynthPlanner.h"
@@ -14,36 +15,50 @@
 namespace app::doc {
 namespace {
 
-bool hasMixerWrites(const AuthoredDocModel& model) {
-  for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
-    if (model.hasMixerState[trackIndex] && !model.mixerTracks[trackIndex].writes.empty())
-      return true;
+std::string mixerTarget(uint8_t trackIndex, const AuthoredMixerParamField* field) {
+  std::string target = "mixer:";
+  target += std::to_string(static_cast<int>(trackIndex) + 1);
+  if (field && field->authoredField && field->authoredField[0] != '\0') {
+    target += ".";
+    target += field->authoredField;
   }
-  return false;
+  return target;
 }
 
-DocDiagnostic makeMixerApplyNotImplementedDiagnostic(DocAuthoringService& service,
-                                                     DocRevision revision,
-                                                     const AuthoredDocModel& model) {
+DocDiagnostic makeMixerAdmissionDiagnostic(DocAuthoringService& service,
+                                           DocRevision revision,
+                                           const PlannedMixerParamOp& op,
+                                           const char* message) {
   DocDiagnostic diagnostic{};
   diagnostic.severity = DiagnosticSeverity::Error;
-  diagnostic.source = DiagnosticSource::Planner;
+  diagnostic.source = DiagnosticSource::GrooveboxAdmission;
   diagnostic.documentID = service.buffer.documentID;
   diagnostic.revision = revision;
-  diagnostic.code = docdiag::MixerApplyNotImplemented;
-  diagnostic.message = "authored mixer settings parsed, but mixer apply is not implemented yet";
-
-  for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
-    if (model.hasMixerState[trackIndex]) {
-      diagnostic.span = model.mixerTracks[trackIndex].trackSpan;
-      diagnostic.relatedTarget = "mixer:" + std::to_string(trackIndex + 1);
-      break;
-    }
-  }
-
+  diagnostic.code = docdiag::MixerAdmissionFailed;
+  diagnostic.message = message ? message : "mixer param admission failed";
+  diagnostic.span = op.span;
+  diagnostic.relatedTarget = mixerTarget(op.trackIndex, op.field);
   return diagnostic;
 }
 
+bool submitMixerPlan(DocAuthoringService& service,
+                     app::AppContext& app,
+                     DocRevision revision,
+                     const PlannedMixerApply& plan,
+                     DocDiagnostics& diagnostics) {
+  for (const PlannedMixerParamOp& op : plan.paramOps) {
+    auto evt = app::events::createAppParamEvent(op.paramID, op.value, op.trackIndex);
+    auto res = pushControlEvent(&app, evt);
+    if (!res.ok) {
+      diagnostics.push_back(makeMixerAdmissionDiagnostic(service,
+                                                         revision,
+                                                         op,
+                                                         res.err ? res.err : "control queue full"));
+      return false;
+    }
+  }
+  return true;
+}
 std::string trackTarget(uint8_t trackIndex, const char* suffix) {
   std::string target = "track:";
   target += std::to_string(static_cast<int>(trackIndex) + 1);
@@ -249,6 +264,8 @@ AuthoredDocModel buildAdmittedDocumentTargetModel(const AuthoredDocModel& nextMo
                                                   const AuthoredDocModel* previousAdmittedModel) {
   AuthoredDocModel admitted = buildAdmittedSynthTargetModel(nextModel, previousAdmittedModel);
 
+  admitted = buildAdmittedMixerTargetModel(nextModel, &admitted);
+
   const AuthoredSeqDocModel* previousSeq =
       previousAdmittedModel ? &previousAdmittedModel->sequencer : nullptr;
   admitted.sequencer = buildAdmittedTargetModel(nextModel.sequencer, previousSeq);
@@ -294,11 +311,9 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
     return result;
   }
 
-  if (hasMixerWrites(normalize.model)) {
-    DocDiagnostics diagnostics{};
-    diagnostics.push_back(
-        makeMixerApplyNotImplementedDiagnostic(service, revision, normalize.model));
-    failApply(service, operationID, diagnostics);
+  PlannedMixerApply mixerPlan = planMixerApply(normalize.model, previousDoc);
+  if (!mixerPlan.ok) {
+    failApply(service, operationID, mixerPlan.diagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
@@ -313,6 +328,12 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   service.apply.status = ApplyStatus::Planned;
 
   DocDiagnostics admissionDiagnostics{};
+  if (!submitMixerPlan(service, app, revision, mixerPlan, admissionDiagnostics)) {
+    failApply(service, operationID, admissionDiagnostics);
+    result.diagnostics = service.apply.diagnostics;
+    return result;
+  }
+
   if (!submitSynthPlan(service, app, revision, synthPlan, admissionDiagnostics)) {
     failApply(service, operationID, admissionDiagnostics);
     result.diagnostics = service.apply.diagnostics;

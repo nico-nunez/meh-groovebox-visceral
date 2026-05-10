@@ -293,6 +293,119 @@ static void test_synth_queue_full_fails_apply() {
   CHECK("no admitted doc model", !service.apply.hasLastAdmittedDocModel);
 }
 
+static void test_service_applies_mixer_gain() {
+  TEST("service_applies_mixer_gain");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  auto result =
+      app::doc::applySequencerRevision(service, app, 1, "mixer(1, MixerSettings { gain = 0.5 })");
+  CHECK("ok", result.ok);
+}
+
+static void test_service_applies_mute() {
+  TEST("service_applies_mute");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  auto result =
+      app::doc::applySequencerRevision(service, app, 1, "mixer(1, MixerSettings { mute = true })");
+  CHECK("ok", result.ok);
+}
+
+static void test_service_applies_pan() {
+  TEST("service_applies_pan");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  auto result =
+      app::doc::applySequencerRevision(service, app, 1, "mixer(1, MixerSettings { pan = -0.5 })");
+  CHECK("ok", result.ok);
+}
+
+static void test_mixer_synth_document_applies() {
+  TEST("mixer_synth_document_applies");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  auto result =
+      app::doc::applySequencerRevision(service,
+                                       app,
+                                       1,
+                                       "mixer(1, MixerSettings { gain = 0.7 })\n"
+                                       "synth(1, SynthSettings { osc1 = { mix = 0.8 } })");
+  CHECK("ok", result.ok);
+}
+
+static void test_admitted_model_includes_mixer_state_after_apply() {
+  TEST("admitted_model_includes_mixer_state_after_apply");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  app::doc::applySequencerRevision(service, app, 1, "mixer(1, MixerSettings { gain = 0.6 })");
+
+  CHECK("admitted", service.apply.hasLastAdmittedDocModel);
+  CHECK("mixer state", service.apply.lastAdmittedDocModel.hasMixerState[0]);
+}
+
+static void test_admitted_model_preserves_sequencer_state_across_mixer_only_apply() {
+  TEST("admitted_model_preserves_sequencer_state_across_mixer_only_apply");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  app::doc::applySequencerRevision(service, app, 1, kNonEmptyTrack1);
+  app::doc::applySequencerRevision(service, app, 2, "mixer(1, MixerSettings { gain = 0.5 })");
+
+  CHECK("seq preserved", service.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
+  CHECK("mixer added", service.apply.lastAdmittedDocModel.hasMixerState[0]);
+}
+
+static void test_admitted_model_preserves_synth_state_across_mixer_only_apply() {
+  TEST("admitted_model_preserves_synth_state_across_mixer_only_apply");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  app::doc::applySequencerRevision(service,
+                                   app,
+                                   1,
+                                   "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+  app::doc::applySequencerRevision(service, app, 2, "mixer(1, MixerSettings { gain = 0.6 })");
+
+  CHECK("synth preserved", service.apply.lastAdmittedDocModel.hasSynthState[0]);
+  CHECK("mixer added", service.apply.lastAdmittedDocModel.hasMixerState[0]);
+}
+static void test_mixer_sequencer_document_applies() {
+  TEST("mixer_sequencer_document_applies");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  std::string doc = "mixer(1, MixerSettings { mute = false })\n";
+  doc += kNonEmptyTrack1;
+  auto result = app::doc::applySequencerRevision(service, app, 1, doc.c_str());
+  CHECK("ok", result.ok);
+}
+
+static void test_mixer_synth_sequencer_document_applies() {
+  TEST("mixer_synth_sequencer_document_applies");
+  app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
+  app::AppContext app{};
+
+  std::string doc = "mixer(1, MixerSettings { gain = 0.8 })\n"
+                    "synth(1, SynthSettings { osc1 = { mix = 0.5 } })\n";
+  doc += kNonEmptyTrack1;
+  auto result = app::doc::applySequencerRevision(service, app, 1, doc.c_str());
+  CHECK("ok", result.ok);
+}
+
 void runDocAuthoringServiceSeqApplyTests() {
   SUITE("DocAuthoringService / SequencerApply");
   test_parse_failure_sets_failed_without_admission();
@@ -308,4 +421,13 @@ void runDocAuthoringServiceSeqApplyTests() {
   test_mixed_synth_and_sequencer_apply_succeeds();
   test_synth_queue_full_fails_apply(); // if optional test included
   test_successful_non_empty_apply_admits_and_commits();
+  test_service_applies_mixer_gain();
+  test_service_applies_mute();
+  test_service_applies_pan();
+  test_mixer_synth_document_applies();
+  test_mixer_sequencer_document_applies();
+  test_mixer_synth_sequencer_document_applies();
+  test_admitted_model_includes_mixer_state_after_apply();
+  test_admitted_model_preserves_sequencer_state_across_mixer_only_apply();
+  test_admitted_model_preserves_synth_state_across_mixer_only_apply();
 }

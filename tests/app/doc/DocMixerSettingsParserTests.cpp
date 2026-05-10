@@ -221,22 +221,6 @@ static void test_mixer_parser_duplicate_write_different_value_fails() {
   CHECK("diag", hasDiag);
 }
 
-static void test_service_rejects_mixer_authored_document_in_phase2() {
-  TEST("service_rejects_mixer_authored_document_in_phase2");
-  app::doc::DocAuthoringService service{};
-  app::doc::initDocAuthoringService(service);
-  app::AppContext app{};
-
-  auto result =
-      app::doc::applySequencerRevision(service, app, 1, "mixer(1, MixerSettings { gain = 0.8 })");
-  CHECK("not ok", !result.ok);
-  const bool hasDiag =
-      std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
-        return d.code == app::doc::docdiag::MixerApplyNotImplemented;
-      });
-  CHECK("diag", hasDiag);
-}
-
 static void test_sequencer_only_document_still_applies_after_phase2() {
   TEST("sequencer_only_document_still_applies_after_phase2");
   app::doc::DocAuthoringService service{};
@@ -281,7 +265,6 @@ void runDocMixerSettingsParserTests() {
   test_mixer_parser_pan_out_of_range();
   test_mixer_parser_duplicate_write_same_value_is_ok();
   test_mixer_parser_duplicate_write_different_value_fails();
-  test_service_rejects_mixer_authored_document_in_phase2();
   test_sequencer_only_document_still_applies_after_phase2();
   test_synth_only_document_still_applies_after_phase2();
 }
