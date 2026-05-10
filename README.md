@@ -45,7 +45,7 @@ The list below is intentionally written as a project checklist. Items are pendin
 - [x] Step sequencer runtime
 - [x] Per-step parameter locks
 - [x] Multi-track render path and internal mixing
-- [ ] Expanded track addressing and direct per-track operations
+- [x] Expanded track addressing and direct per-track operations
 - [ ] Pattern management, storage, and switching
 - [ ] Solo and broader performance-mix controls
 - [x] Basic mute / gain / pan / master mix controls
