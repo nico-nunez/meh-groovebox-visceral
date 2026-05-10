@@ -107,6 +107,7 @@ const DocDiagnosticMetadata* findDocumentDiagnostic(const char* code);
 namespace docglobal {
 inline constexpr const char* Track = "track";
 inline constexpr const char* Synth = "synth";
+inline constexpr const char* Mixer = "mixer";
 } // namespace docglobal
 
 namespace docctor {
@@ -131,6 +132,7 @@ inline constexpr const char* SynthFXSettings = "SynthFXSettings";
 inline constexpr const char* SynthFXUnitSettings = "SynthFXUnitSettings";
 
 inline constexpr const char* MixerSettings = "MixerSettings";
+inline constexpr const char* MixerTrackSettings = "MixerTrackSettings";
 
 inline constexpr const char* TrackSettings = "TrackSettings";
 inline constexpr const char* PatternSlots = "PatternSlots";
@@ -140,6 +142,14 @@ inline constexpr const char* StepLock = "StepLock";
 } // namespace doctype
 
 namespace docdiag {
+inline constexpr const char* MixerTrackInvalidIndex = "mixer.track.invalid_index";
+inline constexpr const char* MixerSettingsInvalidShape = "mixer.settings.invalid_shape";
+inline constexpr const char* MixerParamUnknown = "mixer.param.unknown";
+inline constexpr const char* MixerParamTypeMismatch = "mixer.param.type_mismatch";
+inline constexpr const char* MixerParamOutOfRange = "mixer.param.out_of_range";
+inline constexpr const char* MixerParamDuplicateWrite = "mixer.param.duplicate_write";
+inline constexpr const char* MixerApplyNotImplemented = "mixer.apply_not_implemented";
+
 inline constexpr const char* SynthTrackInvalidIndex = "synth.track.invalid_index";
 inline constexpr const char* SynthSettingsInvalidShape = "synth.settings.invalid_shape";
 inline constexpr const char* SynthParamUnknown = "synth.param.unknown";

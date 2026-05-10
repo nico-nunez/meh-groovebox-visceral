@@ -24,6 +24,42 @@ constexpr DocNumberBounds finiteMin(double min) {
   return {min, true, true};
 }
 
+constexpr DocFieldMetadata kMixerTrackSettingsFields[] = {
+    {"gain",
+     DocLuaValueKind::Number,
+     false,
+     DocMetadataStatus::Implemented,
+     {},
+     {},
+     "",
+     "Track output gain. Range 0.0..1.0."},
+    {"pan",
+     DocLuaValueKind::Number,
+     false,
+     DocMetadataStatus::Implemented,
+     {},
+     {},
+     "",
+     "Track pan position. Range -1.0..1.0."},
+    {"mute",
+     DocLuaValueKind::Boolean,
+     false,
+     DocMetadataStatus::Implemented,
+     {},
+     {},
+     "",
+     "Track mute state."},
+};
+
+constexpr DocFunctionArgMetadata kMixerArgs[] = {
+    {"trackNumber",
+     DocLuaValueKind::Integer,
+     "",
+     intBounds(1, app::MAX_TRACKS),
+     "One-based track number."},
+    {"settings", DocLuaValueKind::Table, doctype::MixerSettings, {}, "MixerSettings table."},
+};
+
 constexpr DocFieldMetadata kSynthOscFields[] = {
     {"enabled", DocLuaValueKind::Boolean, false},
     {"bank", DocLuaValueKind::String, false},
@@ -265,6 +301,16 @@ constexpr DocFieldMetadata kTrackSettingsFields[] = {
         doctype::SynthSettings,
         "Patch-style synth settings for this track.",
     },
+    {
+        "mixer",
+        DocLuaValueKind::Table,
+        false,
+        DocMetadataStatus::Implemented,
+        {},
+        {},
+        doctype::MixerSettings,
+        "Patch-style track mixer settings.",
+    },
 
 };
 
@@ -455,13 +501,29 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
      DocMetadataStatus::Implemented,
      spanOf(kSynthFXUnitFields),
      "FX unit settings."},
+    // {
+    //     doctype::MixerSettings,
+    //     DocMetadataSurface::AuthoredDocument,
+    //     DocMetadataStatus::Reserved,
+    //     {},
+    //     "Reserved constructor; authored mixer semantics are not implemented.",
+
+    // },
     {
         doctype::MixerSettings,
         DocMetadataSurface::AuthoredDocument,
-        DocMetadataStatus::Reserved,
-        {},
-        "Reserved constructor; authored mixer semantics are not implemented.",
+        DocMetadataStatus::Implemented,
+        spanOf(kMixerTrackSettingsFields),
+        "Patch-style authored track mixer settings.",
     },
+    {
+        doctype::MixerTrackSettings,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kMixerTrackSettingsFields),
+        "Track-scoped mixer settings (gain, pan, mute).",
+    },
+
 };
 
 constexpr DocFunctionArgMetadata kSynthArgs[] = {
@@ -492,6 +554,14 @@ constexpr DocFunctionArgMetadata kTrackArgs[] = {
 
 constexpr DocFunctionMetadata kAuthoredFunctions[] = {
     {
+        docglobal::Mixer,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kMixerArgs),
+        "",
+        "Capture patch-style authored mixer state for one track.",
+    },
+    {
         docglobal::Track,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
@@ -516,6 +586,69 @@ constexpr const char* kAuthoredConstructors[] = {
 };
 
 constexpr DocDiagnosticMetadata kDiagnostics[] = {
+    {
+        docdiag::MixerTrackInvalidIndex,
+        DiagnosticSeverity::Error,
+        DiagnosticSource::Validator,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        "mixer",
+        "Mixer track index is not an integer or is out of range.",
+    },
+    {
+        docdiag::MixerSettingsInvalidShape,
+        DiagnosticSeverity::Error,
+        DiagnosticSource::Validator,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        "mixer:N",
+        "MixerSettings is present but is not a table.",
+    },
+    {
+        docdiag::MixerParamUnknown,
+        DiagnosticSeverity::Error,
+        DiagnosticSource::Validator,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        "mixer:N.param",
+        "Mixer field key is unknown.",
+    },
+    {
+        docdiag::MixerParamTypeMismatch,
+        DiagnosticSeverity::Error,
+        DiagnosticSource::Validator,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        "mixer:N.param",
+        "Mixer parameter value has the wrong Lua type.",
+    },
+    {
+        docdiag::MixerParamOutOfRange,
+        DiagnosticSeverity::Error,
+        DiagnosticSource::Validator,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        "mixer:N.param",
+        "Mixer parameter value is outside its allowed range.",
+    },
+    {
+        docdiag::MixerParamDuplicateWrite,
+        DiagnosticSeverity::Error,
+        DiagnosticSource::Validator,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        "mixer:N.param",
+        "Mixer parameter is written more than once with conflicting values.",
+    },
+    {
+        docdiag::MixerApplyNotImplemented,
+        DiagnosticSeverity::Error,
+        DiagnosticSource::Planner,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        "mixer:N",
+        "Authored mixer settings parsed but mixer apply is not yet implemented.",
+    },
     {
         docdiag::SequencerTrackInvalidIndex,
         DiagnosticSeverity::Error,

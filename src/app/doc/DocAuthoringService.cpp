@@ -14,6 +14,36 @@
 namespace app::doc {
 namespace {
 
+bool hasMixerWrites(const AuthoredDocModel& model) {
+  for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
+    if (model.hasMixerState[trackIndex] && !model.mixerTracks[trackIndex].writes.empty())
+      return true;
+  }
+  return false;
+}
+
+DocDiagnostic makeMixerApplyNotImplementedDiagnostic(DocAuthoringService& service,
+                                                     DocRevision revision,
+                                                     const AuthoredDocModel& model) {
+  DocDiagnostic diagnostic{};
+  diagnostic.severity = DiagnosticSeverity::Error;
+  diagnostic.source = DiagnosticSource::Planner;
+  diagnostic.documentID = service.buffer.documentID;
+  diagnostic.revision = revision;
+  diagnostic.code = docdiag::MixerApplyNotImplemented;
+  diagnostic.message = "authored mixer settings parsed, but mixer apply is not implemented yet";
+
+  for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
+    if (model.hasMixerState[trackIndex]) {
+      diagnostic.span = model.mixerTracks[trackIndex].trackSpan;
+      diagnostic.relatedTarget = "mixer:" + std::to_string(trackIndex + 1);
+      break;
+    }
+  }
+
+  return diagnostic;
+}
+
 std::string trackTarget(uint8_t trackIndex, const char* suffix) {
   std::string target = "track:";
   target += std::to_string(static_cast<int>(trackIndex) + 1);
@@ -260,6 +290,15 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   PlannedSynthApply synthPlan = planSynthApply(normalize.model, previousDoc);
   if (!synthPlan.ok) {
     failApply(service, operationID, synthPlan.diagnostics);
+    result.diagnostics = service.apply.diagnostics;
+    return result;
+  }
+
+  if (hasMixerWrites(normalize.model)) {
+    DocDiagnostics diagnostics{};
+    diagnostics.push_back(
+        makeMixerApplyNotImplementedDiagnostic(service, revision, normalize.model));
+    failApply(service, operationID, diagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }

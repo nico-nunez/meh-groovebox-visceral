@@ -195,6 +195,24 @@ static void test_runtime_stub_excludes_authored_synth_surface() {
   checkNotContains(runtime, "---@field synth? SynthSettings", "no TrackSettings synth field");
 }
 
+static void test_authored_stubs_contain_mixer_function() {
+  TEST("authored_stubs_contain_mixer_function");
+  const std::string authored = readRequiredFile(kAuthoredStubPath);
+  checkContains(authored, "function mixer(", "mixer fn");
+}
+
+static void test_authored_stubs_contain_mixer_settings_class() {
+  TEST("authored_stubs_contain_mixer_settings_class");
+  const std::string authored = readRequiredFile(kAuthoredStubPath);
+  checkContains(authored, "---@class MixerSettings", "class");
+}
+
+static void test_runtime_stubs_do_not_contain_authored_mixer_function() {
+  TEST("runtime_stubs_do_not_contain_authored_mixer_function");
+  const std::string runtime = readRequiredFile(kRuntimeStubPath);
+  checkNotContains(runtime, "function mixer(trackNumber", "no authored mixer fn");
+}
+
 void runLuaLSStubGenerationTests() {
   SUITE("LuaLSStubGeneration");
   test_authored_stub_contains_document_surface();
@@ -208,4 +226,7 @@ void runLuaLSStubGenerationTests() {
   test_authored_stub_contains_first_slice_synth_surface();
   test_authored_stub_excludes_deferred_synth_domains();
   test_generated_readme_documents_commands();
+  test_authored_stubs_contain_mixer_function();
+  test_authored_stubs_contain_mixer_settings_class();
+  test_runtime_stubs_do_not_contain_authored_mixer_function();
 }

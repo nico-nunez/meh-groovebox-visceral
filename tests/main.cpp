@@ -34,6 +34,7 @@ void runDisplayDashboardSnapshotTests();
 
 void runDocSequencerParserTests();
 void runDocSynthSettingsParserTests();
+void runDocMixerSettingsParserTests();
 
 void runDocSynthPlannerTests();
 void runDocSequencerPlannerTests();
@@ -42,7 +43,9 @@ void runSequencerPlaybackTests();
 
 void runDocMetadataTests();
 void runDocSynthSettingsMetadataTests();
+void runDocMixerSettingsMetadataTests();
 void runMetadataVerificationTests();
+
 void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
 void runLuaLSDiagnosticsTests();
@@ -73,6 +76,7 @@ int main(int argc, char* argv[]) {
 
   runDocSequencerParserTests();
   runDocSynthSettingsParserTests();
+  runDocMixerSettingsParserTests();
 
   runDocSynthPlannerTests();
   runDocSequencerPlannerTests();
@@ -81,7 +85,9 @@ int main(int argc, char* argv[]) {
 
   runDocMetadataTests();
   runDocSynthSettingsMetadataTests();
+  runDocMixerSettingsMetadataTests();
   runMetadataVerificationTests();
+
   runLuaRuntimeMetadataTests();
   runLuaLSStubGenerationTests();
   runLuaLSDiagnosticsTests();

@@ -13,6 +13,7 @@
 ---@field patterns? PatternSlots
 ---@field activeSlot? integer -- 1..8
 ---@field synth? SynthSettings
+---@field mixer? MixerSettings
 
 ---@class PatternSlots
 
@@ -117,6 +118,14 @@
 ---@field mix? number
 
 ---@class MixerSettings
+---@field gain? number
+---@field pan? number
+---@field mute? boolean
+
+---@class MixerTrackSettings
+---@field gain? number
+---@field pan? number
+---@field mute? boolean
 
 ---@param settings table?
 ---@return TrackSettings
@@ -129,6 +138,10 @@ function SynthSettings(settings) end
 ---@param settings table?
 ---@return MixerSettings
 function MixerSettings(settings) end
+
+---@param trackNumber integer -- 1..8
+---@param settings MixerSettings
+function mixer(trackNumber, settings) end
 
 ---@param trackNumber integer -- 1..8
 ---@param settings TrackSettings

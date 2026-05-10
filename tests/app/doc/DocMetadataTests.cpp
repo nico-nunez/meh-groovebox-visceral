@@ -7,6 +7,7 @@
 #include "app/doc/DocMetadata.h"
 #include "app/doc/DocSequencerParser.h"
 
+#include <cstddef>
 #include <cstring>
 #include <set>
 #include <string>
@@ -69,8 +70,6 @@ static void test_reserved_constructors_are_narrow() {
   const auto* mixer = app::doc::findAuthoredDocumentType(app::doc::doctype::MixerSettings);
   CHECK("SynthSettings type exists", synth != nullptr);
   CHECK("MixerSettings type exists", mixer != nullptr);
-  CHECK("MixerSettings reserved", mixer && mixer->status == app::doc::DocMetadataStatus::Reserved);
-  CHECK("MixerSettings no fields", mixer && mixer->fields.empty());
 }
 
 static void test_track_signature_uses_static_track_bounds() {
@@ -96,7 +95,7 @@ static void test_track_settings_fields_match_parser_surface() {
   CHECK("activeSlot max slot",
         activeSlot && activeSlot->integerBounds.max == app::sequencer::PATTERNS_PER_LANE);
   CHECK("synth field", type && findField(*type, "synth") != nullptr);
-  CHECK("no mixer field", type && findField(*type, "mixer") == nullptr);
+  CHECK("no mixer field", type && findField(*type, "mixer") != nullptr);
 }
 
 static void test_pattern_bounds_derive_from_sequencer_constants() {
@@ -232,14 +231,6 @@ static void test_file_apply_emitted_diagnostics_are_cataloged() {
   CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(result.diagnostics));
 }
 
-static void test_mixer_constructor_remains_reserved() {
-  TEST("mixer_constructor_remains_reserved");
-  const auto* mixer = app::doc::findAuthoredDocumentType(app::doc::doctype::MixerSettings);
-  CHECK("MixerSettings type exists", mixer != nullptr);
-  CHECK("MixerSettings reserved", mixer && mixer->status == app::doc::DocMetadataStatus::Reserved);
-  CHECK("MixerSettings no fields", mixer && mixer->fields.empty());
-}
-
 static void test_synth_settings_metadata_is_implemented() {
   TEST("synth_settings_metadata_is_implemented");
 
@@ -281,6 +272,49 @@ static void test_synth_function_metadata_is_registered() {
         synth && strEq(synth->args.data[1].typeName, app::doc::doctype::SynthSettings));
 }
 
+static void test_mixer_function_is_in_authored_document_functions() {
+  TEST("mixer_function_is_in_authored_document_functions");
+  const auto* f = app::doc::findAuthoredDocumentFunction(app::doc::docglobal::Mixer);
+  CHECK("found", f != nullptr);
+  CHECK("implemented", f && f->status == app::doc::DocMetadataStatus::Implemented);
+  CHECK("surface", f && f->surface == app::doc::DocMetadataSurface::AuthoredDocument);
+}
+
+static void test_mixer_settings_type_is_implemented() {
+  TEST("mixer_settings_type_is_implemented");
+  const auto* t = app::doc::findAuthoredDocumentType(app::doc::doctype::MixerSettings);
+  CHECK("found", t != nullptr);
+  CHECK("implemented", t && t->status == app::doc::DocMetadataStatus::Implemented);
+  CHECK("has fields", t && !t->fields.empty());
+}
+
+static void test_track_settings_has_mixer_field() {
+  TEST("track_settings_has_mixer_field");
+  const auto* t = app::doc::findAuthoredDocumentType(app::doc::doctype::TrackSettings);
+  CHECK("found", t != nullptr);
+  bool hasMixer = false;
+  if (t) {
+    for (const auto& f : t->fields) {
+      if (std::string(f.name) == "mixer")
+        hasMixer = true;
+    }
+  }
+  CHECK("has mixer", hasMixer);
+}
+
+static void test_mixer_diagnostic_codes_are_cataloged() {
+  TEST("mixer_diagnostic_codes_are_cataloged");
+  namespace dd = app::doc::docdiag;
+  CHECK("invalid index", app::doc::findDocumentDiagnostic(dd::MixerTrackInvalidIndex) != nullptr);
+  CHECK("invalid shape",
+        app::doc::findDocumentDiagnostic(dd::MixerSettingsInvalidShape) != nullptr);
+  CHECK("unknown", app::doc::findDocumentDiagnostic(dd::MixerParamUnknown) != nullptr);
+  CHECK("type mismatch", app::doc::findDocumentDiagnostic(dd::MixerParamTypeMismatch) != nullptr);
+  CHECK("out of range", app::doc::findDocumentDiagnostic(dd::MixerParamOutOfRange) != nullptr);
+  CHECK("duplicate write",
+        app::doc::findDocumentDiagnostic(dd::MixerParamDuplicateWrite) != nullptr);
+}
+
 void runDocMetadataTests() {
   SUITE("DocMetadata");
   test_authored_surface_contains_only_document_globals();
@@ -294,7 +328,10 @@ void runDocMetadataTests() {
   test_parser_emitted_diagnostics_are_cataloged();
   test_service_emitted_diagnostics_are_cataloged();
   test_file_apply_emitted_diagnostics_are_cataloged();
-  test_mixer_constructor_remains_reserved();
   test_synth_settings_metadata_is_implemented();
   test_synth_function_metadata_is_registered();
+  test_mixer_function_is_in_authored_document_functions();
+  test_mixer_diagnostic_codes_are_cataloged();
+  test_track_settings_has_mixer_field();
+  test_mixer_settings_type_is_implemented();
 }
