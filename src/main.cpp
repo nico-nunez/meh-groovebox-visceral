@@ -1,4 +1,5 @@
 #include "app/AppContext.h"
+#include "app/GrooveboxPaths.h"
 #include "app/sessions/AudioSession.h"
 #include "app/sessions/MIDISession.h"
 
@@ -15,7 +16,10 @@
 // ==============
 // App Runtime
 // ==============
-int main() {
+int main(int argc, char* argv[]) {
+  app::GrooveboxPaths paths = app::resolveGrooveboxPaths(argc, argv);
+  printf("session: %s\n", paths.sessionFile.c_str());
+
   auto deviceInfo = app::audio::queryDefaultDevice();
 
   printf("Audio device: %u Hz, %u frames, %u channels\n",
@@ -24,6 +28,9 @@ int main() {
          deviceInfo.numChannels);
 
   auto appContext = app::createAppContext(deviceInfo);
+  appContext->grooveboxPaths = paths;
+  app::editor::loadDocument(appContext->authoredEditor, paths.sessionFile.c_str());
+
   auto audioSession = app::audio::initSession(deviceInfo, appContext);
   app::audio::startSession(audioSession);
 

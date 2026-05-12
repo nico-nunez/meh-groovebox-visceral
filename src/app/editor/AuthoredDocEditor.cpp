@@ -49,21 +49,6 @@ bool validPath(const char* path) {
 
 } // namespace
 
-constexpr const char* authoredDocumentTemplate() {
-  return "track(1, TrackSettings {\n"
-         "  patterns = {\n"
-         "    [1] = {\n"
-         "      numSteps = 1,\n"
-         "      stepsPerBeat = 4,\n"
-         "      steps = {\n"
-         "        { active = true, note = 60, velocity = 100, gate = 0.8 }\n"
-         "      }\n"
-         "    }\n"
-         "  },\n"
-         "  activeSlot = 1\n"
-         "})\n";
-}
-
 void initAuthoredDocumentEditor(AuthoredDocEditorState& editor) {
   editor = AuthoredDocEditorState{};
 }
