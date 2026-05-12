@@ -14,6 +14,7 @@ CPP_SOURCES = $(ENGINE_SOURCES) \
 							src \
 							libs/audio_io/src \
 							libs/device_io/src \
+							libs/file_watch/src \
 							deps/imgui \
 							-name '*.cpp')
 C_SOURCES = $(shell find deps/lua/src deps/linenoise -name '*.c')
@@ -29,6 +30,8 @@ INCLUDES = $(ENGINE_INCLUDES) \
 					 -Ilibs/audio_io/include \
 					 -Ilibs/audio_io/src \
 					 -Ilibs/device_io/include \
+           -Ilibs/file_watch/include \
+           -Ilibs/file_watch/src \
 					 -Ilibs/meh_utils/include \
 					 -Ideps/lua/include \
 					 -Ideps/linenoise \
@@ -40,6 +43,7 @@ LDFLAGS = -framework AudioToolbox \
 					-framework CoreAudio \
 					-framework CoreFoundation \
 					-framework CoreMIDI \
+          -framework CoreServices \
 					-framework OpenGL \
 					-framework Cocoa \
           -framework ApplicationServices \
@@ -80,6 +84,7 @@ TEST_CPP_SOURCES = $(ENGINE_SOURCES) \
                    $(shell find \
                    libs/audio_io/src \
                    libs/device_io/src \
+									 libs/file_watch/src \
                    deps/imgui \
                    -name '*.cpp') \
                    $(filter-out src/main.cpp, $(shell find src -name '*.cpp')) \

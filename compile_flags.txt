@@ -7,6 +7,8 @@
 -Itests
 -Ilibs/audio_io/src
 -Ilibs/audio_io/include
+-Ilibs/file_watch/src
+-Ilibs/file_watch/include
 -Ilibs/device_io/include
 -Ilibs/meh_utils/include
 -Ideps/lua/include
