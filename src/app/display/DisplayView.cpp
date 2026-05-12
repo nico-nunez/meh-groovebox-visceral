@@ -2,6 +2,7 @@
 
 #include "app/AppContext.h"
 #include "app/ControlEvents.h"
+#include "app/display/EditorDisplayView.h"
 #include "app/display/SynthDisplayView.h"
 
 #include "imgui.h"
@@ -17,24 +18,6 @@ const char* transportModeLabel(app::transport::TransportMode mode) {
     return "playing";
   case app::transport::TransportMode::Paused:
     return "paused";
-  }
-  return "unknown";
-}
-
-const char* lualsStatusLabel(app::editor::LanguageServiceStatus status) {
-  switch (status) {
-  case app::editor::LanguageServiceStatus::Unavailable:
-    return "unavailable";
-  case app::editor::LanguageServiceStatus::Idle:
-    return "idle";
-  case app::editor::LanguageServiceStatus::Pending:
-    return "pending";
-  case app::editor::LanguageServiceStatus::Running:
-    return "running";
-  case app::editor::LanguageServiceStatus::Succeeded:
-    return "succeeded";
-  case app::editor::LanguageServiceStatus::Failed:
-    return "failed";
   }
   return "unknown";
 }
@@ -59,7 +42,8 @@ void drawQueueResult(const app::VoidResult& result) {
 } // namespace
 
 void drawTransportSection(AppContext& app, const TransportSnapshot& snapshot) {
-  ImGui::SeparatorText("Transport");
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 15.0f));
+
   ImGui::Text("mode: %s", transportModeLabel(snapshot.mode));
   ImGui::Text("bpm: %.2f", static_cast<double>(snapshot.bpm));
   ImGui::Text("beat: %.3f", snapshot.beatPosition);
@@ -92,6 +76,8 @@ void drawTransportSection(AppContext& app, const TransportSnapshot& snapshot) {
     lastSnapshotBpm = bpmEdit;
     bpmEditing = false;
   }
+
+  ImGui::PopStyleVar();
 }
 
 void drawTrackSection(AppContext& app, const TrackSnapshot& snapshot) {
@@ -134,16 +120,6 @@ void drawSequencerPatternSection(const SequencerPatternSnapshot& snapshot) {
   }
 }
 
-void drawDocumentStatusSection(const DocumentStatusSnapshot& snapshot) {
-  ImGui::SeparatorText("Document / Apply Status");
-  ImGui::Text("dirty: %s", snapshot.dirty ? "yes" : "no");
-  ImGui::Text("apply revision: %llu", static_cast<unsigned long long>(snapshot.applyRevision));
-  ImGui::Text("last applied: %llu", static_cast<unsigned long long>(snapshot.lastAppliedRevision));
-  ImGui::Text("backend diagnostics: %u", snapshot.backendDiagnosticCount);
-  ImGui::Text("LuaLS diagnostics: %u", snapshot.lualsDiagnosticCount);
-  ImGui::Text("LuaLS: %s", lualsStatusLabel(snapshot.lualsStatus));
-}
-
 void drawMIDIRoutingSection(const MIDIRoutingSnapshot& snapshot) {
   ImGui::SeparatorText("MIDI Routing");
   ImGui::Text("sticky track: %s",
@@ -181,18 +157,8 @@ void drawKeyboardMIDIHelpSection() {
   ImGui::TextUnformatted("Cmd+1/Ctrl+1 Display, Cmd+2/Ctrl+2 Editor, Esc quit.");
 }
 
-void drawDisplayDashboard(AppContext& app, const DisplayDashboardSnapshot& snapshot) {
-  ImGui::SeparatorText("Display");
-  ImGui::TextUnformatted("Meh Groovebox");
-  drawTransportSection(app, snapshot.transport);
-  drawTrackSection(app, snapshot.track);
-  drawMixerSection(snapshot.mixer);
-  drawSynthSummarySection(snapshot.synth);
-  drawSynthDisplay(snapshot.synth);
-  drawSequencerPatternSection(snapshot.sequencer);
-  drawDocumentStatusSection(snapshot.document);
-  drawMIDIRoutingSection(snapshot.midi);
-  drawKeyboardMIDIHelpSection();
+void drawEditorView(AppContext& app) {
+  drawEditorDisplayView(app);
 }
 
 void drawSynthView(AppContext&, const DisplayDashboardSnapshot& snapshot) {

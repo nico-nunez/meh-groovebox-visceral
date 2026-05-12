@@ -1,4 +1,4 @@
-#include "app/editor/AuthoredDocEditorUI.h"
+#include "EditorDisplayView.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocDiagnostics.h"
@@ -8,13 +8,16 @@
 #include "imgui.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
 
-namespace app::editor {
+namespace app::display {
+
 namespace {
+using editor::LanguageServiceStatus;
 
 constexpr std::size_t kTextCapacity = 64 * 1024;
 constexpr std::size_t kPathCapacity = 1024;
@@ -101,6 +104,9 @@ void forceScratchPath(const std::string& path) {
 }
 
 void drawFileControls(AuthoredDocEditorState& editor) {
+  ImGui::SeparatorText("Current File");
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
+
   ImGui::InputText("Path", gScratch.pathBuffer, sizeof(gScratch.pathBuffer));
 
   if (ImGui::Button("New")) {
@@ -141,6 +147,8 @@ void drawFileControls(AuthoredDocEditorState& editor) {
       forceScratchPath(editor.buffer.filePath);
     }
   }
+
+  ImGui::PopStyleVar();
 }
 
 void drawStatusLine(const AuthoredDocEditorState& editor) {
@@ -266,25 +274,37 @@ void drawLuaLSDiagnostics(const AuthoredDocEditorState& editor) {
 }
 } // namespace
 
-void drawAuthoredDocEditor(AppContext& app) {
+void drawEditorDisplayView(AppContext& app) {
+  static bool showDiagnostics = true;
+  static float diagnosticsHeight = 200.0f;
+
   AuthoredDocEditorState& editor = app.authoredEditor;
   syncScratchFromState(editor);
 
   collectFinishedLuaLSDiagnostics(editor);
   maybeStartLuaLSDiagnostics(editor);
 
-  ImGui::SeparatorText("Authored Document");
   drawFileControls(editor);
+
+  ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+  // =========== Text Input ================
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 15.0f));
 
   const std::size_t lineCount = countBufferLines(gScratch.textBuffer.data());
   const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+  const float topHeight =
+      showDiagnostics
+          ? (ImGui::GetContentRegionAvail().y - diagnosticsHeight - ImGui::GetStyle().ItemSpacing.y)
+          : (ImGui::GetContentRegionAvail().y - 100.0f);
   const float editorHeight = std::max(lineHeight * 22.0f,
                                       lineHeight * static_cast<float>(lineCount + 1) +
                                           ImGui::GetStyle().FramePadding.y * 2.0f);
   const float gutterWidth = lineNumberGutterWidth(lineCount);
 
   ImGui::BeginChild("AuthoredDocumentText",
-                    ImVec2(0.0f, ImGui::GetTextLineHeight() * 22.0f),
+                    ImVec2(0.0f, topHeight),
+                    // ImVec2(0.0f, ImGui::GetTextLineHeight() * 22.0f),
                     ImGuiChildFlags_Borders,
                     ImGuiWindowFlags_HorizontalScrollbar);
   consumeJumpRequest(editor);
@@ -305,10 +325,44 @@ void drawAuthoredDocEditor(AppContext& app) {
   if (ImGui::Button("Apply")) {
     applyEditorBuffer(editor, app);
   }
+  ImGui::PopStyleVar();
 
   drawStatusLine(editor);
-  drawDiagnosticList(editor);
-  drawLuaLSDiagnostics(editor);
+
+  uint8_t numErrors = 0;
+  uint8_t numWarnings = 0;
+
+  for (size_t i = 0; i < editor.luals.diagnostics.size(); i++) {
+    auto severity = editor.luals.diagnostics[i].severity;
+    if (severity == "Warning")
+      numWarnings++;
+
+    if (severity == "Error")
+      numErrors++;
+  }
+
+  char headerBuffer[75];
+
+  if (true) {
+    // if (numWarnings || numErrors) {
+    snprintf(headerBuffer,
+             sizeof(headerBuffer),
+             "Diagnostics (%d Errors, %d Warnings)###DiagnosticHeader",
+             numErrors,
+             numWarnings);
+  } else {
+    snprintf(headerBuffer, sizeof(headerBuffer), "Diagnostics");
+  }
+
+  if (ImGui::CollapsingHeader(headerBuffer, ImGuiTreeNodeFlags_DefaultOpen)) {
+    showDiagnostics = true;
+    ImGui::BeginChild("EditorDiagnostics", ImVec2(0, 300.0f), true);
+    drawDiagnosticList(editor);
+    drawLuaLSDiagnostics(editor);
+    ImGui::EndChild();
+  } else {
+    showDiagnostics = false;
+  }
 }
 
-} // namespace app::editor
+} // namespace app::display

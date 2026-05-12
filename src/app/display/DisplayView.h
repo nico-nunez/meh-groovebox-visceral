@@ -18,6 +18,7 @@ void drawDocumentStatusSection(const DocumentStatusSnapshot& snapshot);
 void drawMIDIRoutingSection(const MIDIRoutingSnapshot& snapshot);
 void drawKeyboardMIDIHelpSection();
 
+void drawEditorView(AppContext& app);
 void drawSynthView(AppContext& app, const DisplayDashboardSnapshot& snapshot);
 void drawMixerView(AppContext& app, const DisplayDashboardSnapshot& snapshot);
 void drawSequencerView(AppContext& app, const DisplayDashboardSnapshot& snapshot);

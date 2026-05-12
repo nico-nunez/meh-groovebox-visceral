@@ -3,7 +3,6 @@
 #include "app/AppContext.h"
 #include "app/display/DisplayState.h"
 #include "app/display/DisplayView.h"
-#include "app/editor/AuthoredDocEditorUI.h"
 
 #include "device_io/MidiCapture.h"
 #include "synth/events/Events.h"
@@ -153,7 +152,7 @@ static void drawFeatureView(AppContext& ctx) {
     app::display::drawRoutingView(ctx, snapshot);
     break;
   case MainView::Editor:
-    app::editor::drawAuthoredDocEditor(ctx);
+    app::display::drawEditorView(ctx);
     break;
   }
 }
@@ -256,6 +255,8 @@ int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
     drawFeatureView(*ctx);
     ImGui::EndChild();
     ImGui::End();
+
+    // ImGui::ShowDemoWindow();
 
     // ImGui::PopStyleVar(3);
     ImGui::Render();
