@@ -5,9 +5,18 @@
 
 namespace app::doc {
 
+struct PatternArena {
+  sequencer::LanePattern pool[app::MAX_TRACKS][sequencer::PATTERNS_PER_LANE]{};
+
+  sequencer::LanePattern* get(uint8_t track, uint8_t slot) { return &pool[track][slot]; }
+  const sequencer::LanePattern* get(uint8_t track, uint8_t slot) const {
+    return &pool[track][slot];
+  }
+};
+
 struct AuthoredPatternSlot {
   bool occupied = false;
-  sequencer::LanePattern pattern{};
+  sequencer::LanePattern* pattern = nullptr;
   SourceSpan slotSpan{};
 };
 

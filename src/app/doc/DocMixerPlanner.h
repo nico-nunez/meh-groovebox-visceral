@@ -22,10 +22,10 @@ struct PlannedMixerApply {
   std::vector<PlannedMixerParamOp> paramOps{};
 };
 
-PlannedMixerApply planMixerApply(const AuthoredDocModel& nextModel,
-                                 const AuthoredDocModel* previousAdmittedModel);
+void planMixerApply(const AuthoredDocModel* nextModel,
+                    const AuthoredDocModel* previousAdmittedModel,
+                    PlannedMixerApply* mixerPlan);
 
-AuthoredDocModel buildAdmittedMixerTargetModel(const AuthoredDocModel& nextModel,
-                                               const AuthoredDocModel* previousAdmittedModel);
+void buildAdmittedMixerTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted);
 
 } // namespace app::doc

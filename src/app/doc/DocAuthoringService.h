@@ -34,6 +34,9 @@ struct DocApplyState {
 
   AuthoredDocModel lastAdmittedDocModel{};
   bool hasLastAdmittedDocModel = false;
+
+  PatternArena* admittedArena = nullptr;
+  PatternArena* scratchArena = nullptr;
 };
 
 struct DocAuthoringService {

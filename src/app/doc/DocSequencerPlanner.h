@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 #include "app/doc/DocSequencerModel.h"
 
@@ -19,7 +20,11 @@ struct PlannedSequencerApply {
   std::vector<PlannedSequencerTrackOp> trackOps{};
 };
 
-PlannedSequencerApply planSequencerApply(const AuthoredSeqDocModel& nextModel,
-                                         const AuthoredSeqDocModel* previousAdmittedModel);
+void planSequencerApply(const AuthoredSeqDocModel* nextModel,
+                        const AuthoredSeqDocModel* previousAdmittedModel,
+                        PlannedSequencerApply* seqPlan);
 
+void buildAdmittedSeqTargetModel(const AuthoredDocModel* nextModel,
+                                 AuthoredDocModel* admitted,
+                                 PatternArena* admittedArena);
 } // namespace app::doc

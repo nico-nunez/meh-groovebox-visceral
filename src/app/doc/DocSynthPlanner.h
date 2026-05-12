@@ -22,10 +22,10 @@ struct PlannedSynthApply {
   std::vector<PlannedSynthParamOp> paramOps{};
 };
 
-PlannedSynthApply planSynthApply(const AuthoredDocModel& nextModel,
-                                 const AuthoredDocModel* previousAdmittedModel);
+void planSynthApply(const AuthoredDocModel* nextModel,
+                    const AuthoredDocModel* previousAdmittedModel,
+                    PlannedSynthApply* synthPlan);
 
-AuthoredDocModel buildAdmittedSynthTargetModel(const AuthoredDocModel& nextModel,
-                                               const AuthoredDocModel* previousAdmittedModel);
+void buildAdmittedSynthTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted);
 
 } // namespace app::doc

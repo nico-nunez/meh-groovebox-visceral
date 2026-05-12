@@ -241,36 +241,20 @@ bool submitSequencerPlan(DocAuthoringService& service,
   return true;
 }
 
-AuthoredSeqDocModel buildAdmittedTargetModel(const AuthoredSeqDocModel& nextModel,
-                                             const AuthoredSeqDocModel* previousAdmittedModel) {
-  AuthoredSeqDocModel admitted =
-      previousAdmittedModel ? *previousAdmittedModel : AuthoredSeqDocModel{};
+void buildAdmittedDocumentModel(const AuthoredDocModel* nextModel, DocApplyState* apply) {
+  AuthoredDocModel* admitted = &apply->lastAdmittedDocModel;
+  PatternArena* admittedArena = apply->admittedArena;
 
-  admitted.documentID = nextModel.documentID;
-  admitted.revision = nextModel.revision;
+  admitted->documentID = nextModel->documentID;
+  admitted->revision = nextModel->revision;
+  admitted->sequencer.documentID = nextModel->sequencer.documentID;
+  admitted->sequencer.revision = nextModel->sequencer.revision;
 
-  for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
-    if (!nextModel.hasTrackState[trackIndex])
-      continue;
+  buildAdmittedSynthTargetModel(nextModel, admitted);
+  buildAdmittedMixerTargetModel(nextModel, admitted);
+  buildAdmittedSeqTargetModel(nextModel, admitted, admittedArena);
 
-    admitted.hasTrackState[trackIndex] = true;
-    admitted.tracks[trackIndex] = nextModel.tracks[trackIndex];
-  }
-
-  return admitted;
-}
-
-AuthoredDocModel buildAdmittedDocumentTargetModel(const AuthoredDocModel& nextModel,
-                                                  const AuthoredDocModel* previousAdmittedModel) {
-  AuthoredDocModel admitted = buildAdmittedSynthTargetModel(nextModel, previousAdmittedModel);
-
-  admitted = buildAdmittedMixerTargetModel(nextModel, &admitted);
-
-  const AuthoredSeqDocModel* previousSeq =
-      previousAdmittedModel ? &previousAdmittedModel->sequencer : nullptr;
-  admitted.sequencer = buildAdmittedTargetModel(nextModel.sequencer, previousSeq);
-
-  return admitted;
+  apply->hasLastAdmittedDocModel = true;
 }
 
 } // namespace
@@ -289,7 +273,8 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   AuthoredDocumentNormalizeResult normalize =
       parseAndNormalizeAuthoredDocument(service.buffer.documentID,
                                         revision,
-                                        service.buffer.bufferText.c_str());
+                                        service.buffer.bufferText.c_str(),
+                                        service.apply.scratchArena);
 
   if (!normalize.ok) {
     failApply(service, operationID, normalize.diagnostics);
@@ -304,21 +289,24 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
 
   const AuthoredSeqDocModel* previousSeq = previousDoc ? &previousDoc->sequencer : nullptr;
 
-  PlannedSynthApply synthPlan = planSynthApply(normalize.model, previousDoc);
+  PlannedSynthApply synthPlan{};
+  planSynthApply(&normalize.model, previousDoc, &synthPlan);
   if (!synthPlan.ok) {
     failApply(service, operationID, synthPlan.diagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
 
-  PlannedMixerApply mixerPlan = planMixerApply(normalize.model, previousDoc);
+  PlannedMixerApply mixerPlan;
+  planMixerApply(&normalize.model, previousDoc, &mixerPlan);
   if (!mixerPlan.ok) {
     failApply(service, operationID, mixerPlan.diagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
 
-  PlannedSequencerApply seqPlan = planSequencerApply(normalize.model.sequencer, previousSeq);
+  PlannedSequencerApply seqPlan;
+  planSequencerApply(&normalize.model.sequencer, previousSeq, &seqPlan);
   if (!seqPlan.ok) {
     failApply(service, operationID, seqPlan.diagnostics);
     result.diagnostics = service.apply.diagnostics;
@@ -351,9 +339,7 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
     return result;
   }
 
-  service.apply.lastAdmittedDocModel =
-      buildAdmittedDocumentTargetModel(normalize.model, previousDoc);
-  service.apply.hasLastAdmittedDocModel = true;
+  buildAdmittedDocumentModel(&normalize.model, &service.apply);
   service.buffer.lastAdmittedRevision = revision;
 
   service.apply.status = ApplyStatus::Admitted;
@@ -389,7 +375,12 @@ ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
 }
 
 void initDocAuthoringService(DocAuthoringService& service) {
+  delete service.apply.admittedArena;
+  delete service.apply.scratchArena;
+
   service = DocAuthoringService{};
+  service.apply.admittedArena = new PatternArena{};
+  service.apply.scratchArena = new PatternArena{};
 }
 
 } // namespace app::doc

@@ -33,16 +33,14 @@ void upsertMixerWrite(AuthoredTrackMixerPatch& patch, const AuthoredMixerParamWr
 
 } // namespace
 
-PlannedMixerApply planMixerApply(const AuthoredDocModel& nextModel,
-                                 const AuthoredDocModel* previousAdmittedModel) {
-  PlannedMixerApply result{};
-  result.ok = true;
-
+void planMixerApply(const AuthoredDocModel* nextModel,
+                    const AuthoredDocModel* previousAdmittedModel,
+                    PlannedMixerApply* mixerPlan) {
   for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
-    if (!nextModel.hasMixerState[trackIndex])
+    if (!nextModel->hasMixerState[trackIndex])
       continue;
 
-    const AuthoredTrackMixerPatch& patch = nextModel.mixerTracks[trackIndex];
+    const AuthoredTrackMixerPatch& patch = nextModel->mixerTracks[trackIndex];
     for (const auto& write : patch.writes) {
       if (previousMixerValueMatches(previousAdmittedModel, trackIndex, write))
         continue;
@@ -53,37 +51,28 @@ PlannedMixerApply planMixerApply(const AuthoredDocModel& nextModel,
       op.value = write.value;
       op.field = write.field;
       op.span = write.span;
-      result.paramOps.push_back(op);
+      mixerPlan->paramOps.push_back(op);
     }
   }
-
-  return result;
+  mixerPlan->ok = true;
 }
 
-AuthoredDocModel buildAdmittedMixerTargetModel(const AuthoredDocModel& nextModel,
-                                               const AuthoredDocModel* previousAdmittedModel) {
-  AuthoredDocModel admitted = previousAdmittedModel ? *previousAdmittedModel : AuthoredDocModel{};
-
-  admitted.documentID = nextModel.documentID;
-  admitted.revision = nextModel.revision;
-
+void buildAdmittedMixerTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted) {
   for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
-    if (!nextModel.hasMixerState[trackIndex])
+    if (!nextModel->hasMixerState[trackIndex])
       continue;
 
-    admitted.hasMixerState[trackIndex] = true;
-    AuthoredTrackMixerPatch& admittedPatch = admitted.mixerTracks[trackIndex];
+    admitted->hasMixerState[trackIndex] = true;
+    AuthoredTrackMixerPatch& admittedPatch = admitted->mixerTracks[trackIndex];
     if (!admittedPatch.hasPatch) {
       admittedPatch.hasPatch = true;
       admittedPatch.trackIndex = trackIndex;
     }
-    admittedPatch.trackSpan = nextModel.mixerTracks[trackIndex].trackSpan;
+    admittedPatch.trackSpan = nextModel->mixerTracks[trackIndex].trackSpan;
 
-    for (const auto& write : nextModel.mixerTracks[trackIndex].writes)
+    for (const auto& write : nextModel->mixerTracks[trackIndex].writes)
       upsertMixerWrite(admittedPatch, write);
   }
-
-  return admitted;
 }
 
 } // namespace app::doc

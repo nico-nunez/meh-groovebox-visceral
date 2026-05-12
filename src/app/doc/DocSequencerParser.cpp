@@ -17,6 +17,7 @@ struct LuaSequencerParseContext {
   DocRevision revision = 0;
   AuthoredDocModel model{};
   DocDiagnostics diagnostics{};
+  PatternArena* arena = nullptr;
 };
 
 // ====================
@@ -318,8 +319,10 @@ bool parsePatternSlot(lua_State* L,
     return false;
   }
 
+  sequencer::LanePattern* dest = ctx.arena->get(track.trackIndex, slot);
+  *dest = pattern;
   track.patterns[slot].occupied = true;
-  track.patterns[slot].pattern = pattern;
+  track.patterns[slot].pattern = dest;
   track.patterns[slot].slotSpan = track.trackSpan;
   return true;
 }
@@ -942,12 +945,14 @@ void registerParserEnvironment(lua_State* L, LuaSequencerParseContext& ctx) {
 
 AuthoredDocumentNormalizeResult parseAndNormalizeAuthoredDocument(DocID documentID,
                                                                   DocRevision revision,
-                                                                  const char* bufferText) {
+                                                                  const char* bufferText,
+                                                                  PatternArena* scratchArena) {
   LuaSequencerParseContext ctx{};
   ctx.model.documentID = documentID;
   ctx.model.revision = revision;
   ctx.model.sequencer.documentID = documentID;
   ctx.model.sequencer.revision = revision;
+  ctx.arena = scratchArena;
 
   lua_State* L = luaL_newstate();
   if (!L) {
