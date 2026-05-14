@@ -6,6 +6,7 @@
 #include "app/sessions/AudioSession.h"
 
 #include "dsp/Dynamics.h"
+#include "synth/Engine.h"
 #include "synth/params/ParamUtils.h"
 
 #include <cassert>
@@ -64,7 +65,7 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   engineConfig.numFrames = deviceInfo.bufferFrameSize;
 
   for (uint8_t i = 0; i < MAX_TRACKS; i++) {
-    ctx->tracks[i].engine = synth::createEngine(engineConfig);
+    synth::initEngine(ctx->tracks[i].engine, engineConfig);
   }
 
   if (!initAudioBuffers(ctx)) {

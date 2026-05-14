@@ -11,6 +11,7 @@
 #include "synth/params/ParamUtils.h"
 #include "synth/preset/PresetApply.h"
 #include "synth/preset/PresetIO.h"
+#include "synth/program/SynthProgram.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -382,6 +383,33 @@ void registerFMCommands(lua_State* L) {
 // =========================
 // Presets (load)
 // =========================
+int publishPresetToCurrentTrack(lua_State* L,
+                                app::track::TrackState* trackRt,
+                                const synth::preset::Preset& preset) {
+  synth::program::SynthProgram program{};
+  auto build = synth::program::compilePresetToProgram(preset, &program);
+  if (!build.ok) {
+    const char* message = build.errors.empty() ? "preset compile failed" : build.errors[0].c_str();
+    luaL_error(L, "%s", message);
+    return CMD_FAILURE;
+  }
+
+  auto prepare = synth::program::prepareProgramSwap(trackRt->engine, program);
+  if (!prepare.ok) {
+    luaL_error(L, "%s", prepare.err ? prepare.err : "program swap prepare failed");
+    return CMD_FAILURE;
+  }
+
+  auto commit = synth::program::commitProgramSwap(trackRt->engine);
+  if (!commit.ok) {
+    synth::program::abortProgramSwap(trackRt->engine);
+    luaL_error(L, "%s", commit.err ? commit.err : "program swap commit failed");
+    return CMD_FAILURE;
+  }
+
+  return CMD_SUCCESS;
+}
+
 int l_presetLoad(lua_State* L) {
   const char* name = luaL_checkstring(L, 1);
 
@@ -397,14 +425,9 @@ int l_presetLoad(lua_State* L) {
   trackRt->preset = result.preset;
   trackRt->presetValid = true;
 
-  synth::EngineEvent evt{};
-  evt.type = synth::EngineEvent::Type::ApplyPreset;
-  evt.data.applyPreset.preset = &trackRt->preset;
-
-  if (!pushEngineEvent(ctx->app, evt)) {
-    luaL_error(L, "engine event queue full, preset apply dropped");
-    return CMD_FAILURE;
-  }
+  int publish = publishPresetToCurrentTrack(L, trackRt, trackRt->preset);
+  if (publish != CMD_SUCCESS)
+    return publish;
 
   printf("OK\n");
   return CMD_SUCCESS;
@@ -439,14 +462,9 @@ int l_presetInit(lua_State* L) {
   trackRt->preset = preset::createInitPreset();
   trackRt->presetValid = true;
 
-  EngineEvent evt{};
-  evt.type = EngineEvent::Type::ApplyPreset;
-  evt.data.applyPreset.preset = &trackRt->preset;
-
-  if (!pushEngineEvent(ctx->app, evt)) {
-    luaL_error(L, "engine event queue full, init preset apply dropped");
-    return CMD_FAILURE;
-  }
+  int publish = publishPresetToCurrentTrack(L, trackRt, trackRt->preset);
+  if (publish != CMD_SUCCESS)
+    return publish;
 
   printf("OK\n");
   return CMD_SUCCESS;
