@@ -1,8 +1,8 @@
 #include "TestRunner.h"
+#include "TestHelpers.h"
 
 #include "app/Sequencer.h"
 #include "app/doc/DocMetadata.h"
-#include "app/doc/DocSequencerParser.h"
 #include "app/doc/DocTypes.h"
 
 #include <cstdio>
@@ -13,17 +13,8 @@
 
 namespace {
 
-app::doc::AuthoredDocumentNormalizeResult parseDoc(const char* text) {
-  return app::doc::parseAndNormalizeAuthoredDocument(1, 7, text);
-}
-
-bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const char* code) {
-  for (const auto& d : diagnostics) {
-    if (d.code == code)
-      return true;
-  }
-  return false;
-}
+using test::hasDiagnostic;
+using test::parseDoc;
 
 } // namespace
 

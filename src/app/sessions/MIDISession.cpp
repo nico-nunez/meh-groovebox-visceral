@@ -55,12 +55,18 @@ static void midiCallback(d_MIDIEvent deviceEvent, void* userContext) {
 } // namespace
 
 hMidiSession initSession(AppContext* ctx) {
+  printf("appContext->grooveboxPaths.sessionFile: %s\n",
+         ctx->grooveboxPaths.sessionFile.c_str()); // prints path
+
   // 1a. Setup MIDI on this thread's run loop for now
   constexpr size_t MAX_MIDI_DEVICES = 16;
   device_io::MidiSource midiSourceBuffer[MAX_MIDI_DEVICES];
   size_t numMidiDevices = device_io::getMidiSources(midiSourceBuffer, MAX_MIDI_DEVICES);
 
   hMidiSession midiSession = nullptr;
+
+  printf("appContext->grooveboxPaths.sessionFile: %s\n",
+         ctx->grooveboxPaths.sessionFile.c_str()); // empty string
 
   if (numMidiDevices) {
     // Display MIDI source options

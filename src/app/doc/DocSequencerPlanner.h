@@ -5,7 +5,6 @@
 #include "app/doc/DocSequencerModel.h"
 
 #include <cstdint>
-#include <vector>
 
 namespace app::doc {
 
@@ -14,15 +13,16 @@ struct PlannedSequencerTrackOp {
   sequencer::PatternBank bank{};
 };
 
-struct PlannedSequencerApply {
+struct SequencerTargetResult {
   bool ok = false;
   DocDiagnostics diagnostics{};
-  std::vector<PlannedSequencerTrackOp> trackOps{};
+  sequencer::PatternSnapshot snapshot{};
 };
 
-void planSequencerApply(const AuthoredSeqDocModel* nextModel,
-                        const AuthoredSeqDocModel* previousAdmittedModel,
-                        PlannedSequencerApply* seqPlan);
+SequencerTargetResult buildSequencerTargetSnapshot(const AuthoredSeqDocModel* model,
+                                                   DocID documentID,
+                                                   DocRevision revision,
+                                                   sequencer::PatternSnapshot* out);
 
 void buildAdmittedSeqTargetModel(const AuthoredDocModel* nextModel,
                                  AuthoredDocModel* admitted,

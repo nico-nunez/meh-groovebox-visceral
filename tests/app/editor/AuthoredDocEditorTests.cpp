@@ -1,4 +1,5 @@
 #include "TestRunner.h"
+#include "TestHelpers.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocMetadata.h"
@@ -27,13 +28,7 @@ std::string readTempFile(const char* path) {
   return result;
 }
 
-bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const char* code) {
-  for (const auto& diagnostic : diagnostics) {
-    if (diagnostic.code == code)
-      return true;
-  }
-  return false;
-}
+using test::hasDiagnostic;
 
 } // namespace
 
@@ -143,6 +138,7 @@ static void test_apply_unsaved_valid_buffer_uses_revision_and_succeeds() {
   TEST("apply_unsaved_valid_buffer_uses_revision_and_succeeds");
 
   app::AppContext app{};
+  app::doc::initDocAuthoringService(app.docAuthoring);
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track(1, TrackSettings {})";
   editor.buffer.dirty = true;
@@ -155,12 +151,14 @@ static void test_apply_unsaved_valid_buffer_uses_revision_and_succeeds() {
   CHECK("apply succeeded", editor.applyStatus == app::editor::EditorApplyStatus::Succeeded);
   CHECK("backend diagnostics empty", editor.backendDiagnostics.empty());
   CHECK("service revision 1", app.docAuthoring.buffer.currentRevision == 1);
+  app::doc::destroyDocAuthoringService(app.docAuthoring);
 }
 
 static void test_apply_invalid_buffer_caches_backend_diagnostics() {
   TEST("apply_invalid_buffer_caches_backend_diagnostics");
 
   app::AppContext app{};
+  app::doc::initDocAuthoringService(app.docAuthoring);
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track('one', TrackSettings {})";
   editor.buffer.dirty = true;
@@ -175,12 +173,14 @@ static void test_apply_invalid_buffer_caches_backend_diagnostics() {
   CHECK("invalid index diagnostic",
         hasDiagnostic(editor.backendDiagnostics, app::doc::docdiag::SequencerTrackInvalidIndex));
   CHECK("dirty preserved", editor.buffer.dirty);
+  app::doc::destroyDocAuthoringService(app.docAuthoring);
 }
 
 static void test_apply_attempt_revision_increments_on_failure_and_success() {
   TEST("apply_attempt_revision_increments_on_failure_and_success");
 
   app::AppContext app{};
+  app::doc::initDocAuthoringService(app.docAuthoring);
   app::editor::AuthoredDocEditorState editor{};
 
   editor.buffer.text = "track('one', TrackSettings {})";
@@ -191,6 +191,7 @@ static void test_apply_attempt_revision_increments_on_failure_and_success() {
 
   CHECK("apply revision 2", editor.buffer.applyRevision == 2);
   CHECK("last applied revision 2", editor.buffer.lastAppliedRevision == 2);
+  app::doc::destroyDocAuthoringService(app.docAuthoring);
 }
 
 static void test_request_diagnostic_jump_uses_source_span() {

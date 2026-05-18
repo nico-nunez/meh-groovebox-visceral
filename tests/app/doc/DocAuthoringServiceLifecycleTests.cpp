@@ -1,4 +1,5 @@
 #include "TestRunner.h"
+#include "TestHelpers.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocAuthoringService.h"
@@ -8,12 +9,7 @@
 
 namespace {
 
-bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const char* code) {
-  for (const auto& d : diagnostics)
-    if (d.code == code)
-      return true;
-  return false;
-}
+using test::hasDiagnostic;
 
 static constexpr const char* kOneTrackDocument =
     "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
@@ -26,6 +22,7 @@ static constexpr const char* kTempFilePath = "/tmp/doc_lifecycle_test.lua";
 static void test_successful_apply_completes_lifecycle() {
   TEST("successful_apply_completes_lifecycle");
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   auto result = app::doc::applySequencerRevision(service, app, 1, kOneTrackDocument);
@@ -36,11 +33,13 @@ static void test_successful_apply_completes_lifecycle() {
   CHECK("lastAdmittedRevision == 1", app::doc::getLastAdmittedRevision(service) == 1);
   CHECK("admitted model has track 0",
         service.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
+  app::doc::destroyDocAuthoringService(service);
 }
 
 static void test_parse_failure_fails_lifecycle() {
   TEST("parse_failure_fails_lifecycle");
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   auto result = app::doc::applySequencerRevision(service, app, 1, "track('bad', TrackSettings {})");
@@ -50,11 +49,13 @@ static void test_parse_failure_fails_lifecycle() {
   CHECK("diagnostic sequencer.track.invalid_index",
         hasDiagnostic(result.diagnostics, "sequencer.track.invalid_index"));
   CHECK("no admitted model", !service.apply.hasLastAdmittedDocModel);
+  app::doc::destroyDocAuthoringService(service);
 }
 
 static void test_supersedes_existing_active_operation() {
   TEST("supersedes_existing_active_operation");
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   service.apply.activeApplyOperationID = 41;
@@ -66,11 +67,13 @@ static void test_supersedes_existing_active_operation() {
   CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
   CHECK("active operation cleared", service.apply.activeApplyOperationID == 0);
   CHECK("lastSupersededApplyOperationID == 41", service.apply.lastSupersededApplyOperationID == 41);
+  app::doc::destroyDocAuthoringService(service);
 }
 
 static void test_file_apply_success_uses_buffer_pipeline() {
   TEST("file_apply_success_uses_buffer_pipeline");
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   FILE* f = fopen(kTempFilePath, "w");
@@ -85,11 +88,13 @@ static void test_file_apply_success_uses_buffer_pipeline() {
   CHECK("lastAdmittedRevision == 1", app::doc::getLastAdmittedRevision(service) == 1);
   CHECK("admitted model has track 0",
         service.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
+  app::doc::destroyDocAuthoringService(service);
 }
 
 static void test_file_read_failure_is_failed_apply_operation() {
   TEST("file_read_failure_is_failed_apply_operation");
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   auto result = app::doc::applySequencerFile(service, app, "/path/that/does/not/exist.lua");
@@ -101,11 +106,13 @@ static void test_file_read_failure_is_failed_apply_operation() {
         hasDiagnostic(result.diagnostics, "document.file.read_failed"));
   CHECK("no admitted model", !service.apply.hasLastAdmittedDocModel);
   CHECK("lastAdmittedRevision == 0", app::doc::getLastAdmittedRevision(service) == 0);
+  app::doc::destroyDocAuthoringService(service);
 }
 
 static void test_query_helpers_return_service_state() {
   TEST("query_helpers_return_service_state");
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   app::doc::applySequencerRevision(service, app, 1, "track('bad', TrackSettings {})");
@@ -117,6 +124,7 @@ static void test_query_helpers_return_service_state() {
         app::doc::getLastAdmittedRevision(service) == service.buffer.lastAdmittedRevision);
   CHECK("status is Failed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
   CHECK("lastAdmittedRevision is 0", app::doc::getLastAdmittedRevision(service) == 0);
+  app::doc::destroyDocAuthoringService(service);
 }
 
 void runDocAuthoringServiceLifecycleTests() {

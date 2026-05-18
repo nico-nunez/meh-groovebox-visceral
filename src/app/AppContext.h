@@ -7,6 +7,7 @@
 #include "app/Track.h"
 #include "app/Transport.h"
 
+#include "app/GrooveboxEditSession.h"
 #include "app/GrooveboxPaths.h"
 #include "app/display/DisplayState.h"
 #include "app/doc/DocAuthoringService.h"
@@ -60,6 +61,7 @@ struct AppContext {
   MasterBusState masterBus{};
 
   DocAuthoringService docAuthoring{};
+  PendingGrooveboxApply pendingGrooveboxApply{};
   AuthoredDocEditorState authoredEditor{};
   GrooveboxPaths grooveboxPaths{};
 

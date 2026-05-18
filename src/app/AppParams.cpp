@@ -30,23 +30,23 @@ VoidResult applyAppParam(AppContext* ctx, AppParamID id, float publicValue, uint
 
   switch (id) {
   case AppParamID::TrackGain:
-    ctx->mixer.tracks[track].gain = value;
+    ctx->mixer.current.tracks[track].gain = value;
     break;
 
   case AppParamID::TrackPan:
-    ctx->mixer.tracks[track].pan = value;
+    ctx->mixer.current.tracks[track].pan = value;
     break;
 
   case AppParamID::TrackMute:
-    ctx->mixer.tracks[track].enabled = value < 0.5f;
+    ctx->mixer.current.tracks[track].enabled = value < 0.5f;
     break;
 
   case AppParamID::MasterGain:
-    ctx->mixer.masterGain = value;
+    ctx->mixer.current.masterGain = value;
     break;
 
   case AppParamID::LimiterThresholdDB:
-    ctx->mixer.limiterThreshold = dsp::math::dBToLinear(value);
+    ctx->mixer.current.limiterThreshold = dsp::math::dBToLinear(value);
     break;
 
   case AppParamID::Count:
@@ -78,23 +78,23 @@ FloatResult getAppParamValue(const AppContext* ctx, AppParamID id, uint8_t track
 
   switch (id) {
   case AppParamID::TrackGain:
-    res.value = ctx->mixer.tracks[track].gain;
+    res.value = ctx->mixer.current.tracks[track].gain;
     break;
 
   case AppParamID::TrackPan:
-    return {ctx->mixer.tracks[track].pan, true, nullptr};
+    return {ctx->mixer.current.tracks[track].pan, true, nullptr};
     break;
 
   case AppParamID::TrackMute:
-    res.value = ctx->mixer.tracks[track].enabled ? 0.0f : 1.0f;
+    res.value = ctx->mixer.current.tracks[track].enabled ? 0.0f : 1.0f;
     break;
 
   case AppParamID::MasterGain:
-    res.value = ctx->mixer.masterGain;
+    res.value = ctx->mixer.current.masterGain;
     break;
 
   case AppParamID::LimiterThresholdDB:
-    res.value = dsp::math::linearTodB(ctx->mixer.limiterThreshold);
+    res.value = dsp::math::linearTodB(ctx->mixer.current.limiterThreshold);
     break;
 
   case AppParamID::Count:

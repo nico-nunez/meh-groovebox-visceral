@@ -1,0 +1,100 @@
+#include "TestRunner.h"
+
+#include "app/AppContext.h"
+#include "app/GrooveboxEditSession.h"
+#include "app/doc/DocAuthoringService.h"
+#include "app/sessions/AudioSession.h"
+
+#include "synth/params/ParamDefs.h"
+
+namespace {
+
+app::AppContext* makeContext() {
+  app::audio::DeviceInfo device{};
+  device.sampleRate = 48000;
+  device.bufferFrameSize = 64;
+  device.numChannels = 2;
+  return app::createAppContext(device);
+}
+
+void publishPending(app::AppContext* app) {
+  // Phase 5 adds TransportBlockInfo timing. Phase 4 publish is immediate.
+  app::publishPendingGrooveboxEditIfReady(app);
+}
+
+} // namespace
+
+static void test_doc_apply_prepares_but_does_not_publish_until_audio_boundary() {
+  TEST("doc_apply_prepares_but_does_not_publish_until_audio_boundary");
+
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  const char* doc = "synth(1, SynthSettings { osc1 = { mix = 0.25 } })";
+  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc);
+
+  CHECK("apply accepted", result.ok);
+  CHECK("pending ready", app->pendingGrooveboxApply.ready.load());
+  CHECK("not yet audible", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.25f);
+
+  publishPending(app);
+
+  CHECK("pending cleared", !app->pendingGrooveboxApply.ready.load());
+  CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.25f);
+
+  app::destroyAppContext(app);
+}
+
+static void test_doc_apply_publishes_mixer_and_synth_together() {
+  TEST("doc_apply_publishes_mixer_and_synth_together");
+
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  const char* doc = "synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
+                    "mixer(1, MixerSettings { gain = 0.25 })";
+  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc);
+
+  CHECK("apply accepted", result.ok);
+  CHECK("synth old before publish",
+        app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.5f);
+  CHECK("mixer old before publish", app->mixer.current.tracks[0].gain == 1.0f);
+
+  publishPending(app);
+
+  CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
+  CHECK("mixer published", app->mixer.current.tracks[0].gain == 0.25f);
+
+  app::destroyAppContext(app);
+}
+
+static void test_second_doc_apply_rejected_while_pending_unpublished() {
+  TEST("second_doc_apply_rejected_while_pending_unpublished");
+
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  auto first = app::doc::applySequencerRevision(app->docAuthoring,
+                                                *app,
+                                                1,
+                                                "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+  auto second =
+      app::doc::applySequencerRevision(app->docAuthoring,
+                                       *app,
+                                       2,
+                                       "synth(1, SynthSettings { osc1 = { mix = 0.25 } })");
+
+  CHECK("first accepted", first.ok);
+  CHECK("second rejected", !second.ok);
+  CHECK("pending still ready", app->pendingGrooveboxApply.ready.load());
+
+  publishPending(app);
+  app::destroyAppContext(app);
+}
+
+void runDocAuthoringServiceAtomicApplyTests() {
+  SUITE("DocAuthoringServiceAtomicApply");
+  test_doc_apply_prepares_but_does_not_publish_until_audio_boundary();
+  test_doc_apply_publishes_mixer_and_synth_together();
+  test_second_doc_apply_rejected_while_pending_unpublished();
+}

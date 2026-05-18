@@ -279,11 +279,12 @@ PatternSnapshot& getWriteBuffer(SequencerState& state) {
 }
 
 VoidResult checkIsEditing(const SequencerState& state) {
-  const char* errMsg = state.isEditing
-                           ? nullptr
-                           : "no active edit session; call seq.copyPattern or seq.newPattern first";
+  bool isEditing = state.isEditing.load(std::memory_order_acquire);
 
-  return {state.isEditing, errMsg};
+  const char* errMsg =
+      isEditing ? nullptr : "no active edit session; call seq.copyPattern or seq.newPattern first";
+
+  return {isEditing, errMsg};
 }
 
 VoidResult checkLaneBounds(uint8_t lane) {
@@ -468,7 +469,7 @@ VoidResult validatePatternBank(const PatternBank& bank) {
 // ==================
 GetPatternResult getOrCreatePendingPattern(SequencerState& state, uint8_t lane) {
   GetPatternResult res{};
-  if (!state.isEditing) {
+  if (!state.isEditing.load(std::memory_order_acquire)) {
     res.ok = false;
     res.err = "no editing session in progress";
     return res;
@@ -487,7 +488,7 @@ GetPatternResult getOrCreatePendingPattern(SequencerState& state, uint8_t lane) 
 
 GetPatternResult getPendingPattern(const SequencerState& state, uint8_t lane) {
   GetPatternResult res{};
-  if (!state.isEditing) {
+  if (!state.isEditing.load(std::memory_order_acquire)) {
     res.ok = false;
     res.err = "no editing session in progress";
     return res;
@@ -605,7 +606,7 @@ GetPatternBankResult getPatternBank(const SequencerState& state, uint8_t lane) {
 
 GetPatternBankResult getPendingPatternBank(const SequencerState& state, uint8_t lane) {
   GetPatternBankResult res{};
-  if (!state.isEditing) {
+  if (!state.isEditing.load(std::memory_order_acquire)) {
     res.ok = false;
     res.err = "no editing session in progress";
     return res;
@@ -748,7 +749,7 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 // Edit Session
 // =====================
 VoidResult beginPatternEdit(SequencerState& state, bool copy) {
-  if (state.isEditing)
+  if (state.isEditing.load(std::memory_order_acquire))
     return {false, "edit session already in progress"};
 
   PatternSnapshot& writeBuf = getWriteBuffer(state);
@@ -760,7 +761,7 @@ VoidResult beginPatternEdit(SequencerState& state, bool copy) {
     writeBuf = PatternSnapshot{};
   }
 
-  state.isEditing = true;
+  state.isEditing.store(true, std::memory_order_release);
   return {true, nullptr};
 }
 
@@ -771,15 +772,15 @@ VoidResult commitPattern(SequencerState& state) {
 
   uint32_t writeIndex = 1 - state.store.readIndex.load(std::memory_order_relaxed);
   state.store.readIndex.store(writeIndex, std::memory_order_release);
-  state.isEditing = false;
+  state.isEditing.store(false, std::memory_order_release);
   return res;
 }
 
 VoidResult abortPatternEdit(SequencerState& state) {
-  if (!state.isEditing)
+  if (!state.isEditing.load(std::memory_order_acquire))
     return {false, "no editing session in progress"};
 
-  state.isEditing = false;
+  state.isEditing.store(false, std::memory_order_release);
   return {true, nullptr};
 }
 
@@ -1112,6 +1113,39 @@ VoidResult clearPatternBankSlot(SequencerState& state, uint8_t lane, uint8_t slo
     bank.activeSlot = INVALID_PATTERN_SLOT;
 
   return {true, nullptr};
+}
+
+VoidResult validatePatternSnapshot(const PatternSnapshot& snapshot) {
+  for (uint8_t lane = 0; lane < MAX_LANES; ++lane) {
+    CHECK_RESULT(checkLaneBounds(lane));
+    CHECK_RESULT(validatePatternBank(snapshot.lanes[lane]));
+  }
+  return {true, nullptr};
+}
+
+VoidResult prepareSequencerSnapshotSwap(SequencerState& state, const PatternSnapshot& snapshot) {
+  CHECK_RESULT(validatePatternSnapshot(snapshot));
+  CHECK_RESULT(beginPatternEdit(state, false));
+  getWriteBuffer(state) = snapshot;
+  return {true, nullptr};
+}
+
+VoidResult commitSequencerSnapshotSwap(SequencerState& state) {
+  CHECK_RESULT(checkIsEditing(state));
+  return {true, nullptr};
+}
+
+void abortSequencerSnapshotSwap(SequencerState& state) {
+  if (state.isEditing.load(std::memory_order_acquire))
+    abortPatternEdit(state);
+}
+
+void publishPendingSequencerSnapshotIfReady(SequencerState& state) {
+  if (!state.isEditing.load(std::memory_order_acquire))
+    return;
+
+  auto commit = commitPattern(state);
+  assert(commit.ok);
 }
 
 } // namespace app::sequencer

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/GrooveboxTargetState.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 
@@ -39,12 +40,18 @@ struct DocApplyState {
   PatternArena* scratchArena = nullptr;
 };
 
+struct DocApplyWorkspace {
+  GrooveboxTargetState target{};
+};
+
 struct DocAuthoringService {
   DocBufferState buffer{};
   DocApplyState apply{};
+  DocApplyWorkspace* applyWorkspace{};
 };
 
 void initDocAuthoringService(DocAuthoringService& service);
+void destroyDocAuthoringService(DocAuthoringService& service);
 
 ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
                                            app::AppContext& app,

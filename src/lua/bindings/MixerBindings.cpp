@@ -37,9 +37,9 @@ void buildAppFieldIndex() {
 int l_masterList(lua_State* L) {
   auto* ctx = getLuaContext(L);
   const auto& m = ctx->app->mixer;
-  float threshdB = dsp::math::linearTodB(m.limiterThreshold);
+  float threshdB = dsp::math::linearTodB(m.current.limiterThreshold);
 
-  printf("master gain:  %.2f\n", m.masterGain);
+  printf("master gain:  %.2f\n", m.current.masterGain);
   printf("limiter thr:  %.1f dB\n", threshdB);
   return CMD_SUCCESS;
 }

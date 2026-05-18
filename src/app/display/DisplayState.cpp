@@ -79,7 +79,7 @@ DisplayRuntimeTelemetry makeDisplayRuntimeTelemetry(const AppContext& app) {
 
   for (uint8_t track = 0; track < MAX_TRACKS; ++track) {
     fillSynthRuntimeTelemetry(telemetry.tracks[track].synth, app.tracks[track].engine);
-    fillMixerTelemetry(telemetry.tracks[track].mixer, app.mixer.tracks[track]);
+    fillMixerTelemetry(telemetry.tracks[track].mixer, app.mixer.current.tracks[track]);
   }
 
   return telemetry;

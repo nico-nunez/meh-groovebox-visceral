@@ -26,6 +26,7 @@ void runDocApplyFileBindingTests();
 void runDocAuthoringServiceSeqApplyTests();
 void runDocAuthoringServiceLifecycleTests();
 void runAuthoredDocEditorTests();
+void runDocAuthoringServiceAtomicApplyTests();
 
 void runDocAuthoredSynthEndToEndTests();
 void runDocAuthoredMixerEndToEndTests();
@@ -40,6 +41,7 @@ void runDocMixerSettingsParserTests();
 
 void runDocSynthPlannerTests();
 void runDocSequencerPlannerTests();
+void runDocGrooveboxTargetBuilderTests();
 
 void runSequencerPlaybackTests();
 
@@ -70,6 +72,7 @@ int main(int argc, char* argv[]) {
   runDocAuthoringServiceSeqApplyTests();
   runDocAuthoringServiceLifecycleTests();
   runAuthoredDocEditorTests();
+  runDocAuthoringServiceAtomicApplyTests();
 
   runDocAuthoredSynthEndToEndTests();
   runDocAuthoredMixerEndToEndTests();
@@ -84,6 +87,7 @@ int main(int argc, char* argv[]) {
 
   runDocSynthPlannerTests();
   runDocSequencerPlannerTests();
+  runDocGrooveboxTargetBuilderTests();
 
   runSequencerPlaybackTests();
 

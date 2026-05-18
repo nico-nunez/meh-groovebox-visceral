@@ -2,29 +2,35 @@
 
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
+#include "synth/params/ParamDefs.h"
+#include "synth/program/SynthProgram.h"
 
 #include <cstdint>
-#include <vector>
 
 namespace app::doc {
 
+namespace {
+using synth::param::ParamID;
+using synth::program::SynthProgram;
+} // namespace
+
 struct PlannedSynthParamOp {
   uint8_t trackIndex = 0;
-  synth::param::ParamID paramID = synth::param::PARAM_UNKNOWN;
+  ParamID paramID = ParamID::PARAM_UNKNOWN;
   float value = 0.0f;
   const AuthoredSynthParamField* field = nullptr;
   SourceSpan span{};
 };
 
-struct PlannedSynthApply {
+struct SynthTargetProgramsResult {
   bool ok = false;
   DocDiagnostics diagnostics{};
-  std::vector<PlannedSynthParamOp> paramOps{};
 };
 
-void planSynthApply(const AuthoredDocModel* nextModel,
-                    const AuthoredDocModel* previousAdmittedModel,
-                    PlannedSynthApply* synthPlan);
+SynthTargetProgramsResult buildSynthTargetPrograms(const AuthoredDocModel* model,
+                                                   DocID documentID,
+                                                   DocRevision revision,
+                                                   SynthProgram* out);
 
 void buildAdmittedSynthTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted);
 

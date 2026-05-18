@@ -1,136 +1,86 @@
 #include "TestRunner.h"
 
-#include "app/doc/DocSequencerPlanner.h"
 #include "app/Sequencer.h"
-
-#include <cstdio>
+#include "app/doc/DocSequencerPlanner.h"
 
 namespace {
+using app::doc::AuthoredSeqDocModel;
+using app::doc::AuthoredTrackSeqModel;
+using app::sequencer::LanePattern;
 
-app::sequencer::LanePattern oneStepPattern(uint8_t note) {
-  app::sequencer::LanePattern pattern{};
-  pattern.numSteps = 1;
-  pattern.stepsPerBeat = 4;
-  pattern.steps[0].active = true;
-  pattern.steps[0].noteOn = true;
-  pattern.steps[0].note = note;
-  pattern.steps[0].velocity = 100;
-  return pattern;
+void oneStepPattern(uint8_t note, LanePattern* pattern) {
+  pattern->numSteps = 1;
+  pattern->stepsPerBeat = 4;
+  pattern->steps[0].active = true;
+  pattern->steps[0].noteOn = true;
+  pattern->steps[0].note = note;
+  pattern->steps[0].velocity = 100;
 }
 
-app::doc::AuthoredTrackSeqModel trackWithSlot(uint8_t trackIndex, uint8_t slot, uint8_t note) {
-  app::doc::AuthoredTrackSeqModel track{};
-  track.trackIndex = trackIndex;
-  track.patterns[slot].occupied = true;
-  track.patterns[slot].pattern = oneStepPattern(note);
-  track.activeSlot = slot;
-  track.activeSlotSource = app::doc::ActivePatternSlotSource::Explicit;
-  return track;
+void trackWithSlot(uint8_t trackIndex, uint8_t slot, uint8_t note, AuthoredTrackSeqModel* track) {
+  static LanePattern patternStorage[32]{};
+  static uint8_t nextPattern = 0;
+
+  *track = AuthoredTrackSeqModel{};
+  track->trackIndex = trackIndex;
+  track->activeSlot = slot;
+  track->activeSlotSource = app::doc::ActivePatternSlotSource::Explicit;
+  track->patterns[slot].occupied = true;
+  track->patterns[slot].pattern = &patternStorage[nextPattern++ % 32];
+  oneStepPattern(note, track->patterns[slot].pattern);
 }
 
 } // namespace
 
-static void test_unchanged_track_emits_no_op() {
-  TEST("unchanged_track_emits_no_op");
-  app::doc::AuthoredSeqDocModel previous{};
-  previous.hasTrackState[0] = true;
-  previous.tracks[0] = trackWithSlot(0, 0, 60);
+static void test_build_sequencer_target_snapshot_defaults_omitted_state() {
+  TEST("build_sequencer_target_snapshot_defaults_omitted_state");
 
-  app::doc::AuthoredSeqDocModel next{};
-  next.hasTrackState[0] = true;
-  next.tracks[0] = trackWithSlot(0, 0, 60);
+  AuthoredSeqDocModel model{};
+  app::sequencer::PatternSnapshot snapshot{};
+  auto result = app::doc::buildSequencerTargetSnapshot(&model, 1, 7, &snapshot);
 
-  auto plan = app::doc::planSequencerApply(next, &previous);
-  CHECK("ok", plan.ok);
-  CHECK("no ops", plan.trackOps.empty());
+  CHECK("target ok", result.ok);
+  CHECK("lane 1 inactive",
+        snapshot.lanes[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
+  CHECK("lane 1 slot empty", !snapshot.lanes[0].slots[0].occupied);
 }
 
-static void test_changed_track_emits_replace_bank() {
-  TEST("changed_track_emits_replace_bank");
-  app::doc::AuthoredSeqDocModel previous{};
-  previous.hasTrackState[0] = true;
-  previous.tracks[0] = trackWithSlot(0, 0, 60);
+static void test_build_sequencer_target_snapshot_applies_authored_bank() {
+  TEST("build_sequencer_target_snapshot_applies_authored_bank");
 
-  app::doc::AuthoredSeqDocModel next{};
-  next.hasTrackState[0] = true;
-  next.tracks[0] = trackWithSlot(0, 0, 61);
+  AuthoredSeqDocModel model{};
+  model.hasTrackState[0] = true;
+  trackWithSlot(0, 0, 61, &model.tracks[0]);
 
-  auto plan = app::doc::planSequencerApply(next, &previous);
-  CHECK("ok", plan.ok);
-  CHECK("one op", plan.trackOps.size() == 1);
-  CHECK("trackIndex == 0", plan.trackOps[0].trackIndex == 0);
-  CHECK("slot 0 occupied", plan.trackOps[0].bank.slots[0].occupied);
-  CHECK("note == 61", plan.trackOps[0].bank.slots[0].pattern.steps[0].note == 61);
+  app::sequencer::PatternSnapshot snapshot{};
+  auto result = app::doc::buildSequencerTargetSnapshot(&model, 1, 7, &snapshot);
+
+  CHECK("target ok", result.ok);
+  CHECK("active slot", snapshot.lanes[0].activeSlot == 0);
+  CHECK("slot occupied", snapshot.lanes[0].slots[0].occupied);
+  CHECK("note copied", snapshot.lanes[0].slots[0].pattern.steps[0].note == 61);
 }
 
-static void test_explicit_empty_track_emits_empty_bank() {
-  TEST("explicit_empty_track_emits_empty_bank");
-  app::doc::AuthoredSeqDocModel previous{};
-  previous.hasTrackState[0] = true;
-  previous.tracks[0] = trackWithSlot(0, 0, 60);
+static void test_build_sequencer_target_snapshot_uses_replacement_defaults() {
+  TEST("build_sequencer_target_snapshot_uses_replacement_defaults");
 
-  app::doc::AuthoredSeqDocModel next{};
-  next.hasTrackState[0] = true;
-  next.tracks[0] = app::doc::AuthoredTrackSeqModel{};
-  next.tracks[0].trackIndex = 0;
-  next.tracks[0].explicitlyAuthoredEmpty = true;
+  AuthoredSeqDocModel model{};
+  model.hasTrackState[1] = true;
+  trackWithSlot(1, 0, 64, &model.tracks[1]);
 
-  auto plan = app::doc::planSequencerApply(next, &previous);
-  CHECK("ok", plan.ok);
-  CHECK("one op", plan.trackOps.size() == 1);
-  CHECK("activeSlot == INVALID",
-        plan.trackOps[0].bank.activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
+  app::sequencer::PatternSnapshot snapshot{};
+  auto result = app::doc::buildSequencerTargetSnapshot(&model, 1, 7, &snapshot);
 
-  bool allEmpty = true;
-  for (uint8_t slot = 0; slot < app::sequencer::PATTERNS_PER_LANE; ++slot) {
-    if (plan.trackOps[0].bank.slots[slot].occupied) {
-      allEmpty = false;
-      break;
-    }
-  }
-  CHECK("all slots empty", allEmpty);
-}
-
-static void test_absent_next_track_emits_no_op() {
-  TEST("absent_next_track_emits_no_op");
-  app::doc::AuthoredSeqDocModel previous{};
-  previous.hasTrackState[0] = true;
-  previous.tracks[0] = trackWithSlot(0, 0, 60);
-
-  app::doc::AuthoredSeqDocModel next{};
-  next.hasTrackState[0] = false;
-
-  auto plan = app::doc::planSequencerApply(next, &previous);
-  CHECK("ok", plan.ok);
-  CHECK("no ops", plan.trackOps.empty());
-}
-
-static void test_source_spans_do_not_affect_equality() {
-  TEST("source_spans_do_not_affect_equality");
-  app::doc::AuthoredSeqDocModel previous{};
-  previous.hasTrackState[0] = true;
-  previous.tracks[0] = trackWithSlot(0, 0, 60);
-  previous.tracks[0].trackSpan     = {1,  0, 1,  0};
-  previous.tracks[0].patternsSpan  = {2,  0, 2,  0};
-  previous.tracks[0].activeSlotSpan = {3, 0, 3,  0};
-
-  app::doc::AuthoredSeqDocModel next{};
-  next.hasTrackState[0] = true;
-  next.tracks[0] = trackWithSlot(0, 0, 60);
-  next.tracks[0].trackSpan      = {10, 0, 10, 0};
-  next.tracks[0].patternsSpan   = {20, 0, 20, 0};
-  next.tracks[0].activeSlotSpan = {30, 0, 30, 0};
-
-  auto plan = app::doc::planSequencerApply(next, &previous);
-  CHECK("ok", plan.ok);
-  CHECK("no ops", plan.trackOps.empty());
+  CHECK("target ok", result.ok);
+  CHECK("lane 2 authored", snapshot.lanes[1].slots[0].pattern.steps[0].note == 64);
+  CHECK("lane 1 default inactive",
+        snapshot.lanes[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
+  CHECK("lane 1 default empty", !snapshot.lanes[0].slots[0].occupied);
 }
 
 void runDocSequencerPlannerTests() {
   SUITE("DocSequencerPlanner");
-  test_unchanged_track_emits_no_op();
-  test_changed_track_emits_replace_bank();
-  test_explicit_empty_track_emits_empty_bank();
-  test_absent_next_track_emits_no_op();
-  test_source_spans_do_not_affect_equality();
+  test_build_sequencer_target_snapshot_defaults_omitted_state();
+  test_build_sequencer_target_snapshot_applies_authored_bank();
+  test_build_sequencer_target_snapshot_uses_replacement_defaults();
 }

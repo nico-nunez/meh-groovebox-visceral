@@ -3,6 +3,7 @@
 #include "app/AppContext.h"
 #include "app/BlockScheduler.h"
 #include "app/Constants.h"
+#include "app/GrooveboxEditSession.h"
 #include "app/Transport.h"
 #include "app/display/DisplayState.h"
 
@@ -86,6 +87,8 @@ void writeMasterBusToDevice(const mixer::MasterBusState& master, audio_io::Audio
 void audioCallback(audio_io::AudioBuffer buffer, void* context) {
   auto* ctx = static_cast<AppContext*>(context);
 
+  publishPendingGrooveboxEditIfReady(ctx);
+
   // 1. Admit transport actions
   auto previousMode = ctx->transport.mode;
 
@@ -126,14 +129,14 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
 
     dsp::buffers::clearStereoBuffer(currentTrack.outputBuffer);
     renderTrackToBuffer(currentTrack, buffer.numFrames, ctx->transport.bpm);
-    sumTrackToMaster(currentTrack, mixer.tracks[i], masterBus, buffer.numFrames);
+    sumTrackToMaster(currentTrack, mixer.current.tracks[i], masterBus, buffer.numFrames);
   }
 
-  applyMasterGain(masterBus, mixer.masterGain, buffer.numFrames);
+  applyMasterGain(masterBus, mixer.current.masterGain, buffer.numFrames);
   dsp::dynamics::processPeakLimiter(masterBus.limiter,
                                     masterBus.busBuffer,
                                     buffer.numFrames,
-                                    mixer.limiterThreshold);
+                                    mixer.current.limiterThreshold);
 
   display::publishDisplayRuntimeTelemetry(ctx->displayPublication,
                                           display::makeDisplayRuntimeTelemetry(*ctx));

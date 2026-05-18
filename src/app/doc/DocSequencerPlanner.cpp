@@ -1,4 +1,7 @@
 #include "app/doc/DocSequencerPlanner.h"
+
+#include "app/Sequencer.h"
+#include "app/doc/DocMetadata.h"
 #include "app/doc/DocSequencerModel.h"
 
 #include <cstdint>
@@ -7,31 +10,6 @@ namespace app::doc {
 
 namespace {
 namespace seq = app::sequencer;
-
-bool stepEventsEqual(const seq::StepEvent& a, const seq::StepEvent& b) {
-  if (a.active != b.active || a.noteOn != b.noteOn || a.legato != b.legato || a.gate != b.gate ||
-      a.note != b.note || a.velocity != b.velocity || a.numLocks != b.numLocks)
-    return false;
-
-  for (uint8_t i = 0; i < a.numLocks; ++i) {
-    if (a.locks[i].paramID != b.locks[i].paramID || a.locks[i].value != b.locks[i].value)
-      return false;
-  }
-
-  return true;
-}
-
-bool lanePatternsEqual(const seq::LanePattern* a, const seq::LanePattern* b) {
-  if (a->numSteps != b->numSteps || a->stepsPerBeat != b->stepsPerBeat)
-    return false;
-
-  for (uint8_t step = 0; step < a->numSteps; ++step) {
-    if (!stepEventsEqual(a->steps[step], b->steps[step]))
-      return false;
-  }
-
-  return true;
-}
 
 seq::PatternBank buildPatternBank(const AuthoredTrackSeqModel& track) {
   seq::PatternBank bank{};
@@ -46,44 +24,51 @@ seq::PatternBank buildPatternBank(const AuthoredTrackSeqModel& track) {
   return bank;
 }
 
-bool authoredTrackBanksEqual(const AuthoredTrackSeqModel& a, const AuthoredTrackSeqModel& b) {
-  if (a.activeSlot != b.activeSlot)
-    return false;
-
-  for (uint8_t slot = 0; slot < seq::PATTERNS_PER_LANE; ++slot) {
-    if (a.patterns[slot].occupied != b.patterns[slot].occupied)
-      return false;
-
-    if (a.patterns[slot].occupied &&
-        !lanePatternsEqual(a.patterns[slot].pattern, b.patterns[slot].pattern))
-      return false;
+DocDiagnostic makeSequencerTargetDiagnostic(DocID documentID,
+                                            DocRevision revision,
+                                            const AuthoredTrackSeqModel* track,
+                                            const char* message) {
+  DocDiagnostic d{};
+  d.severity = DiagnosticSeverity::Error;
+  d.source = DiagnosticSource::Planner;
+  d.documentID = documentID;
+  d.revision = revision;
+  d.code = docdiag::SequencerPlanningFailed;
+  d.message = message ? message : "sequencer target build failed";
+  if (track) {
+    d.span = track->patternsSpan;
+    d.relatedTarget =
+        "track:" + std::to_string(static_cast<int>(track->trackIndex) + 1) + ".patterns";
   }
-  return true;
+  return d;
 }
 
 } // namespace
 
-void planSequencerApply(const AuthoredSeqDocModel* nextModel,
-                        const AuthoredSeqDocModel* previousAdmittedModel,
-                        PlannedSequencerApply* seqPlan) {
-  for (uint8_t trackIndex = 0; trackIndex < MAX_TRACKS; ++trackIndex) {
-    const bool nextPresent = nextModel->hasTrackState[trackIndex];
-    const bool previousPresent =
-        previousAdmittedModel && previousAdmittedModel->hasTrackState[trackIndex];
-
-    if (!nextPresent)
-      continue;
-
-    if (previousPresent && authoredTrackBanksEqual(nextModel->tracks[trackIndex],
-                                                   previousAdmittedModel->tracks[trackIndex]))
-      continue;
-
-    PlannedSequencerTrackOp op{};
-    op.trackIndex = trackIndex;
-    op.bank = buildPatternBank(nextModel->tracks[trackIndex]);
-    seqPlan->trackOps.push_back(op);
+SequencerTargetResult buildSequencerTargetSnapshot(const AuthoredSeqDocModel* model,
+                                                   DocID documentID,
+                                                   DocRevision revision,
+                                                   sequencer::PatternSnapshot* out) {
+  SequencerTargetResult result{};
+  if (!model || !out) {
+    const char* errMsg = !model ? "null sequencer model" : "null sequencer target output";
+    result.diagnostics.push_back(
+        makeSequencerTargetDiagnostic(documentID, revision, nullptr, errMsg));
+    return result;
   }
-  seqPlan->ok = true;
+
+  *out = sequencer::PatternSnapshot{};
+
+  for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
+    if (!model->hasTrackState[trackIndex])
+      continue;
+
+    const AuthoredTrackSeqModel& track = model->tracks[trackIndex];
+    out->lanes[trackIndex] = buildPatternBank(track);
+  }
+
+  result.ok = true;
+  return result;
 }
 
 void buildAdmittedSeqTargetModel(const AuthoredDocModel* nextModel,

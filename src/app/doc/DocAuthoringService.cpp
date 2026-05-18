@@ -1,147 +1,20 @@
 #include "app/doc/DocAuthoringService.h"
 
 #include "app/AppContext.h"
+#include "app/GrooveboxEditSession.h"
+#include "app/doc/DocGrooveboxTargetBuilder.h"
 #include "app/doc/DocMetadata.h"
 #include "app/doc/DocMixerPlanner.h"
 #include "app/doc/DocSequencerParser.h"
 #include "app/doc/DocSequencerPlanner.h"
 #include "app/doc/DocSynthPlanner.h"
 
-#include <cstdint>
 #include <fstream>
 #include <sstream>
 #include <string>
 
 namespace app::doc {
 namespace {
-
-std::string mixerTarget(uint8_t trackIndex, const AuthoredMixerParamField* field) {
-  std::string target = "mixer:";
-  target += std::to_string(static_cast<int>(trackIndex) + 1);
-  if (field && field->authoredField && field->authoredField[0] != '\0') {
-    target += ".";
-    target += field->authoredField;
-  }
-  return target;
-}
-
-DocDiagnostic makeMixerAdmissionDiagnostic(DocAuthoringService& service,
-                                           DocRevision revision,
-                                           const PlannedMixerParamOp& op,
-                                           const char* message) {
-  DocDiagnostic diagnostic{};
-  diagnostic.severity = DiagnosticSeverity::Error;
-  diagnostic.source = DiagnosticSource::GrooveboxAdmission;
-  diagnostic.documentID = service.buffer.documentID;
-  diagnostic.revision = revision;
-  diagnostic.code = docdiag::MixerAdmissionFailed;
-  diagnostic.message = message ? message : "mixer param admission failed";
-  diagnostic.span = op.span;
-  diagnostic.relatedTarget = mixerTarget(op.trackIndex, op.field);
-  return diagnostic;
-}
-
-bool submitMixerPlan(DocAuthoringService& service,
-                     app::AppContext& app,
-                     DocRevision revision,
-                     const PlannedMixerApply& plan,
-                     DocDiagnostics& diagnostics) {
-  for (const PlannedMixerParamOp& op : plan.paramOps) {
-    auto evt = app::events::createAppParamEvent(op.paramID, op.value, op.trackIndex);
-    auto res = pushControlEvent(&app, evt);
-    if (!res.ok) {
-      diagnostics.push_back(makeMixerAdmissionDiagnostic(service,
-                                                         revision,
-                                                         op,
-                                                         res.err ? res.err : "control queue full"));
-      return false;
-    }
-  }
-  return true;
-}
-std::string trackTarget(uint8_t trackIndex, const char* suffix) {
-  std::string target = "track:";
-  target += std::to_string(static_cast<int>(trackIndex) + 1);
-  if (suffix && suffix[0] != '\0') {
-    target += ".";
-    target += suffix;
-  }
-  return target;
-}
-
-std::string synthTarget(uint8_t trackIndex, const AuthoredSynthParamField* field) {
-  std::string target = "synth:";
-  target += std::to_string(static_cast<int>(trackIndex) + 1);
-  if (field && field->authoredPath && field->authoredPath[0] != '\0') {
-    target += ".";
-    target += field->authoredPath;
-  }
-  return target;
-}
-
-DocDiagnostic makeSynthAdmissionDiagnostic(DocAuthoringService& service,
-                                           DocRevision revision,
-                                           const PlannedSynthParamOp& op,
-                                           const char* message) {
-  DocDiagnostic diagnostic{};
-  diagnostic.severity = DiagnosticSeverity::Error;
-  diagnostic.source = DiagnosticSource::GrooveboxAdmission;
-  diagnostic.documentID = service.buffer.documentID;
-  diagnostic.revision = revision;
-  diagnostic.code = docdiag::SynthAdmissionFailed;
-  diagnostic.message = message ? message : "synth param admission failed";
-  diagnostic.span = op.span;
-  diagnostic.relatedTarget = synthTarget(op.trackIndex, op.field);
-  return diagnostic;
-}
-
-bool submitSynthPlan(DocAuthoringService& service,
-                     app::AppContext& app,
-                     DocRevision revision,
-                     const PlannedSynthApply& plan,
-                     DocDiagnostics& diagnostics) {
-  for (const PlannedSynthParamOp& op : plan.paramOps) {
-    synth::ParamEvent event{};
-    event.id = static_cast<uint8_t>(op.paramID);
-    event.value = op.value;
-
-    if (!pushParamEvent(&app, event, op.trackIndex)) {
-      diagnostics.push_back(
-          makeSynthAdmissionDiagnostic(service, revision, op, "synth param queue full"));
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool isActiveSlotAdmissionFailure(const char* message) {
-  return message && std::string(message).find("activeSlot") != std::string::npos;
-}
-
-DocDiagnostic makeSequencerAdmissionDiagnostic(DocID documentID,
-                                               DocRevision revision,
-                                               const AuthoredTrackSeqModel* track,
-                                               const char* message) {
-  DocDiagnostic diagnostic{};
-  diagnostic.severity = DiagnosticSeverity::Error;
-  diagnostic.source = DiagnosticSource::GrooveboxAdmission;
-  diagnostic.documentID = documentID;
-  diagnostic.revision = revision;
-  diagnostic.code = docdiag::SequencerAdmissionFailed;
-  diagnostic.message = message ? message : "sequencer admission failed";
-  if (track) {
-    const bool activeSlotFailure = isActiveSlotAdmissionFailure(message);
-    if (activeSlotFailure) {
-      diagnostic.span = track->activeSlotSpan;
-      diagnostic.relatedTarget = trackTarget(track->trackIndex, "activeSlot");
-    } else {
-      diagnostic.span = track->patternsSpan;
-      diagnostic.relatedTarget = trackTarget(track->trackIndex, "patterns");
-    }
-  }
-  return diagnostic;
-}
 
 DocDiagnostic makeFileReadDiagnostic(DocAuthoringService& service,
                                      DocRevision revision,
@@ -190,57 +63,6 @@ void failApply(DocAuthoringService& service,
   markApplyFailed(service, operationID);
 }
 
-bool submitSequencerPlan(DocAuthoringService& service,
-                         app::AppContext& app,
-                         DocRevision revision,
-                         const AuthoredSeqDocModel& model,
-                         const PlannedSequencerApply& plan,
-                         DocDiagnostics& diagnostics) {
-  if (plan.trackOps.empty())
-    return true;
-
-  auto begin = sequencer::beginPatternEdit(app.sequencer, true);
-  if (!begin.ok) {
-    diagnostics.push_back(
-        makeSequencerAdmissionDiagnostic(service.buffer.documentID, revision, nullptr, begin.err));
-    return false;
-  }
-
-  for (const PlannedSequencerTrackOp& op : plan.trackOps) {
-    auto replace = sequencer::replacePatternBank(app.sequencer, op.trackIndex, op.bank);
-    if (!replace.ok) {
-      auto abort = sequencer::abortPatternEdit(app.sequencer);
-      const AuthoredTrackSeqModel* track =
-          model.hasTrackState[op.trackIndex] ? &model.tracks[op.trackIndex] : nullptr;
-      diagnostics.push_back(makeSequencerAdmissionDiagnostic(service.buffer.documentID,
-                                                             revision,
-                                                             track,
-                                                             replace.err));
-      if (!abort.ok)
-        diagnostics.push_back(makeSequencerAdmissionDiagnostic(service.buffer.documentID,
-                                                               revision,
-                                                               nullptr,
-                                                               abort.err));
-      return false;
-    }
-  }
-
-  auto commit = sequencer::commitPattern(app.sequencer);
-  if (!commit.ok) {
-    auto abort = sequencer::abortPatternEdit(app.sequencer);
-    diagnostics.push_back(
-        makeSequencerAdmissionDiagnostic(service.buffer.documentID, revision, nullptr, commit.err));
-    if (!abort.ok)
-      diagnostics.push_back(makeSequencerAdmissionDiagnostic(service.buffer.documentID,
-                                                             revision,
-                                                             nullptr,
-                                                             abort.err));
-    return false;
-  }
-
-  return true;
-}
-
 void buildAdmittedDocumentModel(const AuthoredDocModel* nextModel, DocApplyState* apply) {
   AuthoredDocModel* admitted = &apply->lastAdmittedDocModel;
   PatternArena* admittedArena = apply->admittedArena;
@@ -284,56 +106,24 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
 
   service.apply.status = ApplyStatus::Validated;
 
-  const AuthoredDocModel* previousDoc =
-      service.apply.hasLastAdmittedDocModel ? &service.apply.lastAdmittedDocModel : nullptr;
-
-  const AuthoredSeqDocModel* previousSeq = previousDoc ? &previousDoc->sequencer : nullptr;
-
-  PlannedSynthApply synthPlan{};
-  planSynthApply(&normalize.model, previousDoc, &synthPlan);
-  if (!synthPlan.ok) {
-    failApply(service, operationID, synthPlan.diagnostics);
-    result.diagnostics = service.apply.diagnostics;
-    return result;
-  }
-
-  PlannedMixerApply mixerPlan;
-  planMixerApply(&normalize.model, previousDoc, &mixerPlan);
-  if (!mixerPlan.ok) {
-    failApply(service, operationID, mixerPlan.diagnostics);
-    result.diagnostics = service.apply.diagnostics;
-    return result;
-  }
-
-  PlannedSequencerApply seqPlan;
-  planSequencerApply(&normalize.model.sequencer, previousSeq, &seqPlan);
-  if (!seqPlan.ok) {
-    failApply(service, operationID, seqPlan.diagnostics);
+  GrooveboxTargetState* target = &service.applyWorkspace->target;
+  GrooveboxTargetBuildResult build =
+      buildGrooveboxTargetState(&normalize.model, service.buffer.documentID, revision, target);
+  if (!build.ok) {
+    failApply(service, operationID, build.diagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
   }
 
   service.apply.status = ApplyStatus::Planned;
 
+  GrooveboxEditSession session{};
+  beginGrooveboxEdit(&session, revision);
+  stageGrooveboxTarget(&session, target);
+
   DocDiagnostics admissionDiagnostics{};
-  if (!submitMixerPlan(service, app, revision, mixerPlan, admissionDiagnostics)) {
-    failApply(service, operationID, admissionDiagnostics);
-    result.diagnostics = service.apply.diagnostics;
-    return result;
-  }
-
-  if (!submitSynthPlan(service, app, revision, synthPlan, admissionDiagnostics)) {
-    failApply(service, operationID, admissionDiagnostics);
-    result.diagnostics = service.apply.diagnostics;
-    return result;
-  }
-
-  if (!submitSequencerPlan(service,
-                           app,
-                           revision,
-                           normalize.model.sequencer,
-                           seqPlan,
-                           admissionDiagnostics)) {
+  GrooveboxEditResult edit = commitGrooveboxEditImmediate(&session, &app, &admissionDiagnostics);
+  if (!edit.ok) {
     failApply(service, operationID, admissionDiagnostics);
     result.diagnostics = service.apply.diagnostics;
     return result;
@@ -375,12 +165,19 @@ ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
 }
 
 void initDocAuthoringService(DocAuthoringService& service) {
-  delete service.apply.admittedArena;
-  delete service.apply.scratchArena;
+  destroyDocAuthoringService(service);
 
   service = DocAuthoringService{};
   service.apply.admittedArena = new PatternArena{};
   service.apply.scratchArena = new PatternArena{};
+  service.applyWorkspace = new DocApplyWorkspace{};
+}
+
+void destroyDocAuthoringService(DocAuthoringService& service) {
+  delete service.apply.admittedArena;
+  delete service.apply.scratchArena;
+  delete service.applyWorkspace;
+  service = DocAuthoringService{};
 }
 
 } // namespace app::doc

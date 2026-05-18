@@ -105,6 +105,7 @@ void destroyAppContext(AppContext* ctx) {
   }
 
   dsp::buffers::destroyStereoBufferPool(ctx->renderBufferPool);
+  doc::destroyDocAuthoringService(ctx->docAuthoring);
   delete ctx;
 }
 

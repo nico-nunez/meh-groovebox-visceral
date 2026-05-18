@@ -210,7 +210,7 @@ int l_seqListTracks(lua_State* L) {
 
   printf("trk  gain   pan    mute\n");
   for (int i = 0; i < (int)seq::MAX_LANES; ++i) {
-    const auto& t = ctx->app->mixer.tracks[i];
+    const auto& t = ctx->app->mixer.current.tracks[i];
     printf("  %d%c %.2f  %+.2f   %s\n",
            i + 1,
            (i == (int)cur) ? '*' : ' ',
@@ -239,7 +239,7 @@ int l_seqSelectTrack(lua_State* L) {
     return luaL_error(L, "control queue full");
 
   // Display reads mixer state directly — one block behind is fine for a print.
-  const auto& t = ctx->app->mixer.tracks[idx];
+  const auto& t = ctx->app->mixer.current.tracks[idx];
   printf("[track %d]  gain: %.2f  pan: %+.2f  mute: %s\n",
          track,
          t.gain,

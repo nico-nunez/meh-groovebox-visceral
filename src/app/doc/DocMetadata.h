@@ -142,6 +142,7 @@ inline constexpr const char* StepLock = "StepLock";
 } // namespace doctype
 
 namespace docdiag {
+inline constexpr const char* MixerPlanningFailed = "mixer.planning_failed";
 inline constexpr const char* MixerTrackInvalidIndex = "mixer.track.invalid_index";
 inline constexpr const char* MixerSettingsInvalidShape = "mixer.settings.invalid_shape";
 inline constexpr const char* MixerParamUnknown = "mixer.param.unknown";
@@ -150,6 +151,7 @@ inline constexpr const char* MixerParamOutOfRange = "mixer.param.out_of_range";
 inline constexpr const char* MixerParamDuplicateWrite = "mixer.param.duplicate_write";
 inline constexpr const char* MixerAdmissionFailed = "mixer.admission_failed";
 
+inline constexpr const char* SynthPlanningFailed = "synth.planning_failed";
 inline constexpr const char* SynthTrackInvalidIndex = "synth.track.invalid_index";
 inline constexpr const char* SynthSettingsInvalidShape = "synth.settings.invalid_shape";
 inline constexpr const char* SynthParamUnknown = "synth.param.unknown";
@@ -159,6 +161,7 @@ inline constexpr const char* SynthParamOutOfRange = "synth.param.out_of_range";
 inline constexpr const char* SynthParamDuplicateWrite = "synth.param.duplicate_write";
 inline constexpr const char* SynthAdmissionFailed = "synth.admission_failed";
 
+inline constexpr const char* SequencerPlanningFailed = "sequencer.planning_failed";
 inline constexpr const char* SequencerTrackInvalidIndex = "sequencer.track.invalid_index";
 inline constexpr const char* SequencerTrackInvalidSettings = "sequencer.track.invalid_settings";
 inline constexpr const char* SequencerPatternsInvalidShape = "sequencer.patterns.invalid_shape";
@@ -171,6 +174,8 @@ inline constexpr const char* SequencerActiveSlotEmptySlot = "sequencer.active_sl
 inline constexpr const char* SequencerAdmissionFailed = "sequencer.admission_failed";
 inline constexpr const char* SequencerActiveSlotMissingPatterns =
     "sequencer.active_slot.missing_patterns";
+
+inline constexpr const char* InternalPlannerError = "document.planner.internal_error";
 
 inline constexpr const char* DocumentLuaStateFailed = "document.lua_state_failed";
 inline constexpr const char* DocumentLuaEvalFailed = "document.lua_eval_failed";

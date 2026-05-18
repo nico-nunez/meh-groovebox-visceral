@@ -8,6 +8,7 @@
 
 #include "synth/events/Events.h"
 
+#include <atomic>
 #include <cstdint>
 
 namespace app::sequencer {
@@ -145,7 +146,7 @@ struct SequencerState {
   LaneContext laneCtxs[MAX_TRACKS]{};
   uint8_t numLanes = 0;
 
-  bool isEditing = false;
+  std::atomic<bool> isEditing{false};
 };
 
 // ===============
@@ -262,5 +263,11 @@ GetPatternBankSlotResult getPatternBankSlot(const SequencerState& state,
                                             uint8_t slot);
 
 GetStepLocksResult getStepLocks(const SequencerState& state, uint8_t lane, uint8_t step);
+
+VoidResult validatePatternSnapshot(const PatternSnapshot& snapshot);
+VoidResult prepareSequencerSnapshotSwap(SequencerState& state, const PatternSnapshot& snapshot);
+VoidResult commitSequencerSnapshotSwap(SequencerState& state);
+void abortSequencerSnapshotSwap(SequencerState& state);
+void publishPendingSequencerSnapshotIfReady(SequencerState& state);
 
 } // namespace app::sequencer

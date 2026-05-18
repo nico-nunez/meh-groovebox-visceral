@@ -1,10 +1,10 @@
 #pragma once
 
+#include "app/Mixer.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 
 #include <cstdint>
-#include <vector>
 
 namespace app::doc {
 
@@ -16,15 +16,15 @@ struct PlannedMixerParamOp {
   SourceSpan span{};
 };
 
-struct PlannedMixerApply {
+struct MixerTargetResult {
   bool ok = false;
   DocDiagnostics diagnostics{};
-  std::vector<PlannedMixerParamOp> paramOps{};
 };
 
-void planMixerApply(const AuthoredDocModel* nextModel,
-                    const AuthoredDocModel* previousAdmittedModel,
-                    PlannedMixerApply* mixerPlan);
+MixerTargetResult buildMixerTargetSnapshot(const AuthoredDocModel* model,
+                                           DocID documentID,
+                                           DocRevision revision,
+                                           mixer::MixerSnapshot* out);
 
 void buildAdmittedMixerTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted);
 

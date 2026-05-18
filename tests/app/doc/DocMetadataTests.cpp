@@ -5,6 +5,7 @@
 #include "app/Sequencer.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/DocMetadata.h"
+#include "app/doc/DocSequencerModel.h"
 #include "app/doc/DocSequencerParser.h"
 
 #include <cstddef>
@@ -197,8 +198,9 @@ static void test_parser_emitted_diagnostics_are_cataloged() {
       "synth(1, SynthSettings { svf = { cutoff = 999999 } })",
   };
 
+  app::doc::PatternArena pattern{};
   for (const char* text : invalidDocs) {
-    auto r = app::doc::parseAndNormalizeAuthoredDocument(1, 7, text);
+    auto r = app::doc::parseAndNormalizeAuthoredDocument(1, 7, text, &pattern);
     CHECK("not ok", !r.ok);
     CHECK("has diagnostics", !r.diagnostics.empty());
     CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(r.diagnostics));
@@ -209,6 +211,7 @@ static void test_service_emitted_diagnostics_are_cataloged() {
   TEST("service_emitted_diagnostics_are_cataloged");
 
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   auto result = app::doc::applySequencerRevision(service, app, 1, "track('one', TrackSettings {})");
@@ -216,12 +219,14 @@ static void test_service_emitted_diagnostics_are_cataloged() {
   CHECK("not ok", !result.ok);
   CHECK("has diagnostics", !result.diagnostics.empty());
   CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(result.diagnostics));
+  app::doc::destroyDocAuthoringService(service);
 }
 
 static void test_file_apply_emitted_diagnostics_are_cataloged() {
   TEST("file_apply_emitted_diagnostics_are_cataloged");
 
   app::doc::DocAuthoringService service{};
+  app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
   auto result = app::doc::applySequencerFile(service, app, "/path/that/does/not/exist.lua");
@@ -229,6 +234,7 @@ static void test_file_apply_emitted_diagnostics_are_cataloged() {
   CHECK("not ok", !result.ok);
   CHECK("has diagnostics", !result.diagnostics.empty());
   CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(result.diagnostics));
+  app::doc::destroyDocAuthoringService(service);
 }
 
 static void test_synth_settings_metadata_is_implemented() {

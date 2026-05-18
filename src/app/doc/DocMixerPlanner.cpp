@@ -1,25 +1,12 @@
 #include "app/doc/DocMixerPlanner.h"
 
+#include "app/AppParams.h"
+#include "app/Mixer.h"
+#include "app/doc/DocMetadata.h"
+#include "dsp/Math.h"
+
 namespace app::doc {
 namespace {
-
-const AuthoredMixerParamWrite* findMixerWrite(const AuthoredTrackMixerPatch& patch,
-                                              app::params::AppParamID paramID) {
-  for (const auto& write : patch.writes) {
-    if (write.paramID == paramID)
-      return &write;
-  }
-  return nullptr;
-}
-
-bool previousMixerValueMatches(const AuthoredDocModel* previous,
-                               uint8_t trackIndex,
-                               const AuthoredMixerParamWrite& nextWrite) {
-  if (!previous || !previous->hasMixerState[trackIndex])
-    return false;
-  const auto* prev = findMixerWrite(previous->mixerTracks[trackIndex], nextWrite.paramID);
-  return prev && prev->value == nextWrite.value;
-}
 
 void upsertMixerWrite(AuthoredTrackMixerPatch& patch, const AuthoredMixerParamWrite& write) {
   for (auto& existing : patch.writes) {
@@ -31,30 +18,102 @@ void upsertMixerWrite(AuthoredTrackMixerPatch& patch, const AuthoredMixerParamWr
   patch.writes.push_back(write);
 }
 
+DocDiagnostic makeMixerTargetDiagnostic(DocID documentID,
+                                        DocRevision revision,
+                                        const AuthoredMixerParamWrite* write,
+                                        const char* message) {
+  DocDiagnostic d{};
+  d.severity = DiagnosticSeverity::Error;
+  d.source = DiagnosticSource::Planner;
+  d.documentID = documentID;
+  d.revision = revision;
+  d.code = docdiag::MixerPlanningFailed;
+  d.message = message ? message : "mixer target build failed";
+  if (write) {
+    d.span = write->span;
+    if (write->field && write->field->authoredField)
+      d.relatedTarget = write->field->authoredField;
+  }
+  return d;
+}
+
+bool applyMixerWrite(app::mixer::MixerSnapshot* mixer,
+                     uint8_t trackIndex,
+                     const AuthoredMixerParamWrite& write,
+                     DocID documentID,
+                     DocRevision revision,
+                     DocDiagnostics* diagnostics) {
+  if (!mixer || !diagnostics)
+    return false;
+
+  if (!app::params::isValidAppParamID(write.paramID)) {
+    diagnostics->push_back(
+        makeMixerTargetDiagnostic(documentID, revision, &write, "invalid mixer param id"));
+    return false;
+  }
+
+  const auto& def = app::params::getAppParamDef(write.paramID);
+  if (write.value < def.min || write.value > def.max) {
+    diagnostics->push_back(
+        makeMixerTargetDiagnostic(documentID, revision, &write, "mixer param out of range"));
+    return false;
+  }
+
+  const float value = app::params::clampAppParam(write.paramID, write.value);
+
+  switch (write.paramID) {
+  case app::params::AppParamID::TrackGain:
+    mixer->tracks[trackIndex].gain = value;
+    return true;
+  case app::params::AppParamID::TrackPan:
+    mixer->tracks[trackIndex].pan = value;
+    return true;
+  case app::params::AppParamID::TrackMute:
+    mixer->tracks[trackIndex].enabled = value < 0.5f;
+    return true;
+  case app::params::AppParamID::MasterGain:
+    mixer->masterGain = value;
+    return true;
+  case app::params::AppParamID::LimiterThresholdDB:
+    mixer->limiterThreshold = dsp::math::dBToLinear(value);
+    return true;
+  case app::params::AppParamID::Count:
+    break;
+  }
+
+  diagnostics->push_back(
+      makeMixerTargetDiagnostic(documentID, revision, &write, "unhandled mixer param id"));
+  return false;
+}
+
 } // namespace
 
-void planMixerApply(const AuthoredDocModel* nextModel,
-                    const AuthoredDocModel* previousAdmittedModel,
-                    PlannedMixerApply* mixerPlan) {
+MixerTargetResult buildMixerTargetSnapshot(const AuthoredDocModel* model,
+                                           DocID documentID,
+                                           DocRevision revision,
+                                           mixer::MixerSnapshot* out) {
+  MixerTargetResult result{};
+  if (!model || !out) {
+    const char* errMsg = !model ? "null authored model" : "null mixer target out";
+    result.diagnostics.push_back(makeMixerTargetDiagnostic(documentID, revision, nullptr, errMsg));
+    return result;
+  }
+
+  *out = mixer::MixerSnapshot{};
+
   for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
-    if (!nextModel->hasMixerState[trackIndex])
+    if (!model->hasMixerState[trackIndex])
       continue;
 
-    const AuthoredTrackMixerPatch& patch = nextModel->mixerTracks[trackIndex];
+    const AuthoredTrackMixerPatch& patch = model->mixerTracks[trackIndex];
     for (const auto& write : patch.writes) {
-      if (previousMixerValueMatches(previousAdmittedModel, trackIndex, write))
-        continue;
-
-      PlannedMixerParamOp op{};
-      op.trackIndex = trackIndex;
-      op.paramID = write.paramID;
-      op.value = write.value;
-      op.field = write.field;
-      op.span = write.span;
-      mixerPlan->paramOps.push_back(op);
+      if (!applyMixerWrite(out, trackIndex, write, documentID, revision, &result.diagnostics))
+        return result;
     }
   }
-  mixerPlan->ok = true;
+
+  result.ok = true;
+  return result;
 }
 
 void buildAdmittedMixerTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted) {

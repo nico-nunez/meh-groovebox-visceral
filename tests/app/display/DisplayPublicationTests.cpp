@@ -76,9 +76,9 @@ static void test_make_runtime_telemetry_copies_transport_and_mixer() {
   app.transport.bpm = 128.0f;
   app.transport.beatPosition = 12.5;
   app.transport.samplePosition = 2048;
-  app.mixer.tracks[0].enabled = false;
-  app.mixer.tracks[0].gain = 0.25f;
-  app.mixer.tracks[0].pan = -0.5f;
+  app.mixer.current.tracks[0].enabled = false;
+  app.mixer.current.tracks[0].gain = 0.25f;
+  app.mixer.current.tracks[0].pan = -0.5f;
 
   const auto telemetry = app::display::makeDisplayRuntimeTelemetry(app);
 

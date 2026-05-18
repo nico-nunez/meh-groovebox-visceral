@@ -1,8 +1,7 @@
 #include "TestRunner.h"
+#include "TestHelpers.h"
 
 #include "app/doc/DocMetadata.h"
-#include "app/doc/DocSequencerParser.h"
-#include "synth/WavetableBanks.h"
 #include "synth/params/ParamDefs.h"
 #include "synth/params/ParamUtils.h"
 
@@ -10,18 +9,8 @@
 
 namespace {
 
-app::doc::AuthoredDocumentNormalizeResult parseDoc(const char* text) {
-  synth::wavetable::banks::initFactoryBanks();
-  return app::doc::parseAndNormalizeAuthoredDocument(1, 7, text);
-}
-
-bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const char* code) {
-  for (const auto& diagnostic : diagnostics) {
-    if (diagnostic.code == code)
-      return true;
-  }
-  return false;
-}
+using test::hasDiagnostic;
+using test::parseDoc;
 
 const app::doc::AuthoredSynthParamWrite* findWrite(const app::doc::AuthoredTrackSynthPatch& patch,
                                                    synth::param::ParamID id) {
@@ -225,9 +214,7 @@ static void test_duplicate_conflicting_write_is_diagnostic() {
 static void test_existing_sequencer_parser_api_still_returns_seq_model() {
   TEST("existing_sequencer_parser_api_still_returns_seq_model");
 
-  auto r = app::doc::parseAndNormalizeAuthoredDocument(
-      1,
-      7,
+  auto r = parseDoc(
       "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
       "steps = { { active = true } } } }, activeSlot = 1 })");
 

@@ -1,50 +1,33 @@
 #include "TestRunner.h"
+#include "TestHelpers.h"
 
 #include "app/AppContext.h"
+#include "app/GrooveboxEditSession.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/DocMetadata.h"
-#include "app/doc/DocSequencerParser.h"
+#include "app/sessions/AudioSession.h"
 #include "synth/WavetableBanks.h"
 #include "synth/params/ParamDefs.h"
 
 namespace {
 
-app::doc::AuthoredDocumentNormalizeResult parseDoc(const char* text) {
-  synth::wavetable::banks::initFactoryBanks();
-  return app::doc::parseAndNormalizeAuthoredDocument(1, 7, text);
-}
-
 void initSynthParserGlobals() {
   synth::wavetable::banks::initFactoryBanks();
 }
 
-bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const char* code) {
-  for (const auto& diagnostic : diagnostics) {
-    if (diagnostic.code == code)
-      return true;
-  }
-  return false;
+using test::hasDiagnostic;
+using test::parseDoc;
+
+app::AppContext* makeContext() {
+  app::audio::DeviceInfo device{};
+  device.sampleRate = 48000;
+  device.bufferFrameSize = 64;
+  device.numChannels = 2;
+  return app::createAppContext(device);
 }
 
-bool popParam(app::AppContext& app, uint8_t trackIndex, synth::ParamEvent& out) {
-  return app.tracks[trackIndex].queues.param.pop(out);
-}
-
-bool hasParamEvent(app::AppContext& app,
-                   uint8_t trackIndex,
-                   synth::param::ParamID id,
-                   float value) {
-  synth::ParamEvent event{};
-  while (popParam(app, trackIndex, event)) {
-    if (event.id == id && event.value == value)
-      return true;
-  }
-  return false;
-}
-
-bool anyParamEvent(app::AppContext& app, uint8_t trackIndex) {
-  synth::ParamEvent event{};
-  return popParam(app, trackIndex, event);
+void publishPending(app::AppContext* app) {
+  app::publishPendingGrooveboxEditIfReady(app);
 }
 
 } // namespace
@@ -70,13 +53,15 @@ static void test_luals_advertised_synth_shape_parses_and_applies() {
   CHECK("track 0 synth parsed", parsed.model.hasSynthState[0]);
   CHECK("track 1 synth parsed", parsed.model.hasSynthState[1]);
 
-  app::doc::DocAuthoringService service{};
-  app::AppContext app{};
-  auto result = app::doc::applySequencerRevision(service, app, 1, doc);
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc);
 
   CHECK("apply ok", result.ok);
-  CHECK("track 0 event", hasParamEvent(app, 0, synth::param::OSC1_MIX_LEVEL, 0.8f));
-  CHECK("track 1 event", hasParamEvent(app, 1, synth::param::MASTER_GAIN, 0.9f));
+  publishPending(app);
+  CHECK("track 0 published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.8f);
+  CHECK("track 1 published", app->tracks[1].engine.params[synth::param::MASTER_GAIN] == 0.9f);
+  app::destroyAppContext(app);
 }
 
 static void test_mixed_synth_and_sequencer_document_applies() {
@@ -95,16 +80,18 @@ static void test_mixed_synth_and_sequencer_document_applies() {
   CHECK("seq parsed", parsed.model.sequencer.hasTrackState[0]);
   CHECK("synth parsed", parsed.model.hasSynthState[0]);
 
-  app::doc::DocAuthoringService service{};
-  app::AppContext app{};
-  auto result = app::doc::applySequencerRevision(service, app, 1, doc);
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc);
 
   CHECK("apply ok", result.ok);
-  CHECK("completed", service.apply.status == app::doc::ApplyStatus::Completed);
-  CHECK("admitted doc model", service.apply.hasLastAdmittedDocModel);
-  CHECK("admitted seq", service.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
-  CHECK("admitted synth", service.apply.lastAdmittedDocModel.hasSynthState[0]);
-  CHECK("synth event", hasParamEvent(app, 0, synth::param::OSC1_MIX_LEVEL, 0.6f));
+  CHECK("completed", app->docAuthoring.apply.status == app::doc::ApplyStatus::Completed);
+  CHECK("admitted doc model", app->docAuthoring.apply.hasLastAdmittedDocModel);
+  CHECK("admitted seq", app->docAuthoring.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
+  CHECK("admitted synth", app->docAuthoring.apply.lastAdmittedDocModel.hasSynthState[0]);
+  publishPending(app);
+  CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.6f);
+  app::destroyAppContext(app);
 }
 
 static void test_deferred_synth_fields_fail_without_queueing_events() {
@@ -112,17 +99,18 @@ static void test_deferred_synth_fields_fail_without_queueing_events() {
 
   initSynthParserGlobals();
 
-  app::doc::DocAuthoringService service{};
-  app::AppContext app{};
-  auto result = app::doc::applySequencerRevision(service,
-                                                 app,
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+                                                 *app,
                                                  1,
                                                  "synth(1, SynthSettings { lfo1 = { rate = 2 } })");
 
   CHECK("apply failed", !result.ok);
   CHECK("unknown param diagnostic",
         hasDiagnostic(result.diagnostics, app::doc::docdiag::SynthParamUnknown));
-  CHECK("no queued event", !anyParamEvent(app, 0));
+  CHECK("no pending apply", !app->pendingGrooveboxApply.ready.load());
+  app::destroyAppContext(app);
 }
 
 static void test_valid_synth_document_never_emits_apply_not_implemented() {
@@ -130,16 +118,17 @@ static void test_valid_synth_document_never_emits_apply_not_implemented() {
 
   initSynthParserGlobals();
 
-  app::doc::DocAuthoringService service{};
-  app::AppContext app{};
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
   auto result = app::doc::applySequencerRevision(
-      service,
-      app,
+      app->docAuthoring,
+      *app,
       1,
       "synth(1, SynthSettings { osc1 = { mix = 0.25 }, "
       "                         svf = { enabled = true, cutoff = 800 } })");
 
   CHECK("apply ok", result.ok);
+  app::destroyAppContext(app);
 }
 
 void runDocAuthoredSynthEndToEndTests() {
