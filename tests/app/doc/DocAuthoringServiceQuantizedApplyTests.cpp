@@ -1,3 +1,4 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
@@ -5,7 +6,6 @@
 #include "app/Transport.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/DocGrooveboxTargetBuilder.h"
-#include "app/doc/DocSequencerModel.h"
 #include "app/doc/DocSequencerParser.h"
 #include "app/sessions/AudioSession.h"
 
@@ -31,13 +31,13 @@ app::transport::TransportBlockInfo block(app::transport::TransportMode mode, uin
 }
 
 bool prepareDoc(app::AppContext* app, const char* doc, app::GrooveboxApplyTiming timing) {
-  app::doc::PatternArena* pattern{};
-  auto parsed = app::doc::parseAndNormalizeAuthoredDocument(1, 1, doc, pattern);
+  auto* ws = test::getParseTestWorkspace();
+  auto parsed = test::parseWorkspace(1, 1, doc, ws);
   if (!parsed.ok)
     return false;
 
   app::GrooveboxTargetState* target = &app->docAuthoring.applyWorkspace->target;
-  auto build = app::doc::buildGrooveboxTargetState(&parsed.model, 1, 1, target);
+  auto build = app::doc::buildGrooveboxTargetState(&ws->model, 1, 1, target);
   if (!build.ok)
     return false;
 

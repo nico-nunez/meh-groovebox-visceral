@@ -12,15 +12,15 @@ struct SequencerNormalizeResult {
   DocDiagnostics diagnostics{};
 };
 
-struct AuthoredDocumentNormalizeResult {
+struct AuthoredDocNormalizeResult {
   bool ok = false;
-  AuthoredDocModel model{};
   DocDiagnostics diagnostics{};
 };
 
-AuthoredDocumentNormalizeResult parseAndNormalizeAuthoredDocument(DocID documentID,
-                                                                  DocRevision revision,
-                                                                  const char* bufferText,
-                                                                  PatternArena* scratchArena);
+AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
+                                                        DocRevision revision,
+                                                        const char* bufferText,
+                                                        PatternArena* scratchArena,
+                                                        AuthoredDocModel* outModel);
 
 } // namespace app::doc

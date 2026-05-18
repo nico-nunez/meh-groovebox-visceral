@@ -6,18 +6,20 @@
 
 namespace {
 
-using test::parseDoc;
+using test::getParseTestWorkspace;
+using test::parseWS;
 
 } // namespace
 
 static void test_build_synth_target_programs_defaults_all_tracks() {
   TEST("build_synth_target_programs_defaults_all_tracks");
 
-  auto parsed = parseDoc("");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("", ws);
   CHECK("parse ok", parsed.ok);
 
   synth::program::SynthProgram programs[app::MAX_TRACKS]{};
-  auto result = app::doc::buildSynthTargetPrograms(&parsed.model, 1, 7, programs);
+  auto result = app::doc::buildSynthTargetPrograms(&ws->model, 1, 7, programs);
 
   CHECK("target ok", result.ok);
   CHECK("track 1 default mix",
@@ -31,12 +33,14 @@ static void test_build_synth_target_programs_defaults_all_tracks() {
 static void test_build_synth_target_programs_applies_authored_values() {
   TEST("build_synth_target_programs_applies_authored_values");
 
-  auto parsed = parseDoc("synth(1, SynthSettings { osc1 = { mix = 0.8 }, "
-                         "svf = { cutoff = 1200 } })");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("synth(1, SynthSettings { osc1 = { mix = 0.8 }, "
+                        "svf = { cutoff = 1200 } })",
+                        ws);
   CHECK("parse ok", parsed.ok);
 
   synth::program::SynthProgram programs[app::MAX_TRACKS]{};
-  auto result = app::doc::buildSynthTargetPrograms(&parsed.model, 1, 7, programs);
+  auto result = app::doc::buildSynthTargetPrograms(&ws->model, 1, 7, programs);
 
   CHECK("target ok", result.ok);
   CHECK("mix applied", programs[0].paramValues[synth::param::OSC1_MIX_LEVEL] == 0.8f);
@@ -46,11 +50,12 @@ static void test_build_synth_target_programs_applies_authored_values() {
 static void test_build_synth_target_programs_uses_replacement_defaults() {
   TEST("build_synth_target_programs_uses_replacement_defaults");
 
-  auto parsed = parseDoc("synth(2, SynthSettings { osc1 = { mix = 0.25 } })");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("synth(2, SynthSettings { osc1 = { mix = 0.25 } })", ws);
   CHECK("parse ok", parsed.ok);
 
   synth::program::SynthProgram programs[app::MAX_TRACKS]{};
-  auto result = app::doc::buildSynthTargetPrograms(&parsed.model, 1, 7, programs);
+  auto result = app::doc::buildSynthTargetPrograms(&ws->model, 1, 7, programs);
 
   CHECK("target ok", result.ok);
   CHECK("track 2 authored", programs[1].paramValues[synth::param::OSC1_MIX_LEVEL] == 0.25f);

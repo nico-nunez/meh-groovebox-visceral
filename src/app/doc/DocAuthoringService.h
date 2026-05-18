@@ -41,6 +41,7 @@ struct DocApplyState {
 };
 
 struct DocApplyWorkspace {
+  AuthoredDocModel parseModel{};
   GrooveboxTargetState target{};
 };
 

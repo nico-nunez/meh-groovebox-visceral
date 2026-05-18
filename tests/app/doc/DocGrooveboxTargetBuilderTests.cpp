@@ -1,12 +1,13 @@
-#include "TestRunner.h"
 #include "TestHelpers.h"
+#include "TestRunner.h"
 
 #include "app/doc/DocGrooveboxTargetBuilder.h"
 
 #include "synth/params/ParamDefs.h"
 
 namespace {
-using test::parseDoc;
+using test::getParseTestWorkspace;
+using test::parseWS;
 
 app::GrooveboxTargetState& targetScratch() {
   static app::GrooveboxTargetState target{};
@@ -18,11 +19,12 @@ app::GrooveboxTargetState& targetScratch() {
 static void test_target_builder_defaults_omitted_state() {
   TEST("target_builder_defaults_omitted_state");
 
-  auto parsed = parseDoc("");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("", ws);
   CHECK("parse ok", parsed.ok);
 
   auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&parsed.model, 1, 7, &target);
+  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
 
   CHECK("target ok", result.ok);
   CHECK("mixer present", target.hasMixer);
@@ -39,12 +41,13 @@ static void test_target_builder_defaults_omitted_state() {
 static void test_target_builder_applies_authored_synth_values() {
   TEST("target_builder_applies_authored_synth_values");
 
+  auto* ws = getParseTestWorkspace();
   auto parsed =
-      parseDoc("synth(1, SynthSettings { osc1 = { mix = 0.25 }, svf = { cutoff = 1200 } })");
+      parseWS("synth(1, SynthSettings { osc1 = { mix = 0.25 }, svf = { cutoff = 1200 } })", ws);
   CHECK("parse ok", parsed.ok);
 
   auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&parsed.model, 1, 7, &target);
+  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
 
   CHECK("target ok", result.ok);
   CHECK("mix applied", target.synthPrograms[0].paramValues[synth::param::OSC1_MIX_LEVEL] == 0.25f);
@@ -57,11 +60,12 @@ static void test_target_builder_applies_authored_synth_values() {
 static void test_target_builder_applies_authored_mixer_values() {
   TEST("target_builder_applies_authored_mixer_values");
 
-  auto parsed = parseDoc("mixer(1, MixerSettings { gain = 0.5, pan = -0.25, mute = true })");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("mixer(1, MixerSettings { gain = 0.5, pan = -0.25, mute = true })", ws);
   CHECK("parse ok", parsed.ok);
 
   auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&parsed.model, 1, 7, &target);
+  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
 
   CHECK("target ok", result.ok);
   CHECK("gain applied", target.mixer.tracks[0].gain == 0.5f);
@@ -73,13 +77,15 @@ static void test_target_builder_applies_authored_mixer_values() {
 static void test_target_builder_applies_authored_sequencer_bank() {
   TEST("target_builder_applies_authored_sequencer_bank");
 
-  auto parsed = parseDoc("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, "
-                         "stepsPerBeat = 4, steps = { { note = 36, active = true } } } }, "
-                         "activeSlot = 1 })");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, "
+                        "stepsPerBeat = 4, steps = { { note = 36, active = true } } } }, "
+                        "activeSlot = 1 })",
+                        ws);
   CHECK("parse ok", parsed.ok);
 
   auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&parsed.model, 1, 7, &target);
+  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
 
   CHECK("target ok", result.ok);
   CHECK("slot occupied", target.sequencer.lanes[0].slots[0].occupied);
@@ -91,11 +97,12 @@ static void test_target_builder_applies_authored_sequencer_bank() {
 static void test_target_builder_uses_replacement_not_previous_carry_forward() {
   TEST("target_builder_uses_replacement_not_previous_carry_forward");
 
-  auto parsed = parseDoc("synth(2, SynthSettings { osc1 = { mix = 0.75 } })");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("synth(2, SynthSettings { osc1 = { mix = 0.75 } })", ws);
   CHECK("parse ok", parsed.ok);
 
   auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&parsed.model, 1, 7, &target);
+  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
 
   CHECK("target ok", result.ok);
   CHECK("track 2 authored",

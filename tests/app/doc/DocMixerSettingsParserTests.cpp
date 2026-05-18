@@ -1,5 +1,5 @@
-#include "TestRunner.h"
 #include "TestHelpers.h"
+#include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/AppParams.h"
@@ -10,7 +10,8 @@
 #include <algorithm>
 
 namespace {
-using test::parseDocument;
+using test::getParseTestWorkspace;
+using test::parseWorkspace;
 
 const char* kNonEmptyTrack1 =
     "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
@@ -19,24 +20,27 @@ const char* kNonEmptyTrack1 =
 
 static void test_mixer_parser_sets_has_mixer_state_from_call() {
   TEST("mixer_parser_sets_has_mixer_state_from_call");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { gain = 0.8 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { gain = 0.8 })", ws);
   CHECK("ok", result.ok);
-  CHECK("hasMixerState", result.model.hasMixerState[0]);
+  CHECK("hasMixerState", ws->model.hasMixerState[0]);
 }
 
 static void test_mixer_parser_sets_has_mixer_state_from_track_settings() {
   TEST("mixer_parser_sets_has_mixer_state_from_track_settings");
+  auto* ws = getParseTestWorkspace();
   auto result =
-      parseDocument(1, 1, "track(1, TrackSettings { mixer = MixerSettings { pan = -0.5 } })");
+      parseWorkspace(1, 1, "track(1, TrackSettings { mixer = MixerSettings { pan = -0.5 } })", ws);
   CHECK("ok", result.ok);
-  CHECK("hasMixerState", result.model.hasMixerState[0]);
+  CHECK("hasMixerState", ws->model.hasMixerState[0]);
 }
 
 static void test_mixer_parser_gain_write() {
   TEST("mixer_parser_gain_write");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { gain = 0.75 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { gain = 0.75 })", ws);
   CHECK("ok", result.ok);
-  const auto& patch = result.model.mixerTracks[0];
+  const auto& patch = ws->model.mixerTracks[0];
   CHECK("has write", patch.writes.size() == 1);
   CHECK("paramID",
         patch.writes.size() > 0 && patch.writes[0].paramID == app::params::AppParamID::TrackGain);
@@ -45,9 +49,10 @@ static void test_mixer_parser_gain_write() {
 
 static void test_mixer_parser_pan_write() {
   TEST("mixer_parser_pan_write");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { pan = -0.3 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { pan = -0.3 })", ws);
   CHECK("ok", result.ok);
-  const auto& patch = result.model.mixerTracks[0];
+  const auto& patch = ws->model.mixerTracks[0];
   CHECK("has write", patch.writes.size() == 1);
   CHECK("paramID",
         patch.writes.size() > 0 && patch.writes[0].paramID == app::params::AppParamID::TrackPan);
@@ -56,9 +61,10 @@ static void test_mixer_parser_pan_write() {
 
 static void test_mixer_parser_mute_true() {
   TEST("mixer_parser_mute_true");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { mute = true })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { mute = true })", ws);
   CHECK("ok", result.ok);
-  const auto& patch = result.model.mixerTracks[0];
+  const auto& patch = ws->model.mixerTracks[0];
   CHECK("has write", patch.writes.size() == 1);
   CHECK("paramID",
         patch.writes.size() > 0 && patch.writes[0].paramID == app::params::AppParamID::TrackMute);
@@ -67,43 +73,49 @@ static void test_mixer_parser_mute_true() {
 
 static void test_mixer_parser_mute_false() {
   TEST("mixer_parser_mute_false");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { mute = false })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { mute = false })", ws);
   CHECK("ok", result.ok);
   CHECK("value",
-        result.model.mixerTracks[0].writes.size() > 0 &&
-            result.model.mixerTracks[0].writes[0].value == 0.0f);
+        ws->model.mixerTracks[0].writes.size() > 0 &&
+            ws->model.mixerTracks[0].writes[0].value == 0.0f);
 }
 
 static void test_mixer_parser_multiple_fields_in_one_call() {
   TEST("mixer_parser_multiple_fields_in_one_call");
+  auto* ws = getParseTestWorkspace();
   auto result =
-      parseDocument(1, 1, "mixer(1, MixerSettings { gain = 0.8, pan = -0.2, mute = false })");
+      parseWorkspace(1, 1, "mixer(1, MixerSettings { gain = 0.8, pan = -0.2, mute = false })", ws);
   CHECK("ok", result.ok);
-  CHECK("write count", result.model.mixerTracks[0].writes.size() == 3);
+  CHECK("write count", ws->model.mixerTracks[0].writes.size() == 3);
 }
 
 static void test_mixer_parser_different_tracks_independent() {
   TEST("mixer_parser_different_tracks_independent");
-  auto result = parseDocument(1,
-                              1,
-                              "mixer(1, MixerSettings { gain = 0.8 })\n"
-                              "mixer(2, MixerSettings { mute = true })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1,
+                               1,
+                               "mixer(1, MixerSettings { gain = 0.8 })\n"
+                               "mixer(2, MixerSettings { mute = true })",
+                               ws);
   CHECK("ok", result.ok);
-  CHECK("track1", result.model.hasMixerState[0]);
-  CHECK("track2", result.model.hasMixerState[1]);
+  CHECK("track1", ws->model.hasMixerState[0]);
+  CHECK("track2", ws->model.hasMixerState[1]);
 }
 
 static void test_mixer_parser_empty_mixer_settings_is_valid_no_op() {
   TEST("mixer_parser_empty_mixer_settings_is_valid_no_op");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings {})");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings {})", ws);
   CHECK("ok", result.ok);
-  CHECK("hasMixerState", result.model.hasMixerState[0]);
-  CHECK("no writes", result.model.mixerTracks[0].writes.empty());
+  CHECK("hasMixerState", ws->model.hasMixerState[0]);
+  CHECK("no writes", ws->model.mixerTracks[0].writes.empty());
 }
 
 static void test_mixer_parser_invalid_track_index() {
   TEST("mixer_parser_invalid_track_index");
-  auto result = parseDocument(1, 1, "mixer(99, MixerSettings { gain = 0.5 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(99, MixerSettings { gain = 0.5 })", ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -114,7 +126,8 @@ static void test_mixer_parser_invalid_track_index() {
 
 static void test_mixer_parser_settings_not_a_table() {
   TEST("mixer_parser_settings_not_a_table");
-  auto result = parseDocument(1, 1, "mixer(1, 42)");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, 42)", ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -125,7 +138,8 @@ static void test_mixer_parser_settings_not_a_table() {
 
 static void test_mixer_parser_unknown_field() {
   TEST("mixer_parser_unknown_field");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { masterGain = 0.9 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { masterGain = 0.9 })", ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -136,7 +150,8 @@ static void test_mixer_parser_unknown_field() {
 
 static void test_mixer_parser_type_mismatch_gain_as_string() {
   TEST("mixer_parser_type_mismatch_gain_as_string");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { gain = 'loud' })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { gain = 'loud' })", ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -147,7 +162,8 @@ static void test_mixer_parser_type_mismatch_gain_as_string() {
 
 static void test_mixer_parser_type_mismatch_mute_as_number() {
   TEST("mixer_parser_type_mismatch_mute_as_number");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { mute = 1 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { mute = 1 })", ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -158,7 +174,8 @@ static void test_mixer_parser_type_mismatch_mute_as_number() {
 
 static void test_mixer_parser_gain_out_of_range_high() {
   TEST("mixer_parser_gain_out_of_range_high");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { gain = 2.0 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { gain = 2.0 })", ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -169,7 +186,8 @@ static void test_mixer_parser_gain_out_of_range_high() {
 
 static void test_mixer_parser_pan_out_of_range() {
   TEST("mixer_parser_pan_out_of_range");
-  auto result = parseDocument(1, 1, "mixer(1, MixerSettings { pan = 2.0 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1, 1, "mixer(1, MixerSettings { pan = 2.0 })", ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -180,19 +198,23 @@ static void test_mixer_parser_pan_out_of_range() {
 
 static void test_mixer_parser_duplicate_write_same_value_is_ok() {
   TEST("mixer_parser_duplicate_write_same_value_is_ok");
-  auto result = parseDocument(1,
-                              1,
-                              "mixer(1, MixerSettings { gain = 0.8 })\n"
-                              "mixer(1, MixerSettings { gain = 0.8 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1,
+                               1,
+                               "mixer(1, MixerSettings { gain = 0.8 })\n"
+                               "mixer(1, MixerSettings { gain = 0.8 })",
+                               ws);
   CHECK("ok", result.ok);
 }
 
 static void test_mixer_parser_duplicate_write_different_value_fails() {
   TEST("mixer_parser_duplicate_write_different_value_fails");
-  auto result = parseDocument(1,
-                              1,
-                              "mixer(1, MixerSettings { gain = 0.8 })\n"
-                              "mixer(1, MixerSettings { gain = 0.5 })");
+  auto* ws = getParseTestWorkspace();
+  auto result = parseWorkspace(1,
+                               1,
+                               "mixer(1, MixerSettings { gain = 0.8 })\n"
+                               "mixer(1, MixerSettings { gain = 0.5 })",
+                               ws);
   CHECK("not ok", !result.ok);
   const bool hasDiag =
       std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
@@ -221,8 +243,8 @@ static void test_synth_only_document_still_applies_after_phase2() {
   auto result =
       app::doc::applySequencerRevision(service,
                                        app,
-                                        1,
-                                        "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+                                       1,
+                                       "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
   CHECK("ok", result.ok);
   app::doc::destroyDocAuthoringService(service);
 }

@@ -92,11 +92,13 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   service.buffer.currentRevision = revision;
   service.buffer.bufferText = bufferText ? bufferText : "";
 
-  AuthoredDocumentNormalizeResult normalize =
-      parseAndNormalizeAuthoredDocument(service.buffer.documentID,
-                                        revision,
-                                        service.buffer.bufferText.c_str(),
-                                        service.apply.scratchArena);
+  AuthoredDocModel* parseModel = &service.applyWorkspace->parseModel;
+  AuthoredDocNormalizeResult normalize =
+      parseAndNormalizeAuthoredDoc(service.buffer.documentID,
+                                   revision,
+                                   service.buffer.bufferText.c_str(),
+                                   service.apply.scratchArena,
+                                   parseModel);
 
   if (!normalize.ok) {
     failApply(service, operationID, normalize.diagnostics);
@@ -108,7 +110,7 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
 
   GrooveboxTargetState* target = &service.applyWorkspace->target;
   GrooveboxTargetBuildResult build =
-      buildGrooveboxTargetState(&normalize.model, service.buffer.documentID, revision, target);
+      buildGrooveboxTargetState(parseModel, service.buffer.documentID, revision, target);
   if (!build.ok) {
     failApply(service, operationID, build.diagnostics);
     result.diagnostics = service.apply.diagnostics;
@@ -131,7 +133,7 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
     return result;
   }
 
-  buildAdmittedDocumentModel(&normalize.model, &service.apply);
+  buildAdmittedDocumentModel(parseModel, &service.apply);
   service.buffer.lastAdmittedRevision = revision;
 
   service.apply.status = ApplyStatus::Admitted;

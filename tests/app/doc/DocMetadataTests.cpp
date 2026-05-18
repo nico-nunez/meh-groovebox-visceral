@@ -199,8 +199,10 @@ static void test_parser_emitted_diagnostics_are_cataloged() {
   };
 
   app::doc::PatternArena pattern{};
+  app::doc::AuthoredDocModel model{};
+
   for (const char* text : invalidDocs) {
-    auto r = app::doc::parseAndNormalizeAuthoredDocument(1, 7, text, &pattern);
+    auto r = app::doc::parseAndNormalizeAuthoredDoc(1, 7, text, &pattern, &model);
     CHECK("not ok", !r.ok);
     CHECK("has diagnostics", !r.diagnostics.empty());
     CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(r.diagnostics));

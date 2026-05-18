@@ -15,8 +15,9 @@ void initSynthParserGlobals() {
   synth::wavetable::banks::initFactoryBanks();
 }
 
+using test::getParseTestWorkspace;
 using test::hasDiagnostic;
-using test::parseDoc;
+using test::parseWS;
 
 app::AppContext* makeContext() {
   app::audio::DeviceInfo device{};
@@ -44,10 +45,11 @@ static void test_luals_advertised_synth_shape_parses_and_applies() {
       "synth(2, SynthSettings { master = { gain = 0.9 }, "
       "                         unison = { enabled = true, voices = 3 } })\n";
 
-  auto parsed = parseDoc(doc);
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS(doc, ws);
   CHECK("parser ok", parsed.ok);
-  CHECK("track 0 synth parsed", parsed.model.hasSynthState[0]);
-  CHECK("track 1 synth parsed", parsed.model.hasSynthState[1]);
+  CHECK("track 0 synth parsed", ws->model.hasSynthState[0]);
+  CHECK("track 1 synth parsed", ws->model.hasSynthState[1]);
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
@@ -71,10 +73,11 @@ static void test_mixed_synth_and_sequencer_document_applies() {
       "  activeSlot = 1,\n"
       "})\n";
 
-  auto parsed = parseDoc(doc);
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS(doc, ws);
   CHECK("parser ok", parsed.ok);
-  CHECK("seq parsed", parsed.model.sequencer.hasTrackState[0]);
-  CHECK("synth parsed", parsed.model.hasSynthState[0]);
+  CHECK("seq parsed", ws->model.sequencer.hasTrackState[0]);
+  CHECK("synth parsed", ws->model.hasSynthState[0]);
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);

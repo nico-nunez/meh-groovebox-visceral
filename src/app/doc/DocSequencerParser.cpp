@@ -15,7 +15,7 @@ namespace {
 struct LuaSequencerParseContext {
   DocID documentID = 0;
   DocRevision revision = 0;
-  AuthoredDocModel model{};
+  AuthoredDocModel* model = nullptr;
   DocDiagnostics diagnostics{};
   PatternArena* arena = nullptr;
 };
@@ -600,8 +600,8 @@ bool parseMixerSettingsForTrack(lua_State* L,
     return false;
   }
 
-  ctx.model.hasMixerState[trackIndex] = true;
-  AuthoredTrackMixerPatch& patch = ctx.model.mixerTracks[trackIndex];
+  ctx.model->hasMixerState[trackIndex] = true;
+  AuthoredTrackMixerPatch& patch = ctx.model->mixerTracks[trackIndex];
   patch.hasPatch = true;
   patch.trackIndex = trackIndex;
   patch.trackSpan = span;
@@ -666,8 +666,8 @@ bool parseSynthSettingsForTrack(lua_State* L,
     return false;
   }
 
-  ctx.model.hasSynthState[trackIndex] = true;
-  AuthoredTrackSynthPatch& patch = ctx.model.synthTracks[trackIndex];
+  ctx.model->hasSynthState[trackIndex] = true;
+  AuthoredTrackSynthPatch& patch = ctx.model->synthTracks[trackIndex];
   patch.hasPatch = true;
   patch.trackIndex = trackIndex;
   patch.trackSpan = span;
@@ -856,9 +856,9 @@ int l_captureTrack(lua_State* L) {
   }
 
   const uint8_t trackIndex = static_cast<uint8_t>(trackNumber - 1);
-  ctx->model.sequencer.hasTrackState[trackIndex] = true;
+  ctx->model->sequencer.hasTrackState[trackIndex] = true;
 
-  AuthoredTrackSeqModel& track = ctx->model.sequencer.tracks[trackIndex];
+  AuthoredTrackSeqModel& track = ctx->model->sequencer.tracks[trackIndex];
   track = AuthoredTrackSeqModel{};
   track.trackIndex = trackIndex;
   track.trackSpan = trackSpan;
@@ -943,15 +943,47 @@ void registerParserEnvironment(lua_State* L, LuaSequencerParseContext& ctx) {
 
 } // namespace
 
-AuthoredDocumentNormalizeResult parseAndNormalizeAuthoredDocument(DocID documentID,
-                                                                  DocRevision revision,
-                                                                  const char* bufferText,
-                                                                  PatternArena* scratchArena) {
+AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
+                                                        DocRevision revision,
+                                                        const char* bufferText,
+                                                        PatternArena* scratchArena,
+                                                        AuthoredDocModel* outModel) {
+  AuthoredDocNormalizeResult result{};
+  if (!outModel) {
+    DocDiagnostic d{};
+    d.severity = DiagnosticSeverity::Error;
+    d.source = DiagnosticSource::Parser;
+    d.documentID = documentID;
+    d.revision = revision;
+    d.code = docdiag::InternalPlannerError;
+    d.message = "null authored document output";
+    result.diagnostics.push_back(d);
+    return result;
+  }
+
+  *outModel = AuthoredDocModel{};
+
+  if (!scratchArena) {
+    DocDiagnostic d{};
+    d.severity = DiagnosticSeverity::Error;
+    d.source = DiagnosticSource::Parser;
+    d.documentID = documentID;
+    d.revision = revision;
+    d.code = docdiag::InternalPlannerError;
+    d.message = "null pattern scratch arena";
+    result.diagnostics.push_back(d);
+    return result;
+  }
+
+  outModel->documentID = documentID;
+  outModel->revision = revision;
+  outModel->sequencer.documentID = documentID;
+  outModel->sequencer.revision = revision;
+
   LuaSequencerParseContext ctx{};
-  ctx.model.documentID = documentID;
-  ctx.model.revision = revision;
-  ctx.model.sequencer.documentID = documentID;
-  ctx.model.sequencer.revision = revision;
+  ctx.documentID = documentID;
+  ctx.revision = revision;
+  ctx.model = outModel;
   ctx.arena = scratchArena;
 
   lua_State* L = luaL_newstate();
@@ -962,7 +994,7 @@ AuthoredDocumentNormalizeResult parseAndNormalizeAuthoredDocument(DocID document
                    "failed to create authoring Lua state",
                    SourceSpan{},
                    "");
-    return {false, ctx.model, ctx.diagnostics};
+    return result;
   }
 
   registerParserEnvironment(L, ctx);
@@ -981,9 +1013,7 @@ AuthoredDocumentNormalizeResult parseAndNormalizeAuthoredDocument(DocID document
 
   lua_close(L);
 
-  AuthoredDocumentNormalizeResult result{};
   result.ok = ctx.diagnostics.empty();
-  result.model = ctx.model;
   result.diagnostics = ctx.diagnostics;
   return result;
 }

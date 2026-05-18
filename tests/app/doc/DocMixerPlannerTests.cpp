@@ -7,7 +7,8 @@
 
 namespace {
 
-using test::parseDoc;
+using test::getParseTestWorkspace;
+using test::parseWS;
 
 bool near(float a, float b) {
   return std::abs(a - b) < 1e-5f;
@@ -18,11 +19,12 @@ bool near(float a, float b) {
 static void test_build_mixer_target_snapshot_defaults_omitted_state() {
   TEST("build_mixer_target_snapshot_defaults_omitted_state");
 
-  auto parsed = parseDoc("");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("", ws);
   CHECK("parse ok", parsed.ok);
 
   app::mixer::MixerSnapshot snapshot{};
-  auto result = app::doc::buildMixerTargetSnapshot(&parsed.model, 1, 7, &snapshot);
+  auto result = app::doc::buildMixerTargetSnapshot(&ws->model, 1, 7, &snapshot);
 
   CHECK("target ok", result.ok);
   CHECK("track 1 default gain", near(snapshot.tracks[0].gain, 1.0f));
@@ -34,11 +36,12 @@ static void test_build_mixer_target_snapshot_defaults_omitted_state() {
 static void test_build_mixer_target_snapshot_applies_track_values() {
   TEST("build_mixer_target_snapshot_applies_track_values");
 
-  auto parsed = parseDoc("mixer(1, MixerSettings { gain = 0.8, pan = -0.2, mute = true })");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("mixer(1, MixerSettings { gain = 0.8, pan = -0.2, mute = true })", ws);
   CHECK("parse ok", parsed.ok);
 
   app::mixer::MixerSnapshot snapshot{};
-  auto result = app::doc::buildMixerTargetSnapshot(&parsed.model, 1, 7, &snapshot);
+  auto result = app::doc::buildMixerTargetSnapshot(&ws->model, 1, 7, &snapshot);
 
   CHECK("target ok", result.ok);
   CHECK("gain applied", near(snapshot.tracks[0].gain, 0.8f));
@@ -49,11 +52,12 @@ static void test_build_mixer_target_snapshot_applies_track_values() {
 static void test_build_mixer_target_snapshot_uses_replacement_defaults() {
   TEST("build_mixer_target_snapshot_uses_replacement_defaults");
 
-  auto parsed = parseDoc("mixer(2, MixerSettings { gain = 0.5 })");
+  auto* ws = getParseTestWorkspace();
+  auto parsed = parseWS("mixer(2, MixerSettings { gain = 0.5 })", ws);
   CHECK("parse ok", parsed.ok);
 
   app::mixer::MixerSnapshot snapshot{};
-  auto result = app::doc::buildMixerTargetSnapshot(&parsed.model, 1, 7, &snapshot);
+  auto result = app::doc::buildMixerTargetSnapshot(&ws->model, 1, 7, &snapshot);
 
   CHECK("target ok", result.ok);
   CHECK("track 2 authored", near(snapshot.tracks[1].gain, 0.5f));

@@ -1,5 +1,5 @@
-#include "TestRunner.h"
 #include "TestHelpers.h"
+#include "TestRunner.h"
 
 #include "app/doc/DocMetadata.h"
 #include "synth/params/ParamDefs.h"
@@ -9,8 +9,9 @@
 
 namespace {
 
+using test::getParseTestWorkspace;
 using test::hasDiagnostic;
-using test::parseDoc;
+using test::parseWS;
 
 const app::doc::AuthoredSynthParamWrite* findWrite(const app::doc::AuthoredTrackSynthPatch& patch,
                                                    synth::param::ParamID id) {
@@ -32,12 +33,14 @@ float enumValue(synth::param::ParamType type, const char* token) {
 static void test_top_level_synth_parses_patch_writes() {
   TEST("top_level_synth_parses_patch_writes");
 
-  auto r = parseDoc("synth(1, SynthSettings { osc1 = { bank = 'saw', mix = 0.8 }, "
-                    "svf = { cutoff = 1200, enabled = true } })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { bank = 'saw', mix = 0.8 }, "
+                   "svf = { cutoff = 1200, enabled = true } })",
+                   ws);
 
   CHECK("ok", r.ok);
-  CHECK("track 0 synth present", r.model.hasSynthState[0]);
-  const auto& patch = r.model.synthTracks[0];
+  CHECK("track 0 synth present", ws->model.hasSynthState[0]);
+  const auto& patch = ws->model.synthTracks[0];
   CHECK("has patch", patch.hasPatch);
   CHECK("track index", patch.trackIndex == 0);
   CHECK("write count", patch.writes.size() == 4);
@@ -58,14 +61,16 @@ static void test_top_level_synth_parses_patch_writes() {
 static void test_track_settings_synth_parses_patch_writes() {
   TEST("track_settings_synth_parses_patch_writes");
 
-  auto r = parseDoc("local t = TrackSettings() "
-                    "t.synth = SynthSettings { ampEnv = { attack = 5, release = 120 }, "
-                    "unison = { voices = 3 } } "
-                    "track(2, t)");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("local t = TrackSettings() "
+                   "t.synth = SynthSettings { ampEnv = { attack = 5, release = 120 }, "
+                   "unison = { voices = 3 } } "
+                   "track(2, t)",
+                   ws);
 
   CHECK("ok", r.ok);
-  CHECK("track 1 synth present", r.model.hasSynthState[1]);
-  const auto& patch = r.model.synthTracks[1];
+  CHECK("track 1 synth present", ws->model.hasSynthState[1]);
+  const auto& patch = ws->model.synthTracks[1];
   CHECK("attack", findWrite(patch, synth::param::AMP_ENV_ATTACK) != nullptr);
   CHECK("release", findWrite(patch, synth::param::AMP_ENV_RELEASE) != nullptr);
   const auto* voices = findWrite(patch, synth::param::UNISON_VOICES);
@@ -75,32 +80,36 @@ static void test_track_settings_synth_parses_patch_writes() {
 static void test_synth_and_sequencer_can_parse_together() {
   TEST("synth_and_sequencer_can_parse_together");
 
-  auto r = parseDoc("track(1, TrackSettings { "
-                    "synth = SynthSettings { master = { gain = 0.7 } }, "
-                    "patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-                    "steps = { { active = true, note = 60 } } } }, activeSlot = 1 })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { "
+                   "synth = SynthSettings { master = { gain = 0.7 } }, "
+                   "patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
+                   "steps = { { active = true, note = 60 } } } }, activeSlot = 1 })",
+                   ws);
 
   CHECK("ok", r.ok);
-  CHECK("seq track present", r.model.sequencer.hasTrackState[0]);
-  CHECK("seq pattern occupied", r.model.sequencer.tracks[0].patterns[0].occupied);
-  CHECK("synth present", r.model.hasSynthState[0]);
-  CHECK("master gain", findWrite(r.model.synthTracks[0], synth::param::MASTER_GAIN) != nullptr);
+  CHECK("seq track present", ws->model.sequencer.hasTrackState[0]);
+  CHECK("seq pattern occupied", ws->model.sequencer.tracks[0].patterns[0].occupied);
+  CHECK("synth present", ws->model.hasSynthState[0]);
+  CHECK("master gain", findWrite(ws->model.synthTracks[0], synth::param::MASTER_GAIN) != nullptr);
 }
 
 static void test_empty_synth_settings_is_valid_noop_patch() {
   TEST("empty_synth_settings_is_valid_noop_patch");
 
-  auto r = parseDoc("synth(1, SynthSettings {})");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings {})", ws);
 
   CHECK("ok", r.ok);
-  CHECK("has synth state", r.model.hasSynthState[0]);
-  CHECK("no writes", r.model.synthTracks[0].writes.empty());
+  CHECK("has synth state", ws->model.hasSynthState[0]);
+  CHECK("no writes", ws->model.synthTracks[0].writes.empty());
 }
 
 static void test_synth_track_index_must_be_integer() {
   TEST("synth_track_index_must_be_integer");
 
-  auto r = parseDoc("synth('one', SynthSettings {})");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth('one', SynthSettings {})", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthTrackInvalidIndex));
@@ -109,7 +118,8 @@ static void test_synth_track_index_must_be_integer() {
 static void test_synth_track_index_must_be_in_range() {
   TEST("synth_track_index_must_be_in_range");
 
-  auto r = parseDoc("synth(999, SynthSettings {})");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(999, SynthSettings {})", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthTrackInvalidIndex));
@@ -118,7 +128,8 @@ static void test_synth_track_index_must_be_in_range() {
 static void test_synth_settings_must_be_table() {
   TEST("synth_settings_must_be_table");
 
-  auto r = parseDoc("synth(1, 123)");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, 123)", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthSettingsInvalidShape));
@@ -127,7 +138,8 @@ static void test_synth_settings_must_be_table() {
 static void test_track_settings_synth_must_be_table() {
   TEST("track_settings_synth_must_be_table");
 
-  auto r = parseDoc("track(1, TrackSettings { synth = 123 })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { synth = 123 })", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthSettingsInvalidShape));
@@ -136,7 +148,8 @@ static void test_track_settings_synth_must_be_table() {
 static void test_unknown_synth_field_is_diagnostic() {
   TEST("unknown_synth_field_is_diagnostic");
 
-  auto r = parseDoc("synth(1, SynthSettings { osc1 = { nope = 1 } })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { nope = 1 } })", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamUnknown));
@@ -145,7 +158,8 @@ static void test_unknown_synth_field_is_diagnostic() {
 static void test_deferred_synth_field_is_diagnostic() {
   TEST("deferred_synth_field_is_diagnostic");
 
-  auto r = parseDoc("synth(1, SynthSettings { lfo1 = { rate = 2 } })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { lfo1 = { rate = 2 } })", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamUnknown));
@@ -154,7 +168,8 @@ static void test_deferred_synth_field_is_diagnostic() {
 static void test_bool_param_rejects_number() {
   TEST("bool_param_rejects_number");
 
-  auto r = parseDoc("synth(1, SynthSettings { osc1 = { enabled = 1 } })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { enabled = 1 } })", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamTypeMismatch));
@@ -163,7 +178,8 @@ static void test_bool_param_rejects_number() {
 static void test_integer_param_rejects_float() {
   TEST("integer_param_rejects_float");
 
-  auto r = parseDoc("synth(1, SynthSettings { unison = { voices = 3.5 } })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { unison = { voices = 3.5 } })", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamTypeMismatch));
@@ -172,7 +188,8 @@ static void test_integer_param_rejects_float() {
 static void test_enum_param_rejects_unknown_string() {
   TEST("enum_param_rejects_unknown_string");
 
-  auto r = parseDoc("synth(1, SynthSettings { osc1 = { bank = 'not_a_bank' } })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { bank = 'not_a_bank' } })", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamEnumUnknown));
@@ -181,7 +198,8 @@ static void test_enum_param_rejects_unknown_string() {
 static void test_number_param_rejects_out_of_range() {
   TEST("number_param_rejects_out_of_range");
 
-  auto r = parseDoc("synth(1, SynthSettings { svf = { cutoff = 999999 } })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { svf = { cutoff = 999999 } })", ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamOutOfRange));
@@ -190,22 +208,26 @@ static void test_number_param_rejects_out_of_range() {
 static void test_duplicate_identical_write_is_allowed_once() {
   TEST("duplicate_identical_write_is_allowed_once");
 
-  auto r = parseDoc("synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
-                    "local t = TrackSettings() "
-                    "t.synth = SynthSettings { osc1 = { mix = 0.5 } } "
-                    "track(1, t)");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
+                   "local t = TrackSettings() "
+                   "t.synth = SynthSettings { osc1 = { mix = 0.5 } } "
+                   "track(1, t)",
+                   ws);
 
   CHECK("ok", r.ok);
-  CHECK("one write", r.model.synthTracks[0].writes.size() == 1);
+  CHECK("one write", ws->model.synthTracks[0].writes.size() == 1);
 }
 
 static void test_duplicate_conflicting_write_is_diagnostic() {
   TEST("duplicate_conflicting_write_is_diagnostic");
 
-  auto r = parseDoc("synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
-                    "local t = TrackSettings() "
-                    "t.synth = SynthSettings { osc1 = { mix = 0.8 } } "
-                    "track(1, t)");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
+                   "local t = TrackSettings() "
+                   "t.synth = SynthSettings { osc1 = { mix = 0.8 } } "
+                   "track(1, t)",
+                   ws);
 
   CHECK("not ok", !r.ok);
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamDuplicateWrite));
@@ -214,13 +236,14 @@ static void test_duplicate_conflicting_write_is_diagnostic() {
 static void test_existing_sequencer_parser_api_still_returns_seq_model() {
   TEST("existing_sequencer_parser_api_still_returns_seq_model");
 
-  auto r = parseDoc(
-      "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-      "steps = { { active = true } } } }, activeSlot = 1 })");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
+                   "steps = { { active = true } } } }, activeSlot = 1 })",
+                   ws);
 
   CHECK("ok", r.ok);
-  CHECK("seq track present", r.model.sequencer.hasTrackState[0]);
-  CHECK("seq pattern occupied", r.model.sequencer.tracks[0].patterns[0].occupied);
+  CHECK("seq track present", ws->model.sequencer.hasTrackState[0]);
+  CHECK("seq pattern occupied", ws->model.sequencer.tracks[0].patterns[0].occupied);
 }
 
 void runDocSynthSettingsParserTests() {
