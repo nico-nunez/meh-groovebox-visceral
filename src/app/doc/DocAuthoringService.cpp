@@ -122,7 +122,9 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
   stageGrooveboxTarget(&session, target);
 
   DocDiagnostics admissionDiagnostics{};
-  GrooveboxEditResult edit = commitGrooveboxEditImmediate(&session, &app, &admissionDiagnostics);
+  GrooveboxEditResult edit =
+      commitGrooveboxEdit(&session, &app, GrooveboxApplyTiming::NextBar, &admissionDiagnostics);
+
   if (!edit.ok) {
     failApply(service, operationID, admissionDiagnostics);
     result.diagnostics = service.apply.diagnostics;

@@ -1,3 +1,4 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
@@ -17,11 +18,6 @@ app::AppContext* makeContext() {
   return app::createAppContext(device);
 }
 
-void publishPending(app::AppContext* app) {
-  // Phase 5 adds TransportBlockInfo timing. Phase 4 publish is immediate.
-  app::publishPendingGrooveboxEditIfReady(app);
-}
-
 } // namespace
 
 static void test_doc_apply_prepares_but_does_not_publish_until_audio_boundary() {
@@ -37,7 +33,7 @@ static void test_doc_apply_prepares_but_does_not_publish_until_audio_boundary() 
   CHECK("pending ready", app->pendingGrooveboxApply.ready.load());
   CHECK("not yet audible", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.25f);
 
-  publishPending(app);
+  test::publishPending(app);
 
   CHECK("pending cleared", !app->pendingGrooveboxApply.ready.load());
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.25f);
@@ -60,7 +56,7 @@ static void test_doc_apply_publishes_mixer_and_synth_together() {
         app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.5f);
   CHECK("mixer old before publish", app->mixer.current.tracks[0].gain == 1.0f);
 
-  publishPending(app);
+  test::publishPending(app);
 
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
   CHECK("mixer published", app->mixer.current.tracks[0].gain == 0.25f);
@@ -88,7 +84,7 @@ static void test_second_doc_apply_rejected_while_pending_unpublished() {
   CHECK("second rejected", !second.ok);
   CHECK("pending still ready", app->pendingGrooveboxApply.ready.load());
 
-  publishPending(app);
+  test::publishPending(app);
   app::destroyAppContext(app);
 }
 

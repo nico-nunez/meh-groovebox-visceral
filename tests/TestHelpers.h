@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/AppContext.h"
+#include "app/GrooveboxEditSession.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/DocDiagnostics.h"
 #include "app/doc/DocSequencerModel.h"
@@ -31,4 +33,8 @@ inline app::doc::AuthoredDocumentNormalizeResult parseDoc(const char* text) {
   return parseDocument(1, 7, text);
 }
 
+inline void publishPending(app::AppContext* app) {
+  auto blockInfo = app::transport::advanceTransportBlock(app->transport, app->transport.mode, 512);
+  app::publishPendingGrooveboxEditIfReady(app, blockInfo);
+}
 } // namespace test

@@ -27,6 +27,7 @@ void runDocAuthoringServiceSeqApplyTests();
 void runDocAuthoringServiceLifecycleTests();
 void runAuthoredDocEditorTests();
 void runDocAuthoringServiceAtomicApplyTests();
+void runDocAuthoringServiceQuantizedApplyTests();
 
 void runDocAuthoredSynthEndToEndTests();
 void runDocAuthoredMixerEndToEndTests();
@@ -73,6 +74,7 @@ int main(int argc, char* argv[]) {
   runDocAuthoringServiceLifecycleTests();
   runAuthoredDocEditorTests();
   runDocAuthoringServiceAtomicApplyTests();
+  runDocAuthoringServiceQuantizedApplyTests();
 
   runDocAuthoredSynthEndToEndTests();
   runDocAuthoredMixerEndToEndTests();

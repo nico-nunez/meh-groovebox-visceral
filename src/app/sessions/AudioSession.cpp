@@ -86,10 +86,6 @@ void writeMasterBusToDevice(const mixer::MasterBusState& master, audio_io::Audio
 
 void audioCallback(audio_io::AudioBuffer buffer, void* context) {
   auto* ctx = static_cast<AppContext*>(context);
-
-  publishPendingGrooveboxEditIfReady(ctx);
-
-  // 1. Admit transport actions
   auto previousMode = ctx->transport.mode;
 
   // 1. Admit control events (transport, mixer, track selection)
@@ -98,6 +94,8 @@ void audioCallback(audio_io::AudioBuffer buffer, void* context) {
     events::applyControlEvent(ctx, ctrlEvt);
 
   auto blockInfo = transport::advanceTransportBlock(ctx->transport, previousMode, buffer.numFrames);
+
+  publishPendingGrooveboxEditIfReady(ctx, blockInfo);
 
   // 2. Drain queues for all tracks
   for (int i = 0; i < MAX_TRACKS; i++) {

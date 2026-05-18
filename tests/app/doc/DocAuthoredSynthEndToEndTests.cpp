@@ -1,5 +1,5 @@
-#include "TestRunner.h"
 #include "TestHelpers.h"
+#include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/GrooveboxEditSession.h"
@@ -24,10 +24,6 @@ app::AppContext* makeContext() {
   device.bufferFrameSize = 64;
   device.numChannels = 2;
   return app::createAppContext(device);
-}
-
-void publishPending(app::AppContext* app) {
-  app::publishPendingGrooveboxEditIfReady(app);
 }
 
 } // namespace
@@ -58,7 +54,7 @@ static void test_luals_advertised_synth_shape_parses_and_applies() {
   auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc);
 
   CHECK("apply ok", result.ok);
-  publishPending(app);
+  test::publishPending(app);
   CHECK("track 0 published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.8f);
   CHECK("track 1 published", app->tracks[1].engine.params[synth::param::MASTER_GAIN] == 0.9f);
   app::destroyAppContext(app);
@@ -89,7 +85,7 @@ static void test_mixed_synth_and_sequencer_document_applies() {
   CHECK("admitted doc model", app->docAuthoring.apply.hasLastAdmittedDocModel);
   CHECK("admitted seq", app->docAuthoring.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
   CHECK("admitted synth", app->docAuthoring.apply.lastAdmittedDocModel.hasSynthState[0]);
-  publishPending(app);
+  test::publishPending(app);
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.6f);
   app::destroyAppContext(app);
 }

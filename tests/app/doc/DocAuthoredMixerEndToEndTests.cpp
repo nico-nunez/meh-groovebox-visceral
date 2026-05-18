@@ -1,3 +1,4 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
@@ -26,9 +27,6 @@ app::AppContext* makeContext() {
   return app::createAppContext(device);
 }
 
-void publishPending(app::AppContext* app) {
-  app::publishPendingGrooveboxEditIfReady(app);
-}
 } // namespace
 
 static void test_mixer_e2e_mixer_call_applies() {
@@ -43,7 +41,7 @@ static void test_mixer_e2e_mixer_call_applies() {
                                        "mixer(1, MixerSettings { gain = 0.6, pan = -0.1 })");
   CHECK("ok", result.ok);
   CHECK("no diags", result.diagnostics.empty());
-  publishPending(app);
+  test::publishPending(app);
   CHECK("gain published", app->mixer.current.tracks[0].gain == 0.6f);
   CHECK("pan published", app->mixer.current.tracks[0].pan == -0.1f);
   app::destroyAppContext(app);
@@ -60,7 +58,7 @@ static void test_mixer_e2e_track_settings_mixer_applies() {
       1,
       "track(1, TrackSettings { mixer = MixerSettings { gain = 0.9 } })");
   CHECK("ok", result.ok);
-  publishPending(app);
+  test::publishPending(app);
   CHECK("gain published", app->mixer.current.tracks[0].gain == 0.9f);
   app::destroyAppContext(app);
 }
@@ -76,7 +74,7 @@ static void test_mixer_e2e_all_three_track_params() {
       1,
       "mixer(1, MixerSettings { gain = 0.8, pan = 0.2, mute = false })");
   CHECK("ok", result.ok);
-  publishPending(app);
+  test::publishPending(app);
   CHECK("gain published", app->mixer.current.tracks[0].gain == 0.8f);
   CHECK("pan published", app->mixer.current.tracks[0].pan == 0.2f);
   CHECK("mute published", app->mixer.current.tracks[0].enabled);
@@ -106,8 +104,10 @@ static void test_mixer_e2e_invalid_type_rejected() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result =
-      app::doc::applySequencerRevision(app->docAuthoring, *app, 1, "mixer(1, MixerSettings { mute = 1 })");
+  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+                                                 *app,
+                                                 1,
+                                                 "mixer(1, MixerSettings { mute = 1 })");
   CHECK("not ok", !result.ok);
   app::destroyAppContext(app);
 }
@@ -117,8 +117,10 @@ static void test_mixer_e2e_out_of_range_rejected() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result =
-      app::doc::applySequencerRevision(app->docAuthoring, *app, 1, "mixer(1, MixerSettings { gain = 2.0 })");
+  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+                                                 *app,
+                                                 1,
+                                                 "mixer(1, MixerSettings { gain = 2.0 })");
   CHECK("not ok", !result.ok);
   app::destroyAppContext(app);
 }
@@ -133,7 +135,7 @@ static void test_mixer_e2e_valid_mixed_doc_applies() {
   doc += kNonEmptyTrack1;
   auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc.c_str());
   CHECK("ok", result.ok);
-  publishPending(app);
+  test::publishPending(app);
   CHECK("mixer published", app->mixer.current.tracks[0].gain == 0.8f);
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
   app::destroyAppContext(app);
@@ -171,7 +173,7 @@ static void test_mixer_e2e_mixer_sequencer_publish_together() {
   auto pre = app::sequencer::getPatternBank(app->sequencer, 0);
   CHECK("seq old", pre.ok && !pre.value->slots[0].occupied);
 
-  publishPending(app);
+  test::publishPending(app);
 
   CHECK("mixer published", app->mixer.current.tracks[0].gain == 0.7f);
   auto post = app::sequencer::getPatternBank(app->sequencer, 0);

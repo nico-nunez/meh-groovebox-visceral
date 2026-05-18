@@ -13,6 +13,31 @@ namespace app {
 
 namespace {
 
+bool shouldPublishPendingGrooveboxApply(GrooveboxApplyTiming timing,
+                                        const transport::TransportBlockInfo& blockInfo) {
+  using transport::BoundaryFlags;
+  using transport::TransportMode;
+
+  if (timing == GrooveboxApplyTiming::Immediate)
+    return true;
+
+  if (blockInfo.mode == TransportMode::Stopped)
+    return true;
+
+  if (blockInfo.mode == TransportMode::Paused)
+    return false;
+
+  if (timing == GrooveboxApplyTiming::NextBeat) {
+    return (blockInfo.boundaryFlags & static_cast<uint32_t>(BoundaryFlags::CrossedBeat)) != 0;
+  }
+
+  if (timing == GrooveboxApplyTiming::NextBar) {
+    return (blockInfo.boundaryFlags & static_cast<uint32_t>(BoundaryFlags::CrossedBar)) != 0;
+  }
+
+  return false;
+}
+
 doc::DocDiagnostic makeEditDiagnostic(doc::DocRevision revision,
                                       const char* code,
                                       const char* message) {
@@ -27,6 +52,7 @@ doc::DocDiagnostic makeEditDiagnostic(doc::DocRevision revision,
 
 void clearPendingPreparedFlags(PendingGrooveboxApply* pending) {
   pending->revision = 0;
+  pending->timing = GrooveboxApplyTiming::Immediate;
   for (bool& prepared : pending->synthPrepared)
     prepared = false;
   pending->mixerPrepared = false;
@@ -87,9 +113,10 @@ void abortGrooveboxEdit(GrooveboxEditSession* session, AppContext* app) {
     *session = GrooveboxEditSession{};
 }
 
-GrooveboxEditResult commitGrooveboxEditImmediate(GrooveboxEditSession* session,
-                                                 AppContext* app,
-                                                 doc::DocDiagnostics* diagnostics) {
+GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
+                                        AppContext* app,
+                                        GrooveboxApplyTiming timing,
+                                        doc::DocDiagnostics* diagnostics) {
   GrooveboxEditResult result{};
   if (!session || !app || !diagnostics || !session->target) {
     if (diagnostics)
@@ -116,6 +143,7 @@ GrooveboxEditResult commitGrooveboxEditImmediate(GrooveboxEditSession* session,
 
   clearPendingPreparedFlags(&pending);
   pending.revision = session->revision;
+  pending.timing = timing;
 
   const GrooveboxTargetState& target = *session->target;
 
@@ -177,12 +205,16 @@ GrooveboxEditResult commitGrooveboxEditImmediate(GrooveboxEditSession* session,
   return result;
 }
 
-void publishPendingGrooveboxEditIfReady(AppContext* app) {
+void publishPendingGrooveboxEditIfReady(AppContext* app,
+                                        const transport::TransportBlockInfo& blockInfo) {
   if (!app)
     return;
 
   auto& pending = app->pendingGrooveboxApply;
   if (!pending.ready.load(std::memory_order_acquire))
+    return;
+
+  if (!shouldPublishPendingGrooveboxApply(pending.timing, blockInfo))
     return;
 
   // Synth: commit and publish prepared per-engine program swaps inside this one
