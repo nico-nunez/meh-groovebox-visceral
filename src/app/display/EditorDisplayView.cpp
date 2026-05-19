@@ -63,11 +63,15 @@ void drawLineNumberGutter(std::size_t lineCount, float gutterWidth, float editor
                     false,
                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
+  const float lineH = ImGui::GetTextLineHeight();
+  const float paddingY = ImGui::GetStyle().FramePadding.y;
+
   ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
   for (std::size_t line = 1; line <= lineCount; ++line) {
     char label[32]{};
     std::snprintf(label, sizeof(label), "%zu", line);
 
+    ImGui::SetCursorPosY(paddingY + static_cast<float>(line - 1) * lineH);
     const float labelWidth = ImGui::CalcTextSize(label).x;
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + gutterWidth - labelWidth -
                          ImGui::GetStyle().FramePadding.x);
