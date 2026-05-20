@@ -784,9 +784,9 @@ int l_help(lua_State* L) {
            "\n"
            "Sources: ampEnv filterEnv modEnv lfo1 lfo2 lfo3\n"
            "         velocity keyTrack modWheel noise\n"
-           "Dests:   osc1Pitch osc1ScanPos osc1FMDepth osc1Mix ... (osc1-4)\n"
-           "         svfCutoff svfResonance ladderCutoff ladderResonance\n"
-           "         lfo1Rate lfo1Amp lfo2Rate lfo2Amp lfo3Rate lfo3Amp\n");
+           "Dests:   osc1.pitch osc1.scanPos osc1.fmDepth osc1.mixLevel ... (osc1-4)\n"
+           "         svf.cutoff svf.resonance ladder.cutoff ladder.resonance\n"
+           "         lfo1.rate lfo1.amplitude ... (lfo1-3)\n");
 
   } else if (strcmp(topic, "fm") == 0) {
     printf("fm.add(carrier, source, depth)  -- add FM route (depth default 1.0)\n"
