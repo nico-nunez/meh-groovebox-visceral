@@ -282,7 +282,7 @@ void drawEditorDisplayView(AppContext& app) {
   static bool showDiagnostics = true;
   static float diagnosticsHeight = 200.0f;
 
-  AuthoredDocEditorState& editor = app.authoredEditor;
+  AuthoredDocEditorState& editor = app.editor.authoredEditor;
   syncScratchFromState(editor);
 
   collectFinishedLuaLSDiagnostics(editor);

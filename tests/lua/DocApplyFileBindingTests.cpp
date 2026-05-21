@@ -1,5 +1,5 @@
-#include "TestRunner.h"
 #include "TestHelpers.h"
+#include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocAuthoringService.h"
@@ -29,7 +29,7 @@ struct LuaFixture {
   lua_State* L = nullptr;
 
   LuaFixture() {
-    app::doc::initDocAuthoringService(app.docAuthoring);
+    app::doc::initDocAuthoringService(app.documents.authoring);
     L = luaL_newstate();
     luaL_openlibs(L);
     lua::bindings::registerSynthBindings(L, app);
@@ -65,10 +65,10 @@ static void test_apply_file_success_calls_document_service() {
   std::string luaCall = std::string("applyFile('") + kTempFilePath + "')";
   CHECK("Lua call ok", fixture.exec(luaCall.c_str()));
   CHECK("status Completed",
-        fixture.app.docAuthoring.apply.status == app::doc::ApplyStatus::Completed);
+        fixture.app.documents.authoring.apply.status == app::doc::ApplyStatus::Completed);
   CHECK("track 0 admitted",
-        fixture.app.docAuthoring.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
-  app::doc::destroyDocAuthoringService(fixture.app.docAuthoring);
+        fixture.app.documents.authoring.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
+  app::doc::destroyDocAuthoringService(fixture.app.documents.authoring);
 }
 
 static void test_apply_file_failure_surfaces_first_diagnostic() {
@@ -82,8 +82,9 @@ static void test_apply_file_failure_surfaces_first_diagnostic() {
   CHECK("error contains file read message",
         errMsg.find("failed to read document file") != std::string::npos);
   CHECK("diagnostic document.file.read_failed",
-        hasDiagnostic(fixture.app.docAuthoring.apply.diagnostics, "document.file.read_failed"));
-  app::doc::destroyDocAuthoringService(fixture.app.docAuthoring);
+        hasDiagnostic(fixture.app.documents.authoring.apply.diagnostics,
+                      "document.file.read_failed"));
+  app::doc::destroyDocAuthoringService(fixture.app.documents.authoring);
 }
 
 static void test_lua_binding_does_not_register_document_constructors() {
@@ -109,7 +110,7 @@ static void test_lua_binding_does_not_register_document_constructors() {
   lua_getglobal(fixture.L, "track");
   CHECK("document track() not registered", lua_isnil(fixture.L, -1));
   lua_pop(fixture.L, 1);
-  app::doc::destroyDocAuthoringService(fixture.app.docAuthoring);
+  app::doc::destroyDocAuthoringService(fixture.app.documents.authoring);
 }
 
 void runDocApplyFileBindingTests() {

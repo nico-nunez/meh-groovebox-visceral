@@ -83,6 +83,12 @@ struct ControlEventQueue {
     readIndex.store((cur + 1) & MASK);
     return true;
   }
+
+  size_t availableWrite() const {
+    uint8_t w = writeIndex.load(std::memory_order_acquire);
+    uint8_t r = readIndex.load(std::memory_order_acquire);
+    return (SIZE - 1) - ((w - r) & MASK);
+  }
 };
 
 // ==== Transport ====

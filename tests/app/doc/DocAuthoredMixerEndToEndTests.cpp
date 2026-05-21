@@ -35,7 +35,7 @@ static void test_mixer_e2e_mixer_call_applies() {
   CHECK("context", app != nullptr);
 
   auto result =
-      app::doc::applySequencerRevision(app->docAuthoring,
+      app::doc::applySequencerRevision(app->documents.authoring,
                                        *app,
                                        1,
                                        "mixer(1, MixerSettings { gain = 0.6, pan = -0.1 })");
@@ -53,7 +53,7 @@ static void test_mixer_e2e_track_settings_mixer_applies() {
   CHECK("context", app != nullptr);
 
   auto result = app::doc::applySequencerRevision(
-      app->docAuthoring,
+      app->documents.authoring,
       *app,
       1,
       "track(1, TrackSettings { mixer = MixerSettings { gain = 0.9 } })");
@@ -69,7 +69,7 @@ static void test_mixer_e2e_all_three_track_params() {
   CHECK("context", app != nullptr);
 
   auto result = app::doc::applySequencerRevision(
-      app->docAuthoring,
+      app->documents.authoring,
       *app,
       1,
       "mixer(1, MixerSettings { gain = 0.8, pan = 0.2, mute = false })");
@@ -86,7 +86,7 @@ static void test_mixer_e2e_invalid_deferred_field_rejected() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+  auto result = app::doc::applySequencerRevision(app->documents.authoring,
                                                  *app,
                                                  1,
                                                  "mixer(1, MixerSettings { masterGain = 0.9 })");
@@ -104,7 +104,7 @@ static void test_mixer_e2e_invalid_type_rejected() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+  auto result = app::doc::applySequencerRevision(app->documents.authoring,
                                                  *app,
                                                  1,
                                                  "mixer(1, MixerSettings { mute = 1 })");
@@ -117,7 +117,7 @@ static void test_mixer_e2e_out_of_range_rejected() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+  auto result = app::doc::applySequencerRevision(app->documents.authoring,
                                                  *app,
                                                  1,
                                                  "mixer(1, MixerSettings { gain = 2.0 })");
@@ -133,7 +133,7 @@ static void test_mixer_e2e_valid_mixed_doc_applies() {
   std::string doc = "mixer(1, MixerSettings { gain = 0.8 })\n"
                     "synth(1, SynthSettings { osc1 = { mix = 0.5 } })\n";
   doc += kNonEmptyTrack1;
-  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc.c_str());
+  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, doc.c_str());
   CHECK("ok", result.ok);
   test::publishPending(app);
   CHECK("mixer published", app->mixer.current.tracks[0].gain == 0.8f);
@@ -146,16 +146,16 @@ static void test_mixer_e2e_admitted_model_records_multiple_tracks() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  app::doc::applySequencerRevision(app->docAuthoring,
+  app::doc::applySequencerRevision(app->documents.authoring,
                                    *app,
                                    1,
                                    "mixer(1, MixerSettings { gain = 0.8 })\n"
                                    "mixer(2, MixerSettings { mute = true })\n"
                                    "mixer(3, MixerSettings { pan = -0.5 })");
 
-  CHECK("track1", app->docAuthoring.apply.lastAdmittedDocModel.hasMixerState[0]);
-  CHECK("track2", app->docAuthoring.apply.lastAdmittedDocModel.hasMixerState[1]);
-  CHECK("track3", app->docAuthoring.apply.lastAdmittedDocModel.hasMixerState[2]);
+  CHECK("track1", app->documents.authoring.apply.lastAdmittedDocModel.hasMixerState[0]);
+  CHECK("track2", app->documents.authoring.apply.lastAdmittedDocModel.hasMixerState[1]);
+  CHECK("track3", app->documents.authoring.apply.lastAdmittedDocModel.hasMixerState[2]);
   app::destroyAppContext(app);
 }
 
@@ -166,7 +166,7 @@ static void test_mixer_e2e_mixer_sequencer_publish_together() {
 
   std::string doc = "mixer(1, MixerSettings { gain = 0.7 })\n";
   doc += kNonEmptyTrack1;
-  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc.c_str());
+  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, doc.c_str());
 
   CHECK("ok", result.ok);
   CHECK("mixer old", app->mixer.current.tracks[0].gain == 1.0f);

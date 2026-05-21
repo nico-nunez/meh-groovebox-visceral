@@ -1,4 +1,5 @@
 #include "app/AppContext.h"
+#include "app/FileWatchApply.h"
 #include "app/GrooveboxPaths.h"
 #include "app/sessions/AudioSession.h"
 #include "app/sessions/MIDISession.h"
@@ -7,6 +8,7 @@
 #include "utils/KeyProcessor.h"
 
 #include <audio_io/AudioIO.h>
+#include <file_watch/FileWatch.h>
 
 #include <csignal>
 #include <cstdio>
@@ -19,7 +21,6 @@
 int main(int argc, char* argv[]) {
   app::GrooveboxPaths paths = app::resolveGrooveboxPaths(argc, argv);
   printf("session: %s\n", paths.sessionFile.c_str());
-
   auto deviceInfo = app::audio::queryDefaultDevice();
 
   printf("Audio device: %u Hz, %u frames, %u channels\n",
@@ -27,9 +28,9 @@ int main(int argc, char* argv[]) {
          deviceInfo.bufferFrameSize,
          deviceInfo.numChannels);
 
-  auto appContext = app::createAppContext(deviceInfo);
+  auto* appContext = app::createAppContext(deviceInfo);
   appContext->grooveboxPaths = paths;
-  app::editor::loadDocument(appContext->authoredEditor, paths.sessionFile.c_str());
+  app::editor::loadDocument(appContext->editor.authoredEditor, paths.sessionFile.c_str());
 
   auto audioSession = app::audio::initSession(deviceInfo, appContext);
   app::audio::startSession(audioSession);
@@ -39,10 +40,16 @@ int main(int argc, char* argv[]) {
   std::thread terminalWorker(lua::repl::runLuaREPL, std::ref(appContext));
   terminalWorker.detach();
 
+  // file_watch::hFileWatcher* fileWatcher =
+  //     file_watch::createWatcher(appContext->grooveboxPaths.sessionFile.c_str(),
+  //                               app::onSessionFileChanged,
+  //                               appContext);
+
   app::utils::startGLFWLoop(appContext, midiSession);
 
   printf("Goodbye and thanks for playing :)\n");
 
+  // file_watch::destroyWatcher(fileWatcher);
   app::audio::stopSession(audioSession);
   app::audio::disposeSession(audioSession);
 

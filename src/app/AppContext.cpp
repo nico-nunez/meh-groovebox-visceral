@@ -93,7 +93,7 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
   seqCtx.callback = getParamCallback;
   sequencer::initSequencer(ctx->sequencer, seqCtx);
 
-  doc::initDocAuthoringService(ctx->docAuthoring);
+  doc::initDocAuthoringService(ctx->documents.authoring);
 
   return ctx;
 }
@@ -105,7 +105,7 @@ void destroyAppContext(AppContext* ctx) {
   }
 
   dsp::buffers::destroyStereoBufferPool(ctx->renderBufferPool);
-  doc::destroyDocAuthoringService(ctx->docAuthoring);
+  doc::destroyDocAuthoringService(ctx->documents.authoring);
   delete ctx;
 }
 

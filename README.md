@@ -31,8 +31,6 @@ Already present in the codebase:
 - Authored per-track mixer settings via `mixer()` / `MixerSettings` constructors (gain, pan, mute)
 - Static metadata layer and generated LuaLS stubs keeping authored and runtime Lua surfaces separate
 
-Important limitations: the host now renders and mixes multiple tracks, and the step sequencer/p-lock runtime is present, but the groovebox layer is still incomplete. Pattern management and switching are still minimal, session recall is not in place, solo/performance-mix behavior is unfinished, and the ImGui window is a functional but early-stage editor shell rather than a full performance display.
-
 ## Planned Groovebox Features
 
 The list below is intentionally written as a project checklist. Items are pending unless marked done.
@@ -78,7 +76,7 @@ On startup the app connects to the default audio device, initializes MIDI, and o
 
 ## Project Layout
 
-- [`engine/`](engine/README.md): reusable synth engine library
+- [`engine/`](engine/README.md): reusable synth engine library (also available as a [standalone repo](https://github.com/nico-nunez/meh-synth-engine))
 - [`src/app/`](src/app): standalone host runtime, transport, app context, audio/MIDI session wiring
 - [`src/lua/`](src/lua): Lua REPL and command bindings
 - [`presets/`](presets): factory presets and preset authoring notes

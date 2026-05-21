@@ -10,61 +10,72 @@
 namespace app {
 namespace {
 
-std::filesystem::path grooveboxConfigDir() {
+std::filesystem::path defaultConfigDir() {
   const char* home = std::getenv("HOME");
   if (!home || home[0] == '\0')
     return std::filesystem::temp_directory_path() / "groovebox";
+
   return std::filesystem::path(home) / ".config" / "groovebox";
 }
 
-std::filesystem::path lastSessionFilePath(const std::filesystem::path& configDir) {
-  return configDir / "last_session";
-}
-
-std::string readLastSession(const std::filesystem::path& configDir) {
-  std::ifstream f(lastSessionFilePath(configDir));
-  if (!f)
+std::string readFirstLine(const std::filesystem::path& path) {
+  std::ifstream in(path);
+  if (!in)
     return {};
-  std::string path;
-  std::getline(f, path);
-  return path;
+
+  std::string line{};
+  std::getline(in, line);
+  return line;
 }
 
-void writeLastSession(const std::filesystem::path& configDir,
-                      const std::filesystem::path& sessionFile) {
-  std::ofstream f(lastSessionFilePath(configDir));
-  if (f)
-    f << sessionFile.string() << '\n';
+bool writeTextFile(const std::filesystem::path& path, const std::string& text) {
+  std::error_code ec{};
+  std::filesystem::create_directories(path.parent_path(), ec);
+  if (ec)
+    return false;
+
+  std::ofstream out(path, std::ios::binary);
+  if (!out)
+    return false;
+
+  out << text;
+  return static_cast<bool>(out);
 }
 
-void ensureDefaultSession(const std::filesystem::path& path) {
-  if (std::filesystem::exists(path))
+std::filesystem::path resolveSessionFile(const GrooveboxPaths& paths, int argc, char* argv[]) {
+  if (argc > 1 && argv[1] && argv[1][0] != '\0')
+    return std::filesystem::absolute(std::filesystem::path(argv[1]));
+
+  const std::string lastSession = readFirstLine(paths.lastSessionFile);
+  if (!lastSession.empty())
+    return std::filesystem::absolute(std::filesystem::path(lastSession));
+
+  return paths.configDir / "session.lua";
+}
+
+void ensureSessionFileExists(const std::filesystem::path& sessionFile) {
+  if (std::filesystem::exists(sessionFile))
     return;
-  std::ofstream f(path);
-  if (f)
-    f << editor::authoredDocumentTemplate();
+
+  writeTextFile(sessionFile, app::editor::authoredDocumentTemplate());
 }
 
 } // namespace
 
 GrooveboxPaths resolveGrooveboxPaths(int argc, char* argv[]) {
-  GrooveboxPaths paths;
-  paths.configDir = grooveboxConfigDir();
+  GrooveboxPaths paths{};
+  paths.configDir = defaultConfigDir();
+  paths.lastSessionFile = paths.configDir / "last_session";
+  paths.lualsConfigFile = paths.configDir / ".luarc.json";
+  paths.generatedDir = paths.configDir / "generated";
+  paths.authoredStubDir = paths.generatedDir / "authored_document";
 
-  std::filesystem::create_directories(paths.configDir);
+  std::error_code ec{};
+  std::filesystem::create_directories(paths.configDir, ec);
 
-  if (argc > 1 && argv[1][0] != '\0') {
-    paths.sessionFile = std::filesystem::absolute(std::filesystem::path(argv[1]));
-  } else {
-    const std::string last = readLastSession(paths.configDir);
-    if (!last.empty() && std::filesystem::exists(last))
-      paths.sessionFile = last;
-    else
-      paths.sessionFile = paths.configDir / "session.lua";
-  }
-
-  ensureDefaultSession(paths.sessionFile);
-  writeLastSession(paths.configDir, paths.sessionFile);
+  paths.sessionFile = resolveSessionFile(paths, argc, argv);
+  ensureSessionFileExists(paths.sessionFile);
+  writeTextFile(paths.lastSessionFile, paths.sessionFile.string() + "\n");
 
   return paths;
 }

@@ -1,5 +1,6 @@
 #include "app/doc/DocSequencerParser.h"
 
+#include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocMetadata.h"
 // #include "app/doc/DocMixerSettingsMetadata.h"
 #include "app/doc/DocSynthSettingsMetadata.h"
@@ -994,6 +995,7 @@ AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
                    "failed to create authoring Lua state",
                    SourceSpan{},
                    "");
+    result.diagnostics = ctx.diagnostics;
     return result;
   }
 
@@ -1009,6 +1011,11 @@ AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
                    SourceSpan{},
                    "");
     lua_pop(L, 1);
+    lua_close(L);
+
+    resetAuthoredDocModel(ctx.model, ctx.documentID, ctx.revision);
+    result.diagnostics = ctx.diagnostics;
+    return result;
   }
 
   lua_close(L);

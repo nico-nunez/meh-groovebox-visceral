@@ -30,17 +30,17 @@ static void test_parse_failure_sets_failed_without_admission() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+  auto result = app::doc::applySequencerRevision(app->documents.authoring,
                                                  *app,
                                                  1,
                                                  "track('one', TrackSettings {})");
 
   CHECK("not ok", !result.ok);
-  CHECK("status Failed", app->docAuthoring.apply.status == app::doc::ApplyStatus::Failed);
+  CHECK("status Failed", app->documents.authoring.apply.status == app::doc::ApplyStatus::Failed);
   CHECK("diagnostic sequencer.track.invalid_index",
         hasDiagnostic(result.diagnostics, "sequencer.track.invalid_index"));
-  CHECK("no admitted model", !app->docAuthoring.apply.hasLastAdmittedDocModel);
-  CHECK("no pending apply", !app->pendingGrooveboxApply.ready.load());
+  CHECK("no admitted model", !app->documents.authoring.apply.hasLastAdmittedDocModel);
+  CHECK("no pending apply", !app->documents.pendingApply.ready.load());
 
   app::destroyAppContext(app);
 }
@@ -51,12 +51,14 @@ static void test_successful_sequencer_apply_publishes_at_boundary() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, kNonEmptyTrack1);
+  auto result =
+      app::doc::applySequencerRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
 
   CHECK("ok", result.ok);
-  CHECK("status Completed", app->docAuthoring.apply.status == app::doc::ApplyStatus::Completed);
-  CHECK("lastAdmittedRevision == 1", app->docAuthoring.buffer.lastAdmittedRevision == 1);
-  CHECK("pending ready", app->pendingGrooveboxApply.ready.load());
+  CHECK("status Completed",
+        app->documents.authoring.apply.status == app::doc::ApplyStatus::Completed);
+  CHECK("lastAdmittedRevision == 1", app->documents.authoring.buffer.lastAdmittedRevision == 1);
+  CHECK("pending ready", app->documents.pendingApply.ready.load());
 
   auto pre = app::sequencer::getPatternBank(app->sequencer, 0);
   CHECK("pre bank readable", pre.ok);
@@ -78,10 +80,10 @@ static void test_empty_document_replaces_with_default_targets() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, "");
+  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, "");
 
   CHECK("ok", result.ok);
-  CHECK("pending ready", app->pendingGrooveboxApply.ready.load());
+  CHECK("pending ready", app->documents.pendingApply.ready.load());
 
   test::publishPending(app);
 
@@ -103,10 +105,10 @@ static void test_mixed_synth_mixer_sequencer_apply_publishes_together() {
                     "synth(1, SynthSettings { osc1 = { mix = 0.5 } })\n";
   doc += kNonEmptyTrack1;
 
-  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc.c_str());
+  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, doc.c_str());
 
   CHECK("ok", result.ok);
-  CHECK("pending ready", app->pendingGrooveboxApply.ready.load());
+  CHECK("pending ready", app->documents.pendingApply.ready.load());
   CHECK("synth old", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.5f);
   CHECK("mixer old", app->mixer.current.tracks[0].gain == 1.0f);
   auto pre = app::sequencer::getPatternBank(app->sequencer, 0);

@@ -54,4 +54,12 @@ struct AuthoredDocModel {
   AuthoredTrackMixerPatch mixerTracks[app::MAX_TRACKS]{};
 };
 
+inline void resetAuthoredDocModel(AuthoredDocModel* model, DocID documentID, DocRevision revision) {
+  *model = AuthoredDocModel{};
+  model->documentID = documentID;
+  model->revision = revision;
+  model->sequencer.documentID = documentID;
+  model->sequencer.revision = revision;
+}
+
 } // namespace app::doc

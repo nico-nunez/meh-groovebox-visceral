@@ -32,6 +32,7 @@ void streamCallback(ConstFSEventStreamRef /*stream*/,
 } // namespace
 
 int fsEventsSetup(file_watch::hFileWatcher* session) {
+  printf("file_watch: entering FSEvents setup\n");
   auto* ctx = new FSEventsContext();
 
   // Watch the parent directory; filter to the specific file in the callback.
@@ -80,6 +81,7 @@ int fsEventsSetup(file_watch::hFileWatcher* session) {
   FSEventStreamStart(ctx->stream);
 
   session->platformContext = ctx;
+
   return 0;
 }
 

@@ -53,7 +53,7 @@ static void test_luals_advertised_synth_shape_parses_and_applies() {
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
-  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc);
+  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, doc);
 
   CHECK("apply ok", result.ok);
   test::publishPending(app);
@@ -81,13 +81,14 @@ static void test_mixed_synth_and_sequencer_document_applies() {
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
-  auto result = app::doc::applySequencerRevision(app->docAuthoring, *app, 1, doc);
+  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, doc);
 
   CHECK("apply ok", result.ok);
-  CHECK("completed", app->docAuthoring.apply.status == app::doc::ApplyStatus::Completed);
-  CHECK("admitted doc model", app->docAuthoring.apply.hasLastAdmittedDocModel);
-  CHECK("admitted seq", app->docAuthoring.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
-  CHECK("admitted synth", app->docAuthoring.apply.lastAdmittedDocModel.hasSynthState[0]);
+  CHECK("completed", app->documents.authoring.apply.status == app::doc::ApplyStatus::Completed);
+  CHECK("admitted doc model", app->documents.authoring.apply.hasLastAdmittedDocModel);
+  CHECK("admitted seq",
+        app->documents.authoring.apply.lastAdmittedDocModel.sequencer.hasTrackState[0]);
+  CHECK("admitted synth", app->documents.authoring.apply.lastAdmittedDocModel.hasSynthState[0]);
   test::publishPending(app);
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.6f);
   app::destroyAppContext(app);
@@ -100,7 +101,7 @@ static void test_deferred_synth_fields_fail_without_queueing_events() {
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
-  auto result = app::doc::applySequencerRevision(app->docAuthoring,
+  auto result = app::doc::applySequencerRevision(app->documents.authoring,
                                                  *app,
                                                  1,
                                                  "synth(1, SynthSettings { lfo1 = { rate = 2 } })");
@@ -108,7 +109,7 @@ static void test_deferred_synth_fields_fail_without_queueing_events() {
   CHECK("apply failed", !result.ok);
   CHECK("unknown param diagnostic",
         hasDiagnostic(result.diagnostics, app::doc::docdiag::SynthParamUnknown));
-  CHECK("no pending apply", !app->pendingGrooveboxApply.ready.load());
+  CHECK("no pending apply", !app->documents.pendingApply.ready.load());
   app::destroyAppContext(app);
 }
 
@@ -120,7 +121,7 @@ static void test_valid_synth_document_never_emits_apply_not_implemented() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
   auto result = app::doc::applySequencerRevision(
-      app->docAuthoring,
+      app->documents.authoring,
       *app,
       1,
       "synth(1, SynthSettings { osc1 = { mix = 0.25 }, "

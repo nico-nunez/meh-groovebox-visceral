@@ -36,7 +36,7 @@ bool prepareDoc(app::AppContext* app, const char* doc, app::GrooveboxApplyTiming
   if (!parsed.ok)
     return false;
 
-  app::GrooveboxTargetState* target = &app->docAuthoring.applyWorkspace->target;
+  app::GrooveboxTargetState* target = &app->documents.authoring.applyWorkspace->target;
   auto build = app::doc::buildGrooveboxTargetState(&ws->model, 1, 1, target);
   if (!build.ok)
     return false;
@@ -63,14 +63,14 @@ static void test_next_bar_holds_until_bar_boundary() {
   CHECK("prepared", prepared);
 
   app::publishPendingGrooveboxEditIfReady(app, block(app::transport::TransportMode::Playing, 0));
-  CHECK("still pending", app->pendingGrooveboxApply.ready.load());
+  CHECK("still pending", app->documents.pendingApply.ready.load());
   CHECK("not published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.25f);
 
   app::publishPendingGrooveboxEditIfReady(app,
                                           block(app::transport::TransportMode::Playing,
                                                 static_cast<uint32_t>(
                                                     app::transport::BoundaryFlags::CrossedBar)));
-  CHECK("published", !app->pendingGrooveboxApply.ready.load());
+  CHECK("published", !app->documents.pendingApply.ready.load());
   CHECK("param applied", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.25f);
 
   app::destroyAppContext(app);
@@ -88,13 +88,13 @@ static void test_next_beat_holds_until_beat_boundary() {
   CHECK("prepared", prepared);
 
   app::publishPendingGrooveboxEditIfReady(app, block(app::transport::TransportMode::Playing, 0));
-  CHECK("still pending", app->pendingGrooveboxApply.ready.load());
+  CHECK("still pending", app->documents.pendingApply.ready.load());
 
   app::publishPendingGrooveboxEditIfReady(app,
                                           block(app::transport::TransportMode::Playing,
                                                 static_cast<uint32_t>(
                                                     app::transport::BoundaryFlags::CrossedBeat)));
-  CHECK("published", !app->pendingGrooveboxApply.ready.load());
+  CHECK("published", !app->documents.pendingApply.ready.load());
   CHECK("param applied", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
 
   app::destroyAppContext(app);
@@ -113,7 +113,7 @@ static void test_quantized_apply_publishes_immediately_when_stopped() {
 
   app::publishPendingGrooveboxEditIfReady(app, block(app::transport::TransportMode::Stopped, 0));
 
-  CHECK("published", !app->pendingGrooveboxApply.ready.load());
+  CHECK("published", !app->documents.pendingApply.ready.load());
   CHECK("param applied", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.75f);
 
   app::destroyAppContext(app);
@@ -135,7 +135,7 @@ static void test_quantized_apply_holds_while_paused() {
                                                 static_cast<uint32_t>(
                                                     app::transport::BoundaryFlags::CrossedBar)));
 
-  CHECK("still pending", app->pendingGrooveboxApply.ready.load());
+  CHECK("still pending", app->documents.pendingApply.ready.load());
   CHECK("not published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.33f);
 
   app::destroyAppContext(app);

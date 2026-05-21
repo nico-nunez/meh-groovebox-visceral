@@ -118,7 +118,7 @@ DisplayControlSnapshot makeDisplayControlSnapshot(const AppContext& app) {
   DisplayControlSnapshot snapshot{};
   snapshot.track = makeTrackSnapshot(app);
   snapshot.sequencer = makeSequencerPatternSnapshot(app.sequencer, snapshot.track.selectedTrack);
-  snapshot.document = makeDocumentStatusSnapshot(app.authoredEditor);
+  snapshot.document = makeDocumentStatusSnapshot(app.editor.authoredEditor);
   snapshot.midi = makeMIDIRoutingSnapshot(app);
   return snapshot;
 }

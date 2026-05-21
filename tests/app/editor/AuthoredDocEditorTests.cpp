@@ -1,5 +1,5 @@
-#include "TestRunner.h"
 #include "TestHelpers.h"
+#include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocMetadata.h"
@@ -138,7 +138,7 @@ static void test_apply_unsaved_valid_buffer_uses_revision_and_succeeds() {
   TEST("apply_unsaved_valid_buffer_uses_revision_and_succeeds");
 
   app::AppContext app{};
-  app::doc::initDocAuthoringService(app.docAuthoring);
+  app::doc::initDocAuthoringService(app.documents.authoring);
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track(1, TrackSettings {})";
   editor.buffer.dirty = true;
@@ -150,15 +150,15 @@ static void test_apply_unsaved_valid_buffer_uses_revision_and_succeeds() {
   CHECK("last applied revision 1", editor.buffer.lastAppliedRevision == 1);
   CHECK("apply succeeded", editor.applyStatus == app::editor::EditorApplyStatus::Succeeded);
   CHECK("backend diagnostics empty", editor.backendDiagnostics.empty());
-  CHECK("service revision 1", app.docAuthoring.buffer.currentRevision == 1);
-  app::doc::destroyDocAuthoringService(app.docAuthoring);
+  CHECK("service revision 1", app.documents.authoring.buffer.currentRevision == 1);
+  app::doc::destroyDocAuthoringService(app.documents.authoring);
 }
 
 static void test_apply_invalid_buffer_caches_backend_diagnostics() {
   TEST("apply_invalid_buffer_caches_backend_diagnostics");
 
   app::AppContext app{};
-  app::doc::initDocAuthoringService(app.docAuthoring);
+  app::doc::initDocAuthoringService(app.documents.authoring);
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track('one', TrackSettings {})";
   editor.buffer.dirty = true;
@@ -173,14 +173,14 @@ static void test_apply_invalid_buffer_caches_backend_diagnostics() {
   CHECK("invalid index diagnostic",
         hasDiagnostic(editor.backendDiagnostics, app::doc::docdiag::SequencerTrackInvalidIndex));
   CHECK("dirty preserved", editor.buffer.dirty);
-  app::doc::destroyDocAuthoringService(app.docAuthoring);
+  app::doc::destroyDocAuthoringService(app.documents.authoring);
 }
 
 static void test_apply_attempt_revision_increments_on_failure_and_success() {
   TEST("apply_attempt_revision_increments_on_failure_and_success");
 
   app::AppContext app{};
-  app::doc::initDocAuthoringService(app.docAuthoring);
+  app::doc::initDocAuthoringService(app.documents.authoring);
   app::editor::AuthoredDocEditorState editor{};
 
   editor.buffer.text = "track('one', TrackSettings {})";
@@ -191,7 +191,7 @@ static void test_apply_attempt_revision_increments_on_failure_and_success() {
 
   CHECK("apply revision 2", editor.buffer.applyRevision == 2);
   CHECK("last applied revision 2", editor.buffer.lastAppliedRevision == 2);
-  app::doc::destroyDocAuthoringService(app.docAuthoring);
+  app::doc::destroyDocAuthoringService(app.documents.authoring);
 }
 
 static void test_request_diagnostic_jump_uses_source_span() {
@@ -212,6 +212,31 @@ static void test_request_diagnostic_jump_uses_source_span() {
   CHECK("cleared", !editor.jumpRequest.pending);
 }
 
+static void test_save_requires_existing_path() {
+  TEST("save_requires_existing_path");
+  app::editor::AuthoredDocEditorState editor{};
+  editor.buffer.text = "track(1, TrackSettings {})\n";
+  editor.buffer.dirty = true;
+  const bool ok = app::editor::saveDocument(editor);
+  CHECK("not ok", !ok);
+  CHECK("failed message", editor.fileMessage.status == app::editor::EditorCommandStatus::Failed);
+  CHECK("dirty preserved", editor.buffer.dirty);
+  CHECK("no path", !editor.buffer.hasFilePath);
+}
+static void test_save_writes_existing_path() {
+  TEST("save_writes_existing_path");
+  std::remove(kTempEditorDocPath);
+  app::editor::AuthoredDocEditorState editor{};
+  editor.buffer.text = "track(1, TrackSettings {})\n";
+  editor.buffer.filePath = kTempEditorDocPath;
+  editor.buffer.hasFilePath = true;
+  editor.buffer.dirty = true;
+  const bool ok = app::editor::saveDocument(editor);
+  CHECK("ok", ok);
+  CHECK("file contents", readTempFile(kTempEditorDocPath) == editor.buffer.text);
+  CHECK("dirty false", !editor.buffer.dirty);
+}
+
 void runAuthoredDocEditorTests() {
   SUITE("AuthoredDocEditor");
   test_new_blank_resets_text_without_resetting_apply_revision();
@@ -225,4 +250,6 @@ void runAuthoredDocEditorTests() {
   test_apply_invalid_buffer_caches_backend_diagnostics();
   test_apply_attempt_revision_increments_on_failure_and_success();
   test_request_diagnostic_jump_uses_source_span();
+  test_save_requires_existing_path();
+  test_save_writes_existing_path();
 }

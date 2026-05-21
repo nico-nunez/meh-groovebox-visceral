@@ -107,17 +107,6 @@ bool parseLuaLSLocationLine(const std::string& line, LuaLSDiagnostic& out) {
     }
   }
 
-  if (codeStart != std::string::npos && codeEnd != std::string::npos && codeEnd > codeStart) {
-    out.code = line.substr(codeStart + 1, codeEnd - codeStart - 1);
-
-    if (messageStart < codeStart) {
-      out.message = line.substr(messageStart, codeStart - messageStart);
-      while (!out.message.empty() && (out.message.back() == ' ' || out.message.back() == '\t')) {
-        out.message.pop_back();
-      }
-    }
-  }
-
   return true;
 }
 

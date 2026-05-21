@@ -101,7 +101,7 @@ void stageGrooveboxTarget(GrooveboxEditSession* session, const GrooveboxTargetSt
 
 void abortGrooveboxEdit(GrooveboxEditSession* session, AppContext* app) {
   if (app) {
-    auto& pending = app->pendingGrooveboxApply;
+    auto& pending = app->documents.pendingApply;
     abortPreparedSynth(app, pending);
     abortPreparedMixer(app, pending);
     abortPreparedSequencer(app, pending);
@@ -125,7 +125,7 @@ GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
     return result;
   }
 
-  auto& pending = app->pendingGrooveboxApply;
+  auto& pending = app->documents.pendingApply;
   if (!acquirePendingWriter(&pending)) {
     diagnostics->push_back(makeEditDiagnostic(session->revision,
                                               doc::docdiag::InternalPlannerError,
@@ -210,7 +210,7 @@ void publishPendingGrooveboxEditIfReady(AppContext* app,
   if (!app)
     return;
 
-  auto& pending = app->pendingGrooveboxApply;
+  auto& pending = app->documents.pendingApply;
   if (!pending.ready.load(std::memory_order_acquire))
     return;
 

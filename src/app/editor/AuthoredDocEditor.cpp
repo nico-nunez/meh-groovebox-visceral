@@ -97,8 +97,10 @@ bool loadDocument(AuthoredDocEditorState& editor, const char* path) {
 }
 
 bool saveDocument(AuthoredDocEditorState& editor) {
-  if (!editor.buffer.hasFilePath)
-    return saveDocumentAs(editor, editor.buffer.filePath.c_str());
+  if (!editor.buffer.hasFilePath) {
+    setFileMessage(editor, EditorCommandStatus::Failed, "save failed: no file path");
+    return false;
+  }
   return saveDocumentAs(editor, editor.buffer.filePath.c_str());
 }
 
@@ -132,7 +134,10 @@ bool applyEditorBuffer(AuthoredDocEditorState& editor, app::AppContext& app) {
   const app::doc::DocRevision revision = ++editor.buffer.applyRevision;
 
   app::doc::ApplyRevisionResult result =
-      app::doc::applySequencerRevision(app.docAuthoring, app, revision, editor.buffer.text.c_str());
+      app::doc::applySequencerRevision(app.documents.authoring,
+                                       app,
+                                       revision,
+                                       editor.buffer.text.c_str());
 
   editor.backendDiagnostics = result.diagnostics;
   if (result.ok) {

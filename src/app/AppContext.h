@@ -45,6 +45,15 @@ using synth::Engine;
 using doc::DocAuthoringService;
 using editor::AuthoredDocEditorState;
 
+struct DocumentRuntime {
+  DocAuthoringService authoring{};
+  PendingGrooveboxApply pendingApply{};
+};
+
+struct EditorRuntime {
+  AuthoredDocEditorState authoredEditor{};
+};
+
 struct AppContext {
   TransportState transport{};
   ControlEventQueue controlQueue{};
@@ -60,9 +69,8 @@ struct AppContext {
   MixerState mixer{};
   MasterBusState masterBus{};
 
-  DocAuthoringService docAuthoring{};
-  PendingGrooveboxApply pendingGrooveboxApply{};
-  AuthoredDocEditorState authoredEditor{};
+  DocumentRuntime documents{};
+  EditorRuntime editor{};
   GrooveboxPaths grooveboxPaths{};
 
   DisplayPublication displayPublication{};

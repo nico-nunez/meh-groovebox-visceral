@@ -47,12 +47,12 @@ static void test_control_snapshot_copies_track_midi_and_document_state() {
     app.midiChannelMap[ch] = app::MIDI_CHANNEL_UNASSIGNED;
   app.midiChannelMap[3] = 2;
 
-  app.authoredEditor.buffer.dirty = true;
-  app.authoredEditor.buffer.applyRevision = 7;
-  app.authoredEditor.buffer.lastAppliedRevision = 5;
-  app.authoredEditor.backendDiagnostics.push_back(app::doc::DocDiagnostic{});
-  app.authoredEditor.luals.diagnostics.push_back(app::editor::LuaLSDiagnostic{});
-  app.authoredEditor.luals.status = app::editor::LanguageServiceStatus::Succeeded;
+  app.editor.authoredEditor.buffer.dirty = true;
+  app.editor.authoredEditor.buffer.applyRevision = 7;
+  app.editor.authoredEditor.buffer.lastAppliedRevision = 5;
+  app.editor.authoredEditor.backendDiagnostics.push_back(app::doc::DocDiagnostic{});
+  app.editor.authoredEditor.luals.diagnostics.push_back(app::editor::LuaLSDiagnostic{});
+  app.editor.authoredEditor.luals.status = app::editor::LanguageServiceStatus::Succeeded;
 
   const auto snapshot = app::display::makeDisplayControlSnapshot(app);
 
@@ -157,7 +157,7 @@ static void test_dashboard_snapshot_reads_latest_publication_and_control_state()
 
   app::AppContext app{};
   app.currentTrack = 0;
-  app.authoredEditor.buffer.dirty = true;
+  app.editor.authoredEditor.buffer.dirty = true;
   setParam(app.tracks[0].engine, synth::param::MASTER_GAIN, 1.1f);
 
   app::display::DisplayRuntimeTelemetry runtime = app::display::makeDisplayRuntimeTelemetry(app);
