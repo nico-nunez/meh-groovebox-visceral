@@ -54,6 +54,7 @@ void runMetadataVerificationTests();
 void runLuaLSStubGenerationTests();
 void runLuaRuntimeMetadataTests();
 void runLuaLSDiagnosticsTests();
+void runExternalEditorWorkspaceTests();
 
 int main(int argc, char* argv[]) {
   int buildSecs = -1;
@@ -101,6 +102,7 @@ int main(int argc, char* argv[]) {
   runLuaRuntimeMetadataTests();
   runLuaLSStubGenerationTests();
   runLuaLSDiagnosticsTests();
+  runExternalEditorWorkspaceTests();
 
   printSuiteResult();
 

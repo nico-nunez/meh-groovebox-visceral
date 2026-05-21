@@ -1,4 +1,5 @@
 #include "app/AppContext.h"
+#include "app/ExternalEditorWorkspace.h"
 #include "app/FileWatchApply.h"
 #include "app/GrooveboxPaths.h"
 #include "app/sessions/AudioSession.h"
@@ -12,6 +13,7 @@
 
 #include <csignal>
 #include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <thread>
 
@@ -20,9 +22,10 @@
 // ==============
 int main(int argc, char* argv[]) {
   app::GrooveboxPaths paths = app::resolveGrooveboxPaths(argc, argv);
+  app::ensureExternalEditorWorkspace(paths, std::filesystem::current_path());
   printf("session: %s\n", paths.sessionFile.c_str());
-  auto deviceInfo = app::audio::queryDefaultDevice();
 
+  auto deviceInfo = app::audio::queryDefaultDevice();
   printf("Audio device: %u Hz, %u frames, %u channels\n",
          deviceInfo.sampleRate,
          deviceInfo.bufferFrameSize,
