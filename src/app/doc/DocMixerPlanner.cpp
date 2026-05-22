@@ -99,7 +99,7 @@ MixerTargetResult buildMixerTargetSnapshot(const AuthoredDocModel* model,
     return result;
   }
 
-  *out = mixer::MixerSnapshot{};
+  mixer::initMixerSnapshot(out);
 
   for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
     if (!model->hasMixerState[trackIndex])

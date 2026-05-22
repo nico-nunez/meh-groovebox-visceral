@@ -32,7 +32,11 @@ void streamCallback(ConstFSEventStreamRef /*stream*/,
 } // namespace
 
 int fsEventsSetup(file_watch::hFileWatcher* session) {
-  printf("file_watch: entering FSEvents setup\n");
+  if (!session || session->watchedPath.empty()) {
+    printf("session is null or watchedPath is empty\n");
+    return -1;
+  }
+
   auto* ctx = new FSEventsContext();
 
   // Watch the parent directory; filter to the specific file in the callback.
@@ -42,6 +46,7 @@ int fsEventsSetup(file_watch::hFileWatcher* session) {
                                                   kCFStringEncodingUTF8);
 
   if (!pathStr) {
+    printf("no pathStr created\n");
     delete ctx;
     return -1;
   }
@@ -70,6 +75,7 @@ int fsEventsSetup(file_watch::hFileWatcher* session) {
   CFRelease(pathsToWatch);
 
   if (!stream) {
+    printf("no stream created\n");
     delete ctx;
     return -1;
   }

@@ -3,6 +3,7 @@
 #include "app/AppContext.h"
 #include "app/ControlEvents.h"
 #include "app/display/EditorDisplayView.h"
+#include "app/display/ExtEditorDisplayView.h"
 #include "app/display/SynthDisplayView.h"
 
 #include "imgui.h"
@@ -82,16 +83,17 @@ void drawTransportSection(AppContext& app, const TransportSnapshot& snapshot) {
 
 void drawTrackSection(AppContext& app, const TrackSnapshot& snapshot) {
   ImGui::SeparatorText("Selected Track");
-  ImGui::Text("current: %u", snapshot.selectedTrack);
+  ImGui::Text("current: %u", snapshot.selectedTrack + 1);
   ImGui::Text("midi sticky: %s",
               snapshot.midiStickyTrack == MIDI_CHANNEL_UNASSIGNED ? "unassigned" : "assigned");
+
+  int selected = static_cast<int>(snapshot.selectedTrack + 1);
   ImGui::Text("midi follows current track: %s", snapshot.midiFollowsCurrentTrack ? "yes" : "no");
 
-  int selected = static_cast<int>(snapshot.selectedTrack);
-  if (ImGui::SliderInt("Current Track", &selected, 0, MAX_TRACKS - 1)) {
+  if (ImGui::SliderInt("Current Track", &selected, 1, MAX_TRACKS)) {
     drawQueueResult(app::pushControlEvent(&app,
                                           app::events::createCurrentTrackEvent(
-                                              static_cast<uint8_t>(selected))));
+                                              static_cast<uint8_t>(selected - 1))));
   }
 }
 
@@ -158,7 +160,13 @@ void drawKeyboardMIDIHelpSection() {
 }
 
 void drawEditorView(AppContext& app) {
-  drawEditorDisplayView(app);
+  drawEditorSelector(app.editor);
+  drawFileControls(app.editor);
+
+  if (app.editor.internalEditor)
+    drawEditorDisplayView(app);
+  else
+    drawExtEditorDisplayView(app);
 }
 
 void drawSynthView(AppContext&, const DisplayDashboardSnapshot& snapshot) {

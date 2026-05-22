@@ -42,4 +42,14 @@ void publishPendingMixerSnapshotIfReady(MixerState& mixer) {
   mixer.pendingReady.store(false, std::memory_order_release);
 }
 
+void initMixerSnapshot(MixerSnapshot* snapshot) {
+  for (uint8_t track = 0; track < MAX_TRACKS; ++track) {
+    snapshot->tracks[track].enabled = true;
+    snapshot->tracks[track].gain = 1.0f;
+    snapshot->tracks[track].pan = 0.0f;
+  }
+
+  snapshot->masterGain = 1.0f;
+  snapshot->limiterThreshold = dsp::math::dBToLinear(-1.0f);
+}
 } // namespace app::mixer

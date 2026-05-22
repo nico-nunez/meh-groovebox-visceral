@@ -270,4 +270,9 @@ VoidResult commitSequencerSnapshotSwap(SequencerState& state);
 void abortSequencerSnapshotSwap(SequencerState& state);
 void publishPendingSequencerSnapshotIfReady(SequencerState& state);
 
+void resetStepEvent(StepEvent* step);
+void resetLanePattern(LanePattern* pattern);
+void resetPatternBank(PatternBank* bank);
+void resetPatternSnapshot(PatternSnapshot* snapshot);
+
 } // namespace app::sequencer

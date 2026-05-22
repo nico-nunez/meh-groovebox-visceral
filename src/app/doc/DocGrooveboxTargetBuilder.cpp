@@ -34,7 +34,7 @@ GrooveboxTargetBuildResult buildGrooveboxTargetState(const AuthoredDocModel* mod
     return result;
   }
 
-  *out = app::GrooveboxTargetState{};
+  app::resetGrooveboxTargetStateFlags(out);
 
   auto synth = buildSynthTargetPrograms(model, documentID, revision, out->synthPrograms);
   appendDiagnostics(&result.diagnostics, synth.diagnostics);

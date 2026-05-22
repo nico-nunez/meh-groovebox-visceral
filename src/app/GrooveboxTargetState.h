@@ -25,4 +25,12 @@ struct GrooveboxTargetState {
   bool hasSequencer = false;
 };
 
+inline void resetGrooveboxTargetStateFlags(GrooveboxTargetState* target) {
+  for (uint8_t t = 0; t < MAX_TRACKS; ++t)
+    target->hasSynthProgram[t] = false;
+
+  target->hasMixer = false;
+  target->hasSequencer = false;
+}
+
 } // namespace app

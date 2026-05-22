@@ -1095,9 +1095,7 @@ VoidResult clearPattern(SequencerState& state, uint8_t lane) {
   if (!lp)
     return {false, "no pending selected pattern"};
 
-  for (uint32_t i = 0; i < MAX_PATTERN_STEPS; ++i)
-    lp->steps[i] = StepEvent{};
-
+  resetLanePattern(lp);
   return res;
 }
 
@@ -1107,7 +1105,7 @@ VoidResult clearPatternBankSlot(SequencerState& state, uint8_t lane, uint8_t slo
 
   PatternBank& bank = getWriteBuffer(state).lanes[lane];
   bank.slots[slot].occupied = false;
-  bank.slots[slot].pattern = LanePattern{};
+  resetLanePattern(&bank.slots[slot].pattern);
 
   if (bank.activeSlot == slot)
     bank.activeSlot = INVALID_PATTERN_SLOT;
@@ -1146,6 +1144,41 @@ void publishPendingSequencerSnapshotIfReady(SequencerState& state) {
 
   auto commit = commitPattern(state);
   assert(commit.ok);
+}
+
+void resetStepEvent(StepEvent* step) {
+  for (uint8_t i = 0; i < MAX_LOCKS_PER_STEP; ++i)
+    step->locks[i] = ParamLock{};
+
+  step->numLocks = 0;
+  step->active = false;
+  step->noteOn = false;
+  step->legato = false;
+  step->gate = 0.5f;
+  step->note = 0;
+  step->velocity = 0;
+}
+
+void resetLanePattern(LanePattern* pattern) {
+  for (uint8_t step = 0; step < MAX_PATTERN_STEPS; ++step)
+    resetStepEvent(&pattern->steps[step]);
+
+  pattern->numSteps = DEFAULT_PATTERN_STEPS;
+  pattern->stepsPerBeat = DEFAULT_STEPS_PER_BEAT;
+}
+
+void resetPatternBank(PatternBank* bank) {
+  for (uint8_t slot = 0; slot < PATTERNS_PER_LANE; ++slot) {
+    bank->slots[slot].occupied = false;
+    resetLanePattern(&bank->slots[slot].pattern);
+  }
+
+  bank->activeSlot = INVALID_PATTERN_SLOT;
+}
+
+void resetPatternSnapshot(PatternSnapshot* snapshot) {
+  for (uint8_t lane = 0; lane < MAX_LANES; ++lane)
+    resetPatternBank(&snapshot->lanes[lane]);
 }
 
 } // namespace app::sequencer

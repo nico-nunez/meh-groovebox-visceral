@@ -57,7 +57,7 @@ SequencerTargetResult buildSequencerTargetSnapshot(const AuthoredSeqDocModel* mo
     return result;
   }
 
-  *out = sequencer::PatternSnapshot{};
+  sequencer::resetPatternSnapshot(out);
 
   for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
     if (!model->hasTrackState[trackIndex])

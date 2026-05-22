@@ -2,12 +2,9 @@
 #include "adapters/fsevents/FSEventsAdapter.h"
 #include "shared/FileWatcher.h"
 
-// TODO: platform selection (inotify for Linux)
-
 namespace file_watch {
 
 hFileWatcher* createWatcher(const char* path, FileChangeCallback callback, void* context) {
-  printf("file_watch: entering createWatcher\n");
   if (path && path[0] == '\0') {
     printf("file_watch: empty path FSEvents failed: %s\n", path);
     return nullptr;

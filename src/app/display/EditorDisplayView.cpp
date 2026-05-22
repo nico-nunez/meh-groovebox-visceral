@@ -1,6 +1,7 @@
 #include "EditorDisplayView.h"
 
 #include "app/AppContext.h"
+#include "app/display/ExtEditorDisplayView.h"
 #include "app/doc/DocDiagnostics.h"
 #include "app/editor/AuthoredDocEditor.h"
 #include "app/editor/LuaLSDiagnostics.h"
@@ -105,54 +106,6 @@ void forceScratchText(const std::string& text) {
 
 void forceScratchPath(const std::string& path) {
   std::snprintf(gScratch.pathBuffer, sizeof(gScratch.pathBuffer), "%s", path.c_str());
-}
-
-void drawFileControls(AuthoredDocEditorState& editor) {
-  ImGui::SeparatorText("Current File");
-  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
-
-  ImGui::InputText("Path", gScratch.pathBuffer, sizeof(gScratch.pathBuffer));
-
-  if (ImGui::Button("New")) {
-    newBlankDocument(editor);
-    forceScratchText(editor.buffer.text);
-    forceScratchPath(editor.buffer.filePath);
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("New Template")) {
-    newTemplateDocument(editor);
-    forceScratchText(editor.buffer.text);
-    forceScratchPath(editor.buffer.filePath);
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Open")) {
-    if (loadDocument(editor, gScratch.pathBuffer)) {
-      forceScratchText(editor.buffer.text);
-      forceScratchPath(editor.buffer.filePath);
-    }
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Save")) {
-    if (editor.buffer.hasFilePath)
-      saveDocument(editor);
-    else
-      saveDocumentAs(editor, gScratch.pathBuffer);
-    forceScratchPath(editor.buffer.filePath);
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Save As")) {
-    saveDocumentAs(editor, gScratch.pathBuffer);
-    forceScratchPath(editor.buffer.filePath);
-  }
-  ImGui::SameLine();
-  if (ImGui::Button("Reload")) {
-    if (reloadDocument(editor)) {
-      forceScratchText(editor.buffer.text);
-      forceScratchPath(editor.buffer.filePath);
-    }
-  }
-
-  ImGui::PopStyleVar();
 }
 
 void drawStatusLine(const AuthoredDocEditorState& editor) {
@@ -278,17 +231,85 @@ void drawLuaLSDiagnostics(const AuthoredDocEditorState& editor) {
 }
 } // namespace
 
+void drawEditorSelector(EditorRuntime& editor) {
+  ImGui::SeparatorText("Current Editor");
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
+
+  ImGui::BeginDisabled(editor.internalEditor);
+  if (ImGui::Button("Internal")) {
+    editor.internalEditor = true;
+  }
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!editor.internalEditor);
+  if (ImGui::Button("External")) {
+    editor.internalEditor = false;
+  }
+  ImGui::EndDisabled();
+
+  ImGui::PopStyleVar();
+}
+
+void drawFileControls(EditorRuntime& editor) {
+  ImGui::SeparatorText("Current File");
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
+
+  ImGui::InputText("Path", gScratch.pathBuffer, sizeof(gScratch.pathBuffer));
+
+  if (ImGui::Button("New")) {
+    newBlankDocument(editor.authoredEditor);
+    forceScratchText(editor.authoredEditor.buffer.text);
+    forceScratchPath(editor.authoredEditor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("New Template")) {
+    newTemplateDocument(editor.authoredEditor);
+    forceScratchText(editor.authoredEditor.buffer.text);
+    forceScratchPath(editor.authoredEditor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Open")) {
+    if (loadDocument(editor.authoredEditor, gScratch.pathBuffer)) {
+      forceScratchText(editor.authoredEditor.buffer.text);
+      forceScratchPath(editor.authoredEditor.buffer.filePath);
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Save")) {
+    if (editor.authoredEditor.buffer.hasFilePath)
+      saveDocument(editor.authoredEditor);
+    else
+      saveDocumentAs(editor.authoredEditor, gScratch.pathBuffer);
+    forceScratchPath(editor.authoredEditor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Save As")) {
+    saveDocumentAs(editor.authoredEditor, gScratch.pathBuffer);
+    forceScratchPath(editor.authoredEditor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Reload")) {
+    if (reloadDocument(editor.authoredEditor)) {
+      forceScratchText(editor.authoredEditor.buffer.text);
+      forceScratchPath(editor.authoredEditor.buffer.filePath);
+    }
+  }
+
+  ImGui::PopStyleVar();
+}
+
 void drawEditorDisplayView(AppContext& app) {
   static bool showDiagnostics = true;
   static float diagnosticsHeight = 200.0f;
 
   AuthoredDocEditorState& editor = app.editor.authoredEditor;
+
+  // ==== Internal editor ====
   syncScratchFromState(editor);
 
   collectFinishedLuaLSDiagnostics(editor);
   maybeStartLuaLSDiagnostics(editor);
-
-  drawFileControls(editor);
 
   ImGui::Dummy(ImVec2(0.0f, 20.0f));
 

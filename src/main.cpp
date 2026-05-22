@@ -43,18 +43,19 @@ int main(int argc, char* argv[]) {
   std::thread terminalWorker(lua::repl::runLuaREPL, std::ref(appContext));
   terminalWorker.detach();
 
-  // file_watch::hFileWatcher* fileWatcher =
-  //     file_watch::createWatcher(appContext->grooveboxPaths.sessionFile.c_str(),
-  //                               app::onSessionFileChanged,
-  //                               appContext);
+  file_watch::hFileWatcher* fileWatcher =
+      file_watch::createWatcher(appContext->grooveboxPaths.sessionFile.c_str(),
+                                app::onSessionFileChanged,
+                                appContext);
 
   app::utils::startGLFWLoop(appContext, midiSession);
 
   printf("Goodbye and thanks for playing :)\n");
 
-  // file_watch::destroyWatcher(fileWatcher);
+  file_watch::destroyWatcher(fileWatcher);
   app::audio::stopSession(audioSession);
   app::audio::disposeSession(audioSession);
+  app::destroyAppContext(appContext);
 
   return 0;
 }

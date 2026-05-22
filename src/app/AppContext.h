@@ -52,6 +52,7 @@ struct DocumentRuntime {
 
 struct EditorRuntime {
   AuthoredDocEditorState authoredEditor{};
+  bool internalEditor = true;
 };
 
 struct AppContext {

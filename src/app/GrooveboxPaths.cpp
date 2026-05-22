@@ -15,7 +15,8 @@ std::filesystem::path defaultConfigDir() {
   if (!home || home[0] == '\0')
     return std::filesystem::temp_directory_path() / "groovebox";
 
-  return std::filesystem::path(home) / ".config" / "groovebox";
+  // return std::filesystem::path(home) / ".config" / "groovebox";
+  return std::filesystem::path(home) / "groovebox-demo";
 }
 
 std::string readFirstLine(const std::filesystem::path& path) {

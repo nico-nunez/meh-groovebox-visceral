@@ -32,7 +32,7 @@ enum class MainView {
 };
 
 static GLFWwindow* g_window = nullptr;
-static MainView g_activeView = MainView::Editor;
+static MainView g_activeView = MainView::Synth;
 
 void requestQuit() {
   if (g_window) {

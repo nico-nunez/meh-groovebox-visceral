@@ -50,4 +50,6 @@ MixerSnapshotSwapResult commitMixerSnapshotSwap(MixerState& mixer);
 void abortMixerSnapshotSwap(MixerState& mixer);
 void publishPendingMixerSnapshotIfReady(MixerState& mixer);
 
+void initMixerSnapshot(MixerSnapshot* snapshot);
+
 } // namespace app::mixer

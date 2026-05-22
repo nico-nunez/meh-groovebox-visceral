@@ -99,7 +99,6 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
                                    service.buffer.bufferText.c_str(),
                                    service.apply.scratchArena,
                                    parseModel);
-
   if (!normalize.ok) {
     failApply(service, operationID, normalize.diagnostics);
     result.diagnostics = service.apply.diagnostics;
@@ -125,7 +124,7 @@ ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
 
   DocDiagnostics admissionDiagnostics{};
   GrooveboxEditResult edit =
-      commitGrooveboxEdit(&session, &app, GrooveboxApplyTiming::NextBar, &admissionDiagnostics);
+      commitGrooveboxEdit(&session, &app, GrooveboxApplyTiming::NextBeat, &admissionDiagnostics);
 
   if (!edit.ok) {
     failApply(service, operationID, admissionDiagnostics);
