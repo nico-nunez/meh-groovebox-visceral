@@ -134,10 +134,10 @@ bool applyEditorBuffer(AuthoredDocEditorState& editor, app::AppContext& app) {
   const app::doc::DocRevision revision = ++editor.buffer.applyRevision;
 
   app::doc::ApplyRevisionResult result =
-      app::doc::applySequencerRevision(app.documents.authoring,
-                                       app,
-                                       revision,
-                                       editor.buffer.text.c_str());
+      app::doc::applyAuthoredDocRevision(app.documents.authoring,
+                                         app,
+                                         revision,
+                                         editor.buffer.text.c_str());
 
   editor.backendDiagnostics = result.diagnostics;
   if (result.ok) {

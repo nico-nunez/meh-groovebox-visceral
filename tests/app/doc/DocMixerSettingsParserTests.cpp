@@ -229,7 +229,7 @@ static void test_sequencer_only_document_still_applies_after_phase2() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  auto result = app::doc::applySequencerRevision(service, app, 1, kNonEmptyTrack1);
+  auto result = app::doc::applyAuthoredDocRevision(service, app, 1, kNonEmptyTrack1);
   CHECK("ok", result.ok);
   app::doc::destroyDocAuthoringService(service);
 }
@@ -241,10 +241,10 @@ static void test_synth_only_document_still_applies_after_phase2() {
   app::AppContext app{};
 
   auto result =
-      app::doc::applySequencerRevision(service,
-                                       app,
-                                       1,
-                                       "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+      app::doc::applyAuthoredDocRevision(service,
+                                         app,
+                                         1,
+                                         "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
   CHECK("ok", result.ok);
   app::doc::destroyDocAuthoringService(service);
 }

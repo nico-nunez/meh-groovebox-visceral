@@ -54,10 +54,10 @@ struct DocAuthoringService {
 void initDocAuthoringService(DocAuthoringService& service);
 void destroyDocAuthoringService(DocAuthoringService& service);
 
-ApplyRevisionResult applySequencerRevision(DocAuthoringService& service,
-                                           app::AppContext& app,
-                                           DocRevision revision,
-                                           const char* bufferText);
+ApplyRevisionResult applyAuthoredDocRevision(DocAuthoringService& service,
+                                             app::AppContext& app,
+                                             DocRevision revision,
+                                             const char* bufferText);
 
 ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
                                        app::AppContext& app,

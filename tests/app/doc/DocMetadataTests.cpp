@@ -216,7 +216,8 @@ static void test_service_emitted_diagnostics_are_cataloged() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  auto result = app::doc::applySequencerRevision(service, app, 1, "track('one', TrackSettings {})");
+  auto result =
+      app::doc::applyAuthoredDocRevision(service, app, 1, "track('one', TrackSettings {})");
 
   CHECK("not ok", !result.ok);
   CHECK("has diagnostics", !result.diagnostics.empty());

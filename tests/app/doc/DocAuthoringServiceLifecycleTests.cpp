@@ -1,5 +1,5 @@
-#include "TestRunner.h"
 #include "TestHelpers.h"
+#include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocAuthoringService.h"
@@ -25,7 +25,7 @@ static void test_successful_apply_completes_lifecycle() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  auto result = app::doc::applySequencerRevision(service, app, 1, kOneTrackDocument);
+  auto result = app::doc::applyAuthoredDocRevision(service, app, 1, kOneTrackDocument);
   CHECK("ok", result.ok);
   CHECK("applyOperationID == 1", result.applyOperationID == 1);
   CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
@@ -42,7 +42,8 @@ static void test_parse_failure_fails_lifecycle() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  auto result = app::doc::applySequencerRevision(service, app, 1, "track('bad', TrackSettings {})");
+  auto result =
+      app::doc::applyAuthoredDocRevision(service, app, 1, "track('bad', TrackSettings {})");
   CHECK("not ok", !result.ok);
   CHECK("status Failed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
   CHECK("activeApplyOperationID == 0", service.apply.activeApplyOperationID == 0);
@@ -61,7 +62,7 @@ static void test_supersedes_existing_active_operation() {
   service.apply.activeApplyOperationID = 41;
   service.apply.status = app::doc::ApplyStatus::Started;
 
-  auto result = app::doc::applySequencerRevision(service, app, 1, kOneTrackDocument);
+  auto result = app::doc::applyAuthoredDocRevision(service, app, 1, kOneTrackDocument);
   CHECK("ok", result.ok);
   CHECK("applyOperationID == 1", result.applyOperationID == 1);
   CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
@@ -115,7 +116,7 @@ static void test_query_helpers_return_service_state() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  app::doc::applySequencerRevision(service, app, 1, "track('bad', TrackSettings {})");
+  app::doc::applyAuthoredDocRevision(service, app, 1, "track('bad', TrackSettings {})");
 
   CHECK("getDocDiagnostics matches",
         &app::doc::getDocDiagnostics(service) == &service.apply.diagnostics);

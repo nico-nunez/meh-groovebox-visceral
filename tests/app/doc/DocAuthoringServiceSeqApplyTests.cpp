@@ -30,10 +30,10 @@ static void test_parse_failure_sets_failed_without_admission() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->documents.authoring,
-                                                 *app,
-                                                 1,
-                                                 "track('one', TrackSettings {})");
+  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring,
+                                                   *app,
+                                                   1,
+                                                   "track('one', TrackSettings {})");
 
   CHECK("not ok", !result.ok);
   CHECK("status Failed", app->documents.authoring.apply.status == app::doc::ApplyStatus::Failed);
@@ -52,7 +52,7 @@ static void test_successful_sequencer_apply_publishes_at_boundary() {
   CHECK("context", app != nullptr);
 
   auto result =
-      app::doc::applySequencerRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+      app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
 
   CHECK("ok", result.ok);
   CHECK("status Completed",
@@ -80,7 +80,7 @@ static void test_empty_document_replaces_with_default_targets() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, "");
+  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, "");
 
   CHECK("ok", result.ok);
   CHECK("pending ready", app->documents.pendingApply.ready.load());
@@ -105,7 +105,7 @@ static void test_mixed_synth_mixer_sequencer_apply_publishes_together() {
                     "synth(1, SynthSettings { osc1 = { mix = 0.5 } })\n";
   doc += kNonEmptyTrack1;
 
-  auto result = app::doc::applySequencerRevision(app->documents.authoring, *app, 1, doc.c_str());
+  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, doc.c_str());
 
   CHECK("ok", result.ok);
   CHECK("pending ready", app->documents.pendingApply.ready.load());
