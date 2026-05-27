@@ -275,4 +275,6 @@ void resetLanePattern(LanePattern* pattern);
 void resetPatternBank(PatternBank* bank);
 void resetPatternSnapshot(PatternSnapshot* snapshot);
 
+const PatternSnapshot& getPatternSnapshot(const SequencerState& state);
+
 } // namespace app::sequencer

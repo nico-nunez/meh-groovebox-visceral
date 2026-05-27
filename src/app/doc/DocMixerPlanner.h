@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/Mixer.h"
+#include "app/GrooveboxPatch.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 
@@ -21,10 +21,10 @@ struct MixerTargetResult {
   DocDiagnostics diagnostics{};
 };
 
-MixerTargetResult buildMixerTargetSnapshot(const AuthoredDocModel* model,
-                                           DocID documentID,
-                                           DocRevision revision,
-                                           mixer::MixerSnapshot* out);
+MixerTargetResult buildMixerPatch(const AuthoredDocModel* model,
+                                  DocID documentID,
+                                  DocRevision revision,
+                                  app::MixerPatch* out);
 
 void buildAdmittedMixerTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted);
 

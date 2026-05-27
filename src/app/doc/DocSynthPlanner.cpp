@@ -1,7 +1,6 @@
 #include "app/doc/DocSynthPlanner.h"
 
 #include "app/doc/DocMetadata.h"
-#include "synth/program/SynthProgram.h"
 
 namespace app::doc {
 namespace {
@@ -35,46 +34,71 @@ DocDiagnostic makeSynthTargetDiagnostic(DocID documentID,
   return d;
 }
 
-} // namespace
+bool appendSynthPatchWrite(app::TrackSynthPatch* patch,
+                           const AuthoredSynthParamWrite& write,
+                           DocID documentID,
+                           DocRevision revision,
+                           DocDiagnostics* diagnostics) {
+  if (patch->writeCount >= app::MAX_SYNTH_PARAM_PATCH_WRITES) {
+    diagnostics->push_back(
+        makeSynthTargetDiagnostic(documentID, revision, &write, "synth patch capacity exceeded"));
+    return false;
+  }
 
-SynthTargetProgramsResult buildSynthTargetPrograms(const AuthoredDocModel* model,
-                                                   DocID documentID,
-                                                   DocRevision revision,
-                                                   synth::program::SynthProgram* out) {
+  if (write.paramID == synth::param::PARAM_UNKNOWN ||
+      static_cast<int>(write.paramID) >= synth::param::PARAM_COUNT) {
+    diagnostics->push_back(
+        makeSynthTargetDiagnostic(documentID, revision, &write, "invalid synth param id"));
+    return false;
+  }
+
+  const auto& def = synth::param::PARAM_DEFS[static_cast<int>(write.paramID)];
+  if (write.value < def.min || write.value > def.max) {
+    diagnostics->push_back(
+        makeSynthTargetDiagnostic(documentID, revision, &write, "synth param out of range"));
+    return false;
+  }
+
+  app::SynthParamPatchWrite& dst = patch->writes[patch->writeCount++];
+  dst.paramID = write.paramID;
+  dst.value = write.value;
+  return true;
+}
+
+} // namespace
+//
+SynthTargetProgramsResult buildSynthPatches(const AuthoredDocModel* model,
+                                            DocID documentID,
+                                            DocRevision revision,
+                                            app::TrackSynthPatch* out,
+                                            bool* hasSynth) {
   SynthTargetProgramsResult result{};
-  if (!model || !out) {
-    const char* errMsg = !model ? "null authored model" : "null synth target out";
+  if (!model || !out || !hasSynth) {
+    const char* errMsg = !model ? "null authored model" : "null synth patch output";
     result.diagnostics.push_back(makeSynthTargetDiagnostic(documentID, revision, nullptr, errMsg));
     return result;
   }
 
-  for (uint8_t t = 0; t < app::MAX_TRACKS; ++t)
-    synth::program::initSynthProgram(out[t]);
+  for (uint8_t track = 0; track < app::MAX_TRACKS; ++track) {
+    out[track] = app::TrackSynthPatch{};
+    hasSynth[track] = false;
+  }
 
   for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
     if (!model->hasSynthState[trackIndex])
       continue;
 
-    const AuthoredTrackSynthPatch& patch = model->synthTracks[trackIndex];
-    auto& program = out[trackIndex];
-
-    for (const auto& write : patch.writes) {
-      if (write.paramID == synth::param::PARAM_UNKNOWN ||
-          static_cast<int>(write.paramID) >= synth::param::PARAM_COUNT) {
-        result.diagnostics.push_back(
-            makeSynthTargetDiagnostic(documentID, revision, &write, "invalid synth param id"));
+    const AuthoredTrackSynthPatch& authored = model->synthTracks[trackIndex];
+    for (const auto& write : authored.writes) {
+      if (!appendSynthPatchWrite(&out[trackIndex],
+                                 write,
+                                 documentID,
+                                 revision,
+                                 &result.diagnostics))
         return result;
-      }
-
-      const auto& def = synth::param::PARAM_DEFS[static_cast<int>(write.paramID)];
-      if (write.value < def.min || write.value > def.max) {
-        result.diagnostics.push_back(
-            makeSynthTargetDiagnostic(documentID, revision, &write, "synth param out of range"));
-        return result;
-      }
-
-      program.paramValues[static_cast<int>(write.paramID)] = write.value;
     }
+
+    hasSynth[trackIndex] = out[trackIndex].writeCount > 0;
   }
 
   result.ok = true;

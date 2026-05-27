@@ -2,9 +2,9 @@
 
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocMetadata.h"
-// #include "app/doc/DocMixerSettingsMetadata.h"
 #include "app/doc/DocSynthSettingsMetadata.h"
-#include "lua/SequencerLuaParsing.h"
+#include "lua/LuaState.h"
+
 #include "synth/params/ParamUtils.h"
 
 #include <cmath>
@@ -18,12 +18,65 @@ struct LuaSequencerParseContext {
   DocRevision revision = 0;
   AuthoredDocModel* model = nullptr;
   DocDiagnostics diagnostics{};
-  PatternArena* arena = nullptr;
 };
 
 // ====================
 // Helpers
 // ====================
+bool tableHasField(lua_State* L, int tableIndex, const char* field) {
+  const int absTable = lua_absindex(L, tableIndex);
+  lua_getfield(L, absTable, field);
+  const bool present = !lua_isnil(L, -1);
+  lua_pop(L, 1);
+  return present;
+}
+
+bool readBoolField(lua_State* L, int tableIndex, const char* field, bool* out) {
+  const int absTable = lua_absindex(L, tableIndex);
+  lua_getfield(L, absTable, field);
+  if (!lua_isboolean(L, -1)) {
+    lua_pop(L, 1);
+    return false;
+  }
+  *out = lua_toboolean(L, -1) != 0;
+  lua_pop(L, 1);
+  return true;
+}
+
+bool readUInt7Field(lua_State* L, int tableIndex, const char* field, uint8_t* out) {
+  const int absTable = lua_absindex(L, tableIndex);
+  lua_getfield(L, absTable, field);
+  if (!lua_isinteger(L, -1)) {
+    lua_pop(L, 1);
+    return false;
+  }
+  const int value = static_cast<int>(lua_tointeger(L, -1));
+  lua_pop(L, 1);
+  if (value < 0 || value > 127)
+    return false;
+  *out = static_cast<uint8_t>(value);
+  return true;
+}
+
+bool readPositiveUInt8Field(lua_State* L,
+                            int tableIndex,
+                            const char* field,
+                            uint8_t max,
+                            uint8_t* out) {
+  const int absTable = lua_absindex(L, tableIndex);
+  lua_getfield(L, absTable, field);
+  if (!lua_isinteger(L, -1)) {
+    lua_pop(L, 1);
+    return false;
+  }
+  const int value = static_cast<int>(lua_tointeger(L, -1));
+  lua_pop(L, 1);
+  if (value < 1 || value > static_cast<int>(max))
+    return false;
+  *out = static_cast<uint8_t>(value);
+  return true;
+}
+
 bool finiteNumber(lua_State* L, int index) {
   return lua_isnumber(L, index) && std::isfinite(lua_tonumber(L, index));
 }
@@ -40,25 +93,6 @@ SourceSpan currentLuaCallSpan(lua_State* L) {
   }
 
   return span;
-}
-
-uint8_t findFirstOccupiedSlot(const AuthoredTrackSeqModel& track) {
-  for (uint8_t slot = 0; slot < sequencer::PATTERNS_PER_LANE; ++slot) {
-    if (track.patterns[slot].occupied)
-      return slot;
-  }
-
-  return sequencer::INVALID_PATTERN_SLOT;
-}
-
-bool activeSlotReferencesOccupiedPattern(const AuthoredTrackSeqModel& track) {
-  if (track.activeSlot == sequencer::INVALID_PATTERN_SLOT)
-    return true;
-
-  if (track.activeSlot >= sequencer::PATTERNS_PER_LANE)
-    return false;
-
-  return track.patterns[track.activeSlot].occupied;
 }
 
 // ==================
@@ -81,15 +115,6 @@ std::string trackTarget(uint8_t trackIndex, const char* suffix) {
     target += ".";
     target += suffix;
   }
-  return target;
-}
-
-std::string patternSlotTarget(uint8_t trackIndex, uint8_t slot) {
-  std::string target = "track:";
-  target += std::to_string(static_cast<int>(trackIndex) + 1);
-  target += ".patterns[";
-  target += std::to_string(static_cast<int>(slot) + 1);
-  target += "]";
   return target;
 }
 
@@ -176,71 +201,334 @@ bool appendSynthWrite(LuaSequencerParseContext& ctx,
   return true;
 }
 
-void finalizeTrackNormalization(LuaSequencerParseContext& ctx,
-                                AuthoredTrackSeqModel& track,
-                                bool patternsFieldPresent,
-                                bool parsedValidPatternsTable,
-                                bool activeSlotFieldPresent) {
-  if (!patternsFieldPresent) {
-    track.activeSlot = sequencer::INVALID_PATTERN_SLOT;
-    track.activeSlotSource = ActivePatternSlotSource::Unset;
-    track.explicitlyAuthoredEmpty = true;
-
-    if (activeSlotFieldPresent) {
-      const std::string target = trackTarget(track.trackIndex, "activeSlot");
-      pushDiagnostic(ctx,
-                     DiagnosticSource::Normalizer,
-                     docdiag::SequencerActiveSlotMissingPatterns,
-                     "activeSlot requires populated patterns",
-                     track.activeSlotSpan,
-                     target.c_str());
-    }
-    return;
-  }
-
-  if (!parsedValidPatternsTable)
-    return;
-
-  const uint8_t firstSlot = findFirstOccupiedSlot(track);
-  if (firstSlot == sequencer::INVALID_PATTERN_SLOT) {
-    track.activeSlot = sequencer::INVALID_PATTERN_SLOT;
-    track.activeSlotSource = ActivePatternSlotSource::Unset;
-    track.explicitlyAuthoredEmpty = true;
-
-    if (activeSlotFieldPresent) {
-      const std::string target = trackTarget(track.trackIndex, "activeSlot");
-      pushDiagnostic(ctx,
-                     DiagnosticSource::Normalizer,
-                     docdiag::SequencerActiveSlotMissingPatterns,
-                     "activeSlot requires populated patterns",
-                     track.activeSlotSpan,
-                     target.c_str());
-    }
-    return;
-  }
-
-  track.explicitlyAuthoredEmpty = false;
-
-  if (!activeSlotFieldPresent) {
-    track.activeSlot = firstSlot;
-    track.activeSlotSource = ActivePatternSlotSource::Inferred;
-    return;
-  }
-
-  if (!activeSlotReferencesOccupiedPattern(track)) {
-    const std::string target = trackTarget(track.trackIndex, "activeSlot");
-    pushDiagnostic(ctx,
-                   DiagnosticSource::Normalizer,
-                   docdiag::SequencerActiveSlotEmptySlot,
-                   "activeSlot points to an empty pattern slot",
-                   track.activeSlotSpan,
-                   target.c_str());
-  }
-}
-
 // ==================
 // Parsers
 // ==================
+bool parseSparseStepLocksPatch(lua_State* L,
+                               int locksIndex,
+                               LuaSequencerParseContext& ctx,
+                               AuthoredTrackSeqModel& track,
+                               AuthoredStepLocksPatch* out) {
+  if (!lua_istable(L, locksIndex)) {
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SequencerPatternInvalidShape,
+                   "locks must be a table or false",
+                   track.trackSpan,
+                   "step.locks");
+    return false;
+  }
+
+  const int absLocks = lua_absindex(L, locksIndex);
+  const int numLocks = static_cast<int>(lua_rawlen(L, absLocks));
+  if (numLocks > static_cast<int>(sequencer::MAX_LOCKS_PER_STEP)) {
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SequencerPatternInvalidShape,
+                   "too many step locks",
+                   track.trackSpan,
+                   "step.locks");
+    return false;
+  }
+
+  out->op = app::PatchObjectOp::Replace;
+  out->span = track.trackSpan;
+  out->numLocks = 0;
+
+  bool ok = true;
+  for (int i = 0; i < numLocks; ++i) {
+    lua_rawgeti(L, absLocks, i + 1);
+    if (!lua_istable(L, -1)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "lock must be a table",
+                     track.trackSpan,
+                     "step.locks");
+      lua_pop(L, 1);
+      ok = false;
+      continue;
+    }
+
+    const int lockIndex = lua_absindex(L, -1);
+
+    lua_getfield(L, lockIndex, "param");
+    if (!lua_isstring(L, -1)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "lock param must be a string",
+                     track.trackSpan,
+                     "step.locks.param");
+      lua_pop(L, 2);
+      ok = false;
+      continue;
+    }
+
+    const char* paramName = lua_tostring(L, -1);
+    auto paramID = synth::param::utils::getParamIDByName(paramName);
+    lua_pop(L, 1);
+    if (paramID == synth::param::PARAM_UNKNOWN) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "unknown lock param",
+                     track.trackSpan,
+                     "step.locks.param");
+      lua_pop(L, 1);
+      ok = false;
+      continue;
+    }
+
+    lua_getfield(L, lockIndex, "value");
+    if (!lua_isnumber(L, -1) || !std::isfinite(lua_tonumber(L, -1))) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "lock value must be finite numeric",
+                     track.trackSpan,
+                     "step.locks.value");
+      lua_pop(L, 2);
+      ok = false;
+      continue;
+    }
+    const float value = static_cast<float>(lua_tonumber(L, -1));
+    lua_pop(L, 1);
+
+    bool duplicate = false;
+    for (uint8_t existing = 0; existing < out->numLocks; ++existing) {
+      if (out->locks[existing].paramID == static_cast<uint8_t>(paramID)) {
+        pushDiagnostic(ctx,
+                       DiagnosticSource::Validator,
+                       docdiag::SequencerPatternInvalidShape,
+                       "duplicate lock param",
+                       track.trackSpan,
+                       "step.locks.param");
+        ok = false;
+        duplicate = true;
+        break;
+      }
+    }
+
+    if (!duplicate)
+      out->locks[out->numLocks++] = {static_cast<uint8_t>(paramID), value};
+
+    lua_pop(L, 1);
+  }
+
+  return ok;
+}
+
+bool parseSparseStepPatch(lua_State* L,
+                          int stepIndex,
+                          LuaSequencerParseContext& ctx,
+                          AuthoredTrackSeqModel& track,
+                          AuthoredStepPatch* out) {
+  const int absStep = lua_absindex(L, stepIndex);
+  out->op = app::PatchObjectOp::Patch;
+  out->span = track.trackSpan;
+  bool ok = true;
+
+  if (tableHasField(L, absStep, "active")) {
+    out->hasActive = true;
+    if (!readBoolField(L, absStep, "active", &out->active)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "active must be boolean",
+                     out->span,
+                     "step.active");
+      ok = false;
+    }
+    out->hasNoteOn = true;
+    out->noteOn = out->active;
+  }
+
+  if (tableHasField(L, absStep, "note")) {
+    out->hasNote = true;
+    if (!readUInt7Field(L, absStep, "note", &out->note)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "note out of range",
+                     out->span,
+                     "step.note");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absStep, "velocity")) {
+    out->hasVelocity = true;
+    if (!readUInt7Field(L, absStep, "velocity", &out->velocity)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "velocity out of range",
+                     out->span,
+                     "step.velocity");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absStep, "gate")) {
+    lua_getfield(L, absStep, "gate");
+    const bool valid =
+        lua_isnumber(L, -1) && std::isfinite(lua_tonumber(L, -1)) && lua_tonumber(L, -1) >= 0.0;
+    if (valid) {
+      out->hasGate = true;
+      out->gate = static_cast<float>(lua_tonumber(L, -1));
+    } else {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "gate out of range",
+                     out->span,
+                     "step.gate");
+      ok = false;
+    }
+    lua_pop(L, 1);
+  }
+
+  if (tableHasField(L, absStep, "legato")) {
+    out->hasLegato = true;
+    if (!readBoolField(L, absStep, "legato", &out->legato)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "legato must be boolean",
+                     out->span,
+                     "step.legato");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absStep, "locks")) {
+    lua_getfield(L, absStep, "locks");
+    if (lua_isboolean(L, -1) && lua_toboolean(L, -1) == 0) {
+      out->locks.op = app::PatchObjectOp::Clear;
+      out->locks.span = out->span;
+      out->locks.numLocks = 0;
+    } else {
+      ok = parseSparseStepLocksPatch(L, lua_absindex(L, -1), ctx, track, &out->locks) && ok;
+    }
+    lua_pop(L, 1);
+  }
+
+  return ok;
+}
+
+bool parseSparsePatternPatch(lua_State* L,
+                             int patternIndex,
+                             LuaSequencerParseContext& ctx,
+                             AuthoredTrackSeqModel& track,
+                             AuthoredPatternPatch* out) {
+  if (!lua_istable(L, patternIndex))
+    return false;
+
+  const int absPattern = lua_absindex(L, patternIndex);
+  out->op = app::PatchObjectOp::Patch;
+  out->span = track.trackSpan;
+  bool ok = true;
+
+  if (tableHasField(L, absPattern, "numSteps")) {
+    out->hasNumSteps = true;
+    if (!readPositiveUInt8Field(L,
+                                absPattern,
+                                "numSteps",
+                                sequencer::MAX_PATTERN_STEPS,
+                                &out->numSteps)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "numSteps out of range",
+                     out->span,
+                     "pattern.numSteps");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absPattern, "stepsPerBeat")) {
+    out->hasStepsPerBeat = true;
+    if (!readPositiveUInt8Field(L,
+                                absPattern,
+                                "stepsPerBeat",
+                                sequencer::MAX_STEPS_PER_BEAT,
+                                &out->stepsPerBeat)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "stepsPerBeat out of range",
+                     out->span,
+                     "pattern.stepsPerBeat");
+      ok = false;
+    }
+  }
+
+  lua_getfield(L, absPattern, "steps");
+  if (!lua_isnil(L, -1)) {
+    if (!lua_istable(L, -1)) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "steps must be a table",
+                     out->span,
+                     "pattern.steps");
+      lua_pop(L, 1);
+      return false;
+    }
+
+    const int stepsIndex = lua_absindex(L, -1);
+    lua_pushnil(L);
+    while (lua_next(L, stepsIndex) != 0) {
+      if (!lua_isinteger(L, -2)) {
+        pushDiagnostic(ctx,
+                       DiagnosticSource::Validator,
+                       docdiag::SequencerPatternInvalidShape,
+                       "step key must be an integer",
+                       out->span,
+                       "pattern.steps");
+        lua_pop(L, 1);
+        ok = false;
+        continue;
+      }
+
+      const int stepNumber = static_cast<int>(lua_tointeger(L, -2));
+      if (stepNumber < 1 || stepNumber > static_cast<int>(sequencer::MAX_PATTERN_STEPS)) {
+        pushDiagnostic(ctx,
+                       DiagnosticSource::Validator,
+                       docdiag::SequencerPatternInvalidShape,
+                       "step key out of range",
+                       out->span,
+                       "pattern.steps");
+        lua_pop(L, 1);
+        ok = false;
+        continue;
+      }
+
+      const uint8_t step = static_cast<uint8_t>(stepNumber - 1);
+      out->hasStep[step] = true;
+      if (lua_isboolean(L, -1) && lua_toboolean(L, -1) == 0) {
+        out->steps[step].op = app::PatchObjectOp::Clear;
+        out->steps[step].span = track.trackSpan;
+      } else if (lua_istable(L, -1)) {
+        ok = parseSparseStepPatch(L, lua_absindex(L, -1), ctx, track, &out->steps[step]) && ok;
+      } else {
+        pushDiagnostic(ctx,
+                       DiagnosticSource::Validator,
+                       docdiag::SequencerPatternInvalidShape,
+                       "step must be a table or false",
+                       out->span,
+                       "pattern.steps");
+        ok = false;
+      }
+      lua_pop(L, 1);
+    }
+  }
+  lua_pop(L, 1);
+
+  return ok;
+}
+
 bool parseMixerScalarValue(lua_State* L,
                            int valueIndex,
                            LuaSequencerParseContext& ctx,
@@ -302,67 +590,43 @@ bool parseMixerScalarValue(lua_State* L,
   return true;
 }
 
-bool parsePatternSlot(lua_State* L,
-                      int patternIndex,
-                      LuaSequencerParseContext& ctx,
-                      AuthoredTrackSeqModel& track,
-                      uint8_t slot) {
-  app::sequencer::LanePattern pattern{};
-  auto parseRes = lua::parseLuaLanePattern(L, patternIndex, pattern);
-  if (!parseRes.ok) {
-    const std::string target = patternSlotTarget(track.trackIndex, slot);
-    pushDiagnostic(ctx,
-                   DiagnosticSource::Validator,
-                   docdiag::SequencerPatternInvalidShape,
-                   parseRes.err,
-                   track.trackSpan,
-                   target.c_str());
-    return false;
-  }
-
-  sequencer::LanePattern* dest = ctx.arena->get(track.trackIndex, slot);
-  *dest = pattern;
-  track.patterns[slot].occupied = true;
-  track.patterns[slot].pattern = dest;
-  track.patterns[slot].slotSpan = track.trackSpan;
-  return true;
-}
-
 bool parsePatternsField(lua_State* L,
                         int settingsIndex,
                         LuaSequencerParseContext& ctx,
-                        AuthoredTrackSeqModel& track,
-                        bool& parsedValidPatternsTable) {
-  parsedValidPatternsTable = false;
-
+                        AuthoredTrackSeqModel& track) {
   const int absSettingsIndex = lua_absindex(L, settingsIndex);
   lua_getfield(L, absSettingsIndex, "patterns");
+
+  if (lua_isboolean(L, -1) && lua_toboolean(L, -1) == 0) {
+    track.patternBankOp = app::PatchObjectOp::Clear;
+    lua_pop(L, 1);
+    return true;
+  }
+
   if (!lua_istable(L, -1)) {
-    const std::string target = trackTarget(track.trackIndex, "patterns");
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
                    docdiag::SequencerPatternsInvalidShape,
-                   "patterns must be a table",
+                   "patterns must be a table or false",
                    track.patternsSpan,
-                   target.c_str());
+                   "track.patterns");
     lua_pop(L, 1);
     return false;
   }
 
-  parsedValidPatternsTable = true;
+  track.patternBankOp = app::PatchObjectOp::Patch;
   const int patternsIndex = lua_absindex(L, -1);
   bool ok = true;
 
   lua_pushnil(L);
   while (lua_next(L, patternsIndex) != 0) {
     if (!lua_isinteger(L, -2)) {
-      const std::string target = trackTarget(track.trackIndex, "patterns");
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SequencerPatternSlotInvalidKey,
                      "pattern slot key must be an integer",
                      track.patternsSpan,
-                     target.c_str());
+                     "track.patterns");
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -370,21 +634,37 @@ bool parsePatternsField(lua_State* L,
 
     const int slotNumber = static_cast<int>(lua_tointeger(L, -2));
     if (slotNumber < 1 || slotNumber > static_cast<int>(sequencer::PATTERNS_PER_LANE)) {
-      const std::string target = trackTarget(track.trackIndex, "patterns");
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SequencerPatternSlotOutOfRange,
                      "pattern slot out of range",
                      track.patternsSpan,
-                     target.c_str());
+                     "track.patterns");
       lua_pop(L, 1);
       ok = false;
       continue;
     }
 
     const uint8_t slot = static_cast<uint8_t>(slotNumber - 1);
-    if (!lua_isnil(L, -1))
-      ok = parsePatternSlot(L, lua_absindex(L, -1), ctx, track, slot) && ok;
+    AuthoredPatternSlotPatch& slotPatch = track.patternSlots[slot];
+    slotPatch.span = track.trackSpan;
+
+    if (lua_isboolean(L, -1) && lua_toboolean(L, -1) == 0) {
+      track.hasPatternSlot[slot] = true;
+      slotPatch.op = app::PatchObjectOp::Clear;
+    } else if (lua_istable(L, -1)) {
+      slotPatch.op = app::PatchObjectOp::Patch;
+      ok = parseSparsePatternPatch(L, lua_absindex(L, -1), ctx, track, &slotPatch.pattern) && ok;
+      track.hasPatternSlot[slot] = hasAuthoredPatternPatchEdits(slotPatch.pattern);
+    } else {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "pattern slot must be a table or false",
+                     slotPatch.span,
+                     "track.patterns");
+      ok = false;
+    }
     lua_pop(L, 1);
   }
 
@@ -425,6 +705,7 @@ bool parseActiveSlotField(lua_State* L,
   }
 
   track.activeSlot = static_cast<uint8_t>(slotNumber - 1);
+  track.hasActiveSlot = true;
   track.activeSlotSource = ActivePatternSlotSource::Explicit;
   return true;
 }
@@ -691,41 +972,48 @@ bool parseTrackSettings(lua_State* L,
   lua_pop(L, 1);
 
   bool ok = true;
-  bool parsedValidPatternsTable = false;
 
   lua_getfield(L, absSettingsIndex, "synth");
   const bool synthFieldPresent = !lua_isnil(L, -1);
-  if (synthFieldPresent)
+  if (synthFieldPresent) {
     ok = parseSynthSettingsForTrack(L,
                                     lua_absindex(L, -1),
                                     ctx,
                                     track.trackIndex,
                                     track.trackSpan) &&
          ok;
+  }
   lua_pop(L, 1);
 
   lua_getfield(L, absSettingsIndex, "mixer");
   const bool mixerFieldPresent = !lua_isnil(L, -1);
-  if (mixerFieldPresent)
+  if (mixerFieldPresent) {
     ok = parseMixerSettingsForTrack(L,
                                     lua_absindex(L, -1),
                                     ctx,
                                     track.trackIndex,
                                     track.trackSpan) &&
          ok;
+  }
   lua_pop(L, 1);
 
   if (patternsFieldPresent)
-    ok = parsePatternsField(L, absSettingsIndex, ctx, track, parsedValidPatternsTable) && ok;
+    ok = parsePatternsField(L, absSettingsIndex, ctx, track) && ok;
 
   if (activeSlotFieldPresent)
     ok = parseActiveSlotField(L, absSettingsIndex, ctx, track) && ok;
 
-  finalizeTrackNormalization(ctx,
-                             track,
-                             patternsFieldPresent,
-                             parsedValidPatternsTable,
-                             activeSlotFieldPresent);
+  if (activeSlotFieldPresent && !patternsFieldPresent) {
+    const std::string target = trackTarget(track.trackIndex, "activeSlot");
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Normalizer,
+                   docdiag::SequencerActiveSlotMissingPatterns,
+                   "activeSlot requires authored patterns in the same track patch",
+                   track.activeSlotSpan,
+                   target.c_str());
+    ok = false;
+  }
+
   return ok;
 }
 
@@ -857,7 +1145,6 @@ int l_captureTrack(lua_State* L) {
   }
 
   const uint8_t trackIndex = static_cast<uint8_t>(trackNumber - 1);
-  ctx->model->sequencer.hasTrackState[trackIndex] = true;
 
   AuthoredTrackSeqModel& track = ctx->model->sequencer.tracks[trackIndex];
   track = AuthoredTrackSeqModel{};
@@ -867,6 +1154,9 @@ int l_captureTrack(lua_State* L) {
   track.activeSlotSpan = trackSpan;
 
   parseTrackSettings(L, 2, *ctx, track);
+  track.hasSequencerPatch = hasAuthoredTrackSeqPatchEdits(track);
+  ctx->model->sequencer.hasTrackState[trackIndex] = track.hasSequencerPatch;
+
   return 0;
 }
 
@@ -947,7 +1237,6 @@ void registerParserEnvironment(lua_State* L, LuaSequencerParseContext& ctx) {
 AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
                                                         DocRevision revision,
                                                         const char* bufferText,
-                                                        PatternArena* scratchArena,
                                                         AuthoredDocModel* outModel) {
   AuthoredDocNormalizeResult result{};
   if (!outModel) {
@@ -964,18 +1253,6 @@ AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
 
   *outModel = AuthoredDocModel{};
 
-  if (!scratchArena) {
-    DocDiagnostic d{};
-    d.severity = DiagnosticSeverity::Error;
-    d.source = DiagnosticSource::Parser;
-    d.documentID = documentID;
-    d.revision = revision;
-    d.code = docdiag::InternalPlannerError;
-    d.message = "null pattern scratch arena";
-    result.diagnostics.push_back(d);
-    return result;
-  }
-
   outModel->documentID = documentID;
   outModel->revision = revision;
   outModel->sequencer.documentID = documentID;
@@ -985,7 +1262,6 @@ AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
   ctx.documentID = documentID;
   ctx.revision = revision;
   ctx.model = outModel;
-  ctx.arena = scratchArena;
 
   lua_State* L = luaL_newstate();
   if (!L) {

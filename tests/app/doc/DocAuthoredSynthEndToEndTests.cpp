@@ -8,6 +8,7 @@
 #include "app/sessions/AudioSession.h"
 #include "synth/WavetableBanks.h"
 #include "synth/params/ParamDefs.h"
+#include "synth/params/ParamSync.h"
 
 namespace {
 
@@ -132,10 +133,52 @@ static void test_valid_synth_document_never_emits_apply_not_implemented() {
   app::destroyAppContext(app);
 }
 
+static void test_synth_param_patch_preserves_other_live_params() {
+  TEST("synth_param_patch_preserves_other_live_params");
+
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+  app->tracks[0].controlProgram.paramValues[synth::param::OSC2_MIX_LEVEL] = 0.8f;
+  app->tracks[0].controlProgramValid = true;
+  synth::param::sync::setParamDeferred(app->tracks[0].engine, synth::param::OSC2_MIX_LEVEL, 0.8f);
+
+  auto result = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring, *app, 1, "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+  CHECK("apply ok", result.ok);
+  test::publishPending(app);
+
+  CHECK("osc1 changed", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
+  CHECK("osc2 preserved", app->tracks[0].engine.params[synth::param::OSC2_MIX_LEVEL] == 0.8f);
+  app::destroyAppContext(app);
+}
+
+static void test_sequencer_patch_preserves_synth() {
+  TEST("sequencer_patch_preserves_synth");
+
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+  app->tracks[0].controlProgram.paramValues[synth::param::OSC1_MIX_LEVEL] = 0.9f;
+  app->tracks[0].controlProgramValid = true;
+  synth::param::sync::setParamDeferred(app->tracks[0].engine, synth::param::OSC1_MIX_LEVEL, 0.9f);
+
+  auto result = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring,
+      *app,
+      1,
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { note = 64 } } } } })");
+  CHECK("apply ok", result.ok);
+  test::publishPending(app);
+
+  CHECK("synth preserved", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.9f);
+  app::destroyAppContext(app);
+}
+
 void runDocAuthoredSynthEndToEndTests() {
   SUITE("DocAuthoredSynthEndToEnd");
   test_luals_advertised_synth_shape_parses_and_applies();
   test_mixed_synth_and_sequencer_document_applies();
   test_deferred_synth_fields_fail_without_queueing_events();
   test_valid_synth_document_never_emits_apply_not_implemented();
+  test_synth_param_patch_preserves_other_live_params();
+  test_sequencer_patch_preserves_synth();
 }

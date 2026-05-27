@@ -181,6 +181,63 @@ static void test_mixer_e2e_mixer_sequencer_publish_together() {
   app::destroyAppContext(app);
 }
 
+static void test_gain_patch_preserves_live_pan() {
+  TEST("gain_patch_preserves_live_pan");
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  app->mixer.current.tracks[0].pan = -0.5f;
+
+  auto result = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring, *app, 1, "mixer(1, MixerSettings { gain = 0.7 })");
+  CHECK("ok", result.ok);
+  test::publishPending(app);
+
+  CHECK("gain changed", app->mixer.current.tracks[0].gain == 0.7f);
+  CHECK("pan preserved", app->mixer.current.tracks[0].pan == -0.5f);
+  app::destroyAppContext(app);
+}
+
+static void test_mixer_patch_preserves_sequencer() {
+  TEST("mixer_patch_preserves_sequencer");
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  auto seed =
+      app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+  CHECK("seed ok", seed.ok);
+  test::publishPending(app);
+
+  auto mixer = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring, *app, 2, "mixer(1, MixerSettings { gain = 0.7 })");
+  CHECK("mixer ok", mixer.ok);
+  test::publishPending(app);
+
+  auto bank = app::sequencer::getPatternBank(app->sequencer, 0);
+  CHECK("slot preserved", bank.ok && bank.value->slots[0].occupied);
+  CHECK("note preserved", bank.value->slots[0].pattern.steps[0].note == 60);
+  app::destroyAppContext(app);
+}
+
+static void test_sequencer_patch_preserves_mixer() {
+  TEST("sequencer_patch_preserves_mixer");
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  app->mixer.current.tracks[0].gain = 0.25f;
+
+  auto result = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring,
+      *app,
+      1,
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { note = 64 } } } } })");
+  CHECK("apply ok", result.ok);
+  test::publishPending(app);
+
+  CHECK("mixer preserved", app->mixer.current.tracks[0].gain == 0.25f);
+  app::destroyAppContext(app);
+}
+
 static void test_valid_mixer_doc_lua_fixture_exists() {
   TEST("valid_mixer_doc_lua_fixture_exists");
   std::ifstream f("tests/luals/authored_document/valid_mixer_doc.lua");
@@ -198,5 +255,8 @@ void runDocAuthoredMixerEndToEndTests() {
   test_mixer_e2e_valid_mixed_doc_applies();
   test_mixer_e2e_admitted_model_records_multiple_tracks();
   test_mixer_e2e_mixer_sequencer_publish_together();
+  test_gain_patch_preserves_live_pan();
+  test_mixer_patch_preserves_sequencer();
+  test_sequencer_patch_preserves_mixer();
   test_valid_mixer_doc_lua_fixture_exists();
 }

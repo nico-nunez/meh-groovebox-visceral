@@ -2,7 +2,7 @@
 
 #include "app/AppContext.h"
 #include "app/GrooveboxEditSession.h"
-#include "app/doc/DocGrooveboxTargetBuilder.h"
+#include "app/doc/DocGrooveboxPatchBuilder.h"
 #include "app/doc/DocMetadata.h"
 #include "app/doc/DocMixerPlanner.h"
 #include "app/doc/DocSequencerParser.h"
@@ -65,7 +65,6 @@ void failApply(DocAuthoringService& service,
 
 void buildAdmittedDocumentModel(const AuthoredDocModel* nextModel, DocApplyState* apply) {
   AuthoredDocModel* admitted = &apply->lastAdmittedDocModel;
-  PatternArena* admittedArena = apply->admittedArena;
 
   admitted->documentID = nextModel->documentID;
   admitted->revision = nextModel->revision;
@@ -74,7 +73,7 @@ void buildAdmittedDocumentModel(const AuthoredDocModel* nextModel, DocApplyState
 
   buildAdmittedSynthTargetModel(nextModel, admitted);
   buildAdmittedMixerTargetModel(nextModel, admitted);
-  buildAdmittedSeqTargetModel(nextModel, admitted, admittedArena);
+  buildAdmittedSeqTargetModel(nextModel, admitted);
 
   apply->hasLastAdmittedDocModel = true;
 }
@@ -97,7 +96,6 @@ ApplyRevisionResult applyAuthoredDocRevision(DocAuthoringService& service,
       parseAndNormalizeAuthoredDoc(service.buffer.documentID,
                                    revision,
                                    service.buffer.bufferText.c_str(),
-                                   service.apply.scratchArena,
                                    parseModel);
   if (!normalize.ok) {
     failApply(service, operationID, normalize.diagnostics);
@@ -107,9 +105,10 @@ ApplyRevisionResult applyAuthoredDocRevision(DocAuthoringService& service,
 
   service.apply.status = ApplyStatus::Validated;
 
-  GrooveboxTargetState* target = &service.applyWorkspace->target;
+  app::GrooveboxPatch* patch = &service.applyWorkspace->patch;
   GrooveboxTargetBuildResult build =
-      buildGrooveboxTargetState(parseModel, service.buffer.documentID, revision, target);
+      buildGrooveboxPatch(parseModel, service.buffer.documentID, revision, patch);
+
   if (!build.ok) {
     failApply(service, operationID, build.diagnostics);
     result.diagnostics = service.apply.diagnostics;
@@ -120,7 +119,7 @@ ApplyRevisionResult applyAuthoredDocRevision(DocAuthoringService& service,
 
   GrooveboxEditSession session{};
   beginGrooveboxEdit(&session, revision);
-  stageGrooveboxTarget(&session, target);
+  stageGrooveboxPatch(&session, patch);
 
   DocDiagnostics admissionDiagnostics{};
   GrooveboxEditResult edit =
@@ -171,14 +170,10 @@ void initDocAuthoringService(DocAuthoringService& service) {
   destroyDocAuthoringService(service);
 
   service = DocAuthoringService{};
-  service.apply.admittedArena = new PatternArena{};
-  service.apply.scratchArena = new PatternArena{};
   service.applyWorkspace = new DocApplyWorkspace{};
 }
 
 void destroyDocAuthoringService(DocAuthoringService& service) {
-  delete service.apply.admittedArena;
-  delete service.apply.scratchArena;
   delete service.applyWorkspace;
   service = DocAuthoringService{};
 }

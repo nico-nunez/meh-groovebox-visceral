@@ -180,14 +180,10 @@ static void test_parser_emitted_diagnostics_are_cataloged() {
       "steps = { { active = true } } } } })",
       "track(1, TrackSettings { patterns = { [999] = { numSteps = 1, stepsPerBeat = 4, "
       "steps = { { active = true } } } } })",
-      "track(1, TrackSettings { patterns = { [1] = { numSteps = 2, stepsPerBeat = 4, "
-      "steps = { { active = true } } } } })",
       "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
       "steps = { { active = 'yes' } } } } })",
       "track(1, TrackSettings { patterns = {}, activeSlot = 'one' })",
       "track(1, TrackSettings { activeSlot = 1 })",
-      "track(1, TrackSettings { patterns = { [2] = { numSteps = 1, stepsPerBeat = 4, "
-      "steps = { { active = true } } } }, activeSlot = 1 })",
       "applyFile('song.lua')",
       "apply_file('song.lua')",
       "synth('one', SynthSettings {})",
@@ -198,11 +194,10 @@ static void test_parser_emitted_diagnostics_are_cataloged() {
       "synth(1, SynthSettings { svf = { cutoff = 999999 } })",
   };
 
-  app::doc::PatternArena pattern{};
   app::doc::AuthoredDocModel model{};
 
   for (const char* text : invalidDocs) {
-    auto r = app::doc::parseAndNormalizeAuthoredDoc(1, 7, text, &pattern, &model);
+    auto r = app::doc::parseAndNormalizeAuthoredDoc(1, 7, text, &model);
     CHECK("not ok", !r.ok);
     CHECK("has diagnostics", !r.diagnostics.empty());
     CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(r.diagnostics));

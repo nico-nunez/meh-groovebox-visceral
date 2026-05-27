@@ -407,6 +407,9 @@ int publishPresetToCurrentTrack(lua_State* L,
     return CMD_FAILURE;
   }
 
+  trackRt->controlProgram = program;
+  trackRt->controlProgramValid = true;
+
   return CMD_SUCCESS;
 }
 

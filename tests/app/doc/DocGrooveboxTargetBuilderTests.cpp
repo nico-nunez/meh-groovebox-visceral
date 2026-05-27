@@ -1,7 +1,7 @@
 #include "TestHelpers.h"
 #include "TestRunner.h"
 
-#include "app/doc/DocGrooveboxTargetBuilder.h"
+#include "app/doc/DocGrooveboxPatchBuilder.h"
 
 #include "synth/params/ParamDefs.h"
 
@@ -9,114 +9,116 @@ namespace {
 using test::getParseTestWorkspace;
 using test::parseWS;
 
-app::GrooveboxTargetState& targetScratch() {
-  static app::GrooveboxTargetState target{};
-  return target;
+const app::SynthParamPatchWrite* findSynthWrite(const app::TrackSynthPatch& patch,
+                                                synth::param::ParamID paramID) {
+  for (uint16_t i = 0; i < patch.writeCount; ++i) {
+    if (patch.writes[i].paramID == paramID)
+      return &patch.writes[i];
+  }
+  return nullptr;
+}
+
+const app::MixerParamPatchWrite* findMixerWrite(const app::MixerPatch& patch,
+                                                app::params::AppParamID paramID) {
+  for (uint16_t i = 0; i < patch.writeCount; ++i) {
+    if (patch.writes[i].paramID == paramID)
+      return &patch.writes[i];
+  }
+  return nullptr;
 }
 
 } // namespace
 
-static void test_target_builder_defaults_omitted_state() {
-  TEST("target_builder_defaults_omitted_state");
+static void test_empty_document_builds_empty_patch() {
+  TEST("empty_document_builds_empty_patch");
 
   auto* ws = getParseTestWorkspace();
   auto parsed = parseWS("", ws);
   CHECK("parse ok", parsed.ok);
 
-  auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
+  app::GrooveboxPatch patch{};
+  auto result = app::doc::buildGrooveboxPatch(&ws->model, 1, 7, &patch);
 
   CHECK("target ok", result.ok);
-  CHECK("mixer present", target.hasMixer);
-  CHECK("sequencer present", target.hasSequencer);
-  CHECK("track 1 synth present", target.hasSynthProgram[0]);
-  CHECK("default synth mix",
-        target.synthPrograms[0].paramValues[synth::param::OSC1_MIX_LEVEL] ==
-            synth::param::PARAM_DEFS[synth::param::OSC1_MIX_LEVEL].defaultVal);
-  CHECK("default mixer gain", target.mixer.tracks[0].gain == 1.0f);
-  CHECK("default sequencer inactive",
-        target.sequencer.lanes[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
+  CHECK("no patch edits", !app::hasGrooveboxPatchEdits(patch));
+  CHECK("no mixer", !patch.hasMixer);
+  CHECK("no sequencer", !patch.hasSequencer);
+  for (uint8_t t = 0; t < app::MAX_TRACKS; ++t)
+    CHECK("no synth", !patch.hasSynth[t]);
 }
 
-static void test_target_builder_applies_authored_synth_values() {
-  TEST("target_builder_applies_authored_synth_values");
+static void test_synth_only_doc_marks_only_synth_domain() {
+  TEST("synth_only_doc_marks_only_synth_domain");
 
   auto* ws = getParseTestWorkspace();
   auto parsed =
       parseWS("synth(1, SynthSettings { osc1 = { mix = 0.25 }, svf = { cutoff = 1200 } })", ws);
   CHECK("parse ok", parsed.ok);
 
-  auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
+  app::GrooveboxPatch patch{};
+  auto result = app::doc::buildGrooveboxPatch(&ws->model, 1, 7, &patch);
 
   CHECK("target ok", result.ok);
-  CHECK("mix applied", target.synthPrograms[0].paramValues[synth::param::OSC1_MIX_LEVEL] == 0.25f);
-  CHECK("cutoff applied", target.synthPrograms[0].paramValues[synth::param::SVF_CUTOFF] == 1200.0f);
-  CHECK("other track default",
-        target.synthPrograms[1].paramValues[synth::param::OSC1_MIX_LEVEL] ==
-            synth::param::PARAM_DEFS[synth::param::OSC1_MIX_LEVEL].defaultVal);
+  CHECK("track 1 synth present", patch.hasSynth[0]);
+  CHECK("two synth writes", patch.synth[0].writeCount == 2);
+  const auto* mix = findSynthWrite(patch.synth[0], synth::param::OSC1_MIX_LEVEL);
+  const auto* cutoff = findSynthWrite(patch.synth[0], synth::param::SVF_CUTOFF);
+  CHECK("mix write", mix && mix->value == 0.25f);
+  CHECK("cutoff write", cutoff && cutoff->value == 1200.0f);
+  CHECK("no mixer", !patch.hasMixer);
+  CHECK("no sequencer", !patch.hasSequencer);
 }
 
-static void test_target_builder_applies_authored_mixer_values() {
-  TEST("target_builder_applies_authored_mixer_values");
+static void test_mixer_only_doc_marks_only_mixer_domain() {
+  TEST("mixer_only_doc_marks_only_mixer_domain");
 
   auto* ws = getParseTestWorkspace();
   auto parsed = parseWS("mixer(1, MixerSettings { gain = 0.5, pan = -0.25, mute = true })", ws);
   CHECK("parse ok", parsed.ok);
 
-  auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
+  app::GrooveboxPatch patch{};
+  auto result = app::doc::buildGrooveboxPatch(&ws->model, 1, 7, &patch);
 
   CHECK("target ok", result.ok);
-  CHECK("gain applied", target.mixer.tracks[0].gain == 0.5f);
-  CHECK("pan applied", target.mixer.tracks[0].pan == -0.25f);
-  CHECK("mute applied", target.mixer.tracks[0].enabled == false);
-  CHECK("other track default", target.mixer.tracks[1].gain == 1.0f);
+  CHECK("mixer present", patch.hasMixer);
+  CHECK("three mixer writes", patch.mixer.writeCount == 3);
+  const auto* gain = findMixerWrite(patch.mixer, app::params::AppParamID::TrackGain);
+  const auto* pan = findMixerWrite(patch.mixer, app::params::AppParamID::TrackPan);
+  const auto* mute = findMixerWrite(patch.mixer, app::params::AppParamID::TrackMute);
+  CHECK("gain write", gain && gain->value == 0.5f);
+  CHECK("pan write", pan && pan->value == -0.25f);
+  CHECK("mute write", mute && mute->value == 1.0f);
+  CHECK("no synth", !patch.hasSynth[0]);
+  CHECK("no sequencer", !patch.hasSequencer);
 }
 
-static void test_target_builder_applies_authored_sequencer_bank() {
-  TEST("target_builder_applies_authored_sequencer_bank");
+static void test_sequencer_only_doc_does_not_mark_synth_or_mixer() {
+  TEST("sequencer_only_doc_does_not_mark_synth_or_mixer");
 
   auto* ws = getParseTestWorkspace();
-  auto parsed = parseWS("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, "
-                        "stepsPerBeat = 4, steps = { { note = 36, active = true } } } }, "
-                        "activeSlot = 1 })",
+  auto parsed = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
+                        "note = 60 } } } } })",
                         ws);
   CHECK("parse ok", parsed.ok);
 
-  auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
+  app::GrooveboxPatch patch{};
+  auto result = app::doc::buildGrooveboxPatch(&ws->model, 1, 7, &patch);
 
   CHECK("target ok", result.ok);
-  CHECK("slot occupied", target.sequencer.lanes[0].slots[0].occupied);
-  CHECK("active slot", target.sequencer.lanes[0].activeSlot == 0);
-  CHECK("step active", target.sequencer.lanes[0].slots[0].pattern.steps[0].active);
-  CHECK("step note", target.sequencer.lanes[0].slots[0].pattern.steps[0].note == 36);
-}
-
-static void test_target_builder_uses_replacement_not_previous_carry_forward() {
-  TEST("target_builder_uses_replacement_not_previous_carry_forward");
-
-  auto* ws = getParseTestWorkspace();
-  auto parsed = parseWS("synth(2, SynthSettings { osc1 = { mix = 0.75 } })", ws);
-  CHECK("parse ok", parsed.ok);
-
-  auto& target = targetScratch();
-  auto result = app::doc::buildGrooveboxTargetState(&ws->model, 1, 7, &target);
-
-  CHECK("target ok", result.ok);
-  CHECK("track 2 authored",
-        target.synthPrograms[1].paramValues[synth::param::OSC1_MIX_LEVEL] == 0.75f);
-  CHECK("track 1 default",
-        target.synthPrograms[0].paramValues[synth::param::OSC1_MIX_LEVEL] ==
-            synth::param::PARAM_DEFS[synth::param::OSC1_MIX_LEVEL].defaultVal);
+  CHECK("has sequencer", patch.hasSequencer);
+  CHECK("track present", patch.sequencer.hasTrack[0]);
+  CHECK("slot present", patch.sequencer.tracks[0].hasSlot[0]);
+  CHECK("step note", patch.sequencer.tracks[0].slots[0].pattern.steps[0].hasNote &&
+                         patch.sequencer.tracks[0].slots[0].pattern.steps[0].note == 60);
+  CHECK("no mixer", !patch.hasMixer);
+  for (uint8_t t = 0; t < app::MAX_TRACKS; ++t)
+    CHECK("no synth", !patch.hasSynth[t]);
 }
 
 void runDocGrooveboxTargetBuilderTests() {
-  SUITE("DocGrooveboxTargetBuilder");
-  test_target_builder_defaults_omitted_state();
-  test_target_builder_applies_authored_synth_values();
-  test_target_builder_applies_authored_mixer_values();
-  test_target_builder_applies_authored_sequencer_bank();
-  test_target_builder_uses_replacement_not_previous_carry_forward();
+  SUITE("DocGrooveboxPatchBuilder");
+  test_empty_document_builds_empty_patch();
+  test_synth_only_doc_marks_only_synth_domain();
+  test_mixer_only_doc_marks_only_mixer_domain();
+  test_sequencer_only_doc_does_not_mark_synth_or_mixer();
 }

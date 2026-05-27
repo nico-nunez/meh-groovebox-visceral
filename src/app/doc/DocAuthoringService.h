@@ -1,6 +1,5 @@
 #pragma once
 
-#include "app/GrooveboxTargetState.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 
@@ -35,14 +34,11 @@ struct DocApplyState {
 
   AuthoredDocModel lastAdmittedDocModel{};
   bool hasLastAdmittedDocModel = false;
-
-  PatternArena* admittedArena = nullptr;
-  PatternArena* scratchArena = nullptr;
 };
 
 struct DocApplyWorkspace {
   AuthoredDocModel parseModel{};
-  GrooveboxTargetState target{};
+  app::GrooveboxPatch patch{};
 };
 
 struct DocAuthoringService {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/Constants.h"
-#include "app/GrooveboxTargetState.h"
+#include "app/GrooveboxPatch.h"
 #include "app/Transport.h"
 #include "app/doc/DocDiagnostics.h"
 #include "app/doc/DocTypes.h"
@@ -33,7 +33,7 @@ struct PendingGrooveboxApply {
 
 struct GrooveboxEditSession {
   doc::DocRevision revision = 0;
-  const GrooveboxTargetState* target = nullptr;
+  const GrooveboxPatch* patch = nullptr;
 };
 
 struct GrooveboxEditResult {
@@ -41,8 +41,9 @@ struct GrooveboxEditResult {
 };
 
 void beginGrooveboxEdit(GrooveboxEditSession* session, doc::DocRevision revision);
-void stageGrooveboxTarget(GrooveboxEditSession* session, const GrooveboxTargetState* target);
 void abortGrooveboxEdit(GrooveboxEditSession* session, AppContext* app);
+
+void stageGrooveboxPatch(GrooveboxEditSession* session, const GrooveboxPatch* patch);
 
 GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
                                         AppContext* app,

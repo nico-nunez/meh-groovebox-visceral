@@ -1181,4 +1181,7 @@ void resetPatternSnapshot(PatternSnapshot* snapshot) {
     resetPatternBank(&snapshot->lanes[lane]);
 }
 
+const PatternSnapshot& getPatternSnapshot(const SequencerState& state) {
+  return getReadBuffer(state);
+}
 } // namespace app::sequencer

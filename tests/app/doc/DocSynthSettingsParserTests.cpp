@@ -89,7 +89,15 @@ static void test_synth_and_sequencer_can_parse_together() {
 
   CHECK("ok", r.ok);
   CHECK("seq track present", ws->model.sequencer.hasTrackState[0]);
-  CHECK("seq pattern occupied", ws->model.sequencer.tracks[0].patterns[0].occupied);
+  const auto& track = ws->model.sequencer.tracks[0];
+  const auto& pattern = track.patternSlots[0].pattern;
+  CHECK("seq slot patch present", track.hasPatternSlot[0]);
+  CHECK("seq pattern op", track.patternSlots[0].op == app::PatchObjectOp::Patch);
+  CHECK("seq numSteps", pattern.hasNumSteps && pattern.numSteps == 1);
+  CHECK("seq stepsPerBeat", pattern.hasStepsPerBeat && pattern.stepsPerBeat == 4);
+  CHECK("seq step patch", pattern.hasStep[0]);
+  CHECK("seq active", pattern.steps[0].hasActive && pattern.steps[0].active);
+  CHECK("seq note", pattern.steps[0].hasNote && pattern.steps[0].note == 60);
   CHECK("synth present", ws->model.hasSynthState[0]);
   CHECK("master gain", findWrite(ws->model.synthTracks[0], synth::param::MASTER_GAIN) != nullptr);
 }
@@ -243,7 +251,14 @@ static void test_existing_sequencer_parser_api_still_returns_seq_model() {
 
   CHECK("ok", r.ok);
   CHECK("seq track present", ws->model.sequencer.hasTrackState[0]);
-  CHECK("seq pattern occupied", ws->model.sequencer.tracks[0].patterns[0].occupied);
+  const auto& track = ws->model.sequencer.tracks[0];
+  const auto& pattern = track.patternSlots[0].pattern;
+  CHECK("seq slot patch present", track.hasPatternSlot[0]);
+  CHECK("seq pattern op", track.patternSlots[0].op == app::PatchObjectOp::Patch);
+  CHECK("seq numSteps", pattern.hasNumSteps && pattern.numSteps == 1);
+  CHECK("seq stepsPerBeat", pattern.hasStepsPerBeat && pattern.stepsPerBeat == 4);
+  CHECK("seq step patch", pattern.hasStep[0]);
+  CHECK("seq active", pattern.steps[0].hasActive && pattern.steps[0].active);
 }
 
 void runDocSynthSettingsParserTests() {

@@ -20,7 +20,5 @@ struct AuthoredDocNormalizeResult {
 AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
                                                         DocRevision revision,
                                                         const char* bufferText,
-                                                        PatternArena* scratchArena,
                                                         AuthoredDocModel* outModel);
-
 } // namespace app::doc

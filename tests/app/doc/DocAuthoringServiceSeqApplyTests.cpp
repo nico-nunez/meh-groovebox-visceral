@@ -74,23 +74,87 @@ static void test_successful_sequencer_apply_publishes_at_boundary() {
   app::destroyAppContext(app);
 }
 
-static void test_empty_document_replaces_with_default_targets() {
-  TEST("empty_document_replaces_with_default_targets");
+static void test_empty_document_is_noop() {
+  TEST("empty_document_is_noop");
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, "");
+  auto seed = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+  CHECK("seed ok", seed.ok);
+  test::publishPending(app);
+
+  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 2, "");
 
   CHECK("ok", result.ok);
-  CHECK("pending ready", app->documents.pendingApply.ready.load());
+  CHECK("no pending apply", !app->documents.pendingApply.ready.load());
 
+  auto bank = app::sequencer::getPatternBank(app->sequencer, 0);
+  CHECK("bank readable", bank.ok);
+  CHECK("slot preserved", bank.value->slots[0].occupied);
+  CHECK("note preserved", bank.value->slots[0].pattern.steps[0].note == 60);
+
+  app::destroyAppContext(app);
+}
+
+static void test_sparse_note_patch_preserves_step_velocity_gate_and_active() {
+  TEST("sparse_note_patch_preserves_step_velocity_gate_and_active");
+
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  auto seed = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring,
+      *app,
+      1,
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { active = true, "
+      "note = 60, velocity = 100, gate = 0.4 } } } }, activeSlot = 1 })");
+  CHECK("seed ok", seed.ok);
+  test::publishPending(app);
+
+  auto patch = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring,
+      *app,
+      2,
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { note = 64 } } } } })");
+  CHECK("patch ok", patch.ok);
   test::publishPending(app);
 
   auto bank = app::sequencer::getPatternBank(app->sequencer, 0);
   CHECK("bank readable", bank.ok);
-  CHECK("default inactive", bank.value->activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
-  CHECK("default empty", !bank.value->slots[0].occupied);
+  const auto& step = bank.value->slots[0].pattern.steps[0];
+  CHECK("note changed", step.note == 64);
+  CHECK("active preserved", step.active);
+  CHECK("velocity preserved", step.velocity == 100);
+  CHECK("gate preserved", step.gate == 0.4f);
+
+  app::destroyAppContext(app);
+}
+
+static void test_step_false_clears_step_at_admission() {
+  TEST("step_false_clears_step_at_admission");
+
+  app::AppContext* app = makeContext();
+  CHECK("context", app != nullptr);
+
+  auto seed = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+  CHECK("seed ok", seed.ok);
+  test::publishPending(app);
+
+  auto clear = app::doc::applyAuthoredDocRevision(
+      app->documents.authoring,
+      *app,
+      2,
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = false } } } })");
+  CHECK("clear ok", clear.ok);
+  test::publishPending(app);
+
+  auto bank = app::sequencer::getPatternBank(app->sequencer, 0);
+  CHECK("bank readable", bank.ok);
+  const auto& step = bank.value->slots[0].pattern.steps[0];
+  CHECK("inactive", !step.active);
+  CHECK("note reset", step.note == 0);
+  CHECK("velocity reset", step.velocity == 0);
 
   app::destroyAppContext(app);
 }
@@ -128,6 +192,8 @@ void runDocAuthoringServiceSeqApplyTests() {
   SUITE("DocAuthoringService / SequencerApply");
   test_parse_failure_sets_failed_without_admission();
   test_successful_sequencer_apply_publishes_at_boundary();
-  test_empty_document_replaces_with_default_targets();
+  test_empty_document_is_noop();
+  test_sparse_note_patch_preserves_step_velocity_gate_and_active();
+  test_step_false_clears_step_at_admission();
   test_mixed_synth_mixer_sequencer_apply_publishes_together();
 }

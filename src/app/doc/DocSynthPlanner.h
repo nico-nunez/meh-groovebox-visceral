@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/GrooveboxPatch.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 #include "synth/params/ParamDefs.h"
@@ -27,10 +28,11 @@ struct SynthTargetProgramsResult {
   DocDiagnostics diagnostics{};
 };
 
-SynthTargetProgramsResult buildSynthTargetPrograms(const AuthoredDocModel* model,
-                                                   DocID documentID,
-                                                   DocRevision revision,
-                                                   SynthProgram* out);
+SynthTargetProgramsResult buildSynthPatches(const AuthoredDocModel* model,
+                                            DocID documentID,
+                                            DocRevision revision,
+                                            app::TrackSynthPatch* out,
+                                            bool* hasSynth);
 
 void buildAdmittedSynthTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted);
 

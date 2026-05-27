@@ -19,7 +19,6 @@ inline bool hasDiagnostic(const app::doc::DocDiagnostics& diagnostics, const cha
 }
 
 struct ParseTestWorkspace {
-  app::doc::PatternArena arena{};
   app::doc::AuthoredDocModel model{};
 };
 
@@ -35,11 +34,7 @@ inline app::doc::AuthoredDocNormalizeResult parseWorkspace(app::doc::DocID docum
                                                            ParseTestWorkspace* ws) {
   synth::wavetable::banks::initFactoryBanks();
 
-  return app::doc::parseAndNormalizeAuthoredDoc(documentID,
-                                                revision,
-                                                bufferText,
-                                                &ws->arena,
-                                                &ws->model);
+  return app::doc::parseAndNormalizeAuthoredDoc(documentID, revision, bufferText, &ws->model);
 }
 
 inline app::doc::AuthoredDocNormalizeResult parseWS(const char* text, ParseTestWorkspace* ws) {

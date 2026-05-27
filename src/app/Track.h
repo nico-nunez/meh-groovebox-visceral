@@ -4,6 +4,7 @@
 #include "synth/Engine.h"
 #include "synth/events/EventQueues.h"
 #include "synth/events/Events.h"
+#include "synth/program/SynthProgram.h"
 
 #include <cstdint>
 
@@ -16,6 +17,7 @@ using synth::events::MIDIEventQueue;
 using synth::events::ParamEventQueue;
 using synth::events::ScheduledEvent;
 using synth::preset::Preset;
+using synth::program::SynthProgram;
 
 inline constexpr uint32_t MAX_EVENTS_PER_TRACK = 512;
 
@@ -48,13 +50,15 @@ struct TrackState {
   TrackQueues queues{};
   ScheduledEventBuffer events{};
 
+  SynthProgram controlProgram{};
+  bool controlProgramValid = false;
+
   Preset preset{};
   bool presetValid = false;
 
   StereoBufferView outputBuffer{};
   uint32_t outputSlot = 0;
 };
-
 // ======================
 // Track Binding Helpers
 // ======================

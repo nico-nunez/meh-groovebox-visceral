@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/GrooveboxPatch.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 #include "app/doc/DocSequencerModel.h"
@@ -19,12 +20,11 @@ struct SequencerTargetResult {
   sequencer::PatternSnapshot snapshot{};
 };
 
-SequencerTargetResult buildSequencerTargetSnapshot(const AuthoredSeqDocModel* model,
-                                                   DocID documentID,
-                                                   DocRevision revision,
-                                                   sequencer::PatternSnapshot* out);
+SequencerTargetResult buildSequencerPatch(const AuthoredSeqDocModel* model,
+                                          DocID documentID,
+                                          DocRevision revision,
+                                          app::SequencerPatch* out);
 
-void buildAdmittedSeqTargetModel(const AuthoredDocModel* nextModel,
-                                 AuthoredDocModel* admitted,
-                                 PatternArena* admittedArena);
+void buildAdmittedSeqTargetModel(const AuthoredDocModel* nextModel, AuthoredDocModel* admitted);
+
 } // namespace app::doc

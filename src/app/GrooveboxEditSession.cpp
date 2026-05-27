@@ -88,43 +88,203 @@ void releasePendingWriter(PendingGrooveboxApply* pending) {
   pending->writeInFlight.store(false, std::memory_order_release);
 }
 
-} // namespace
-
-void beginGrooveboxEdit(GrooveboxEditSession* session, doc::DocRevision revision) {
-  *session = GrooveboxEditSession{};
-  session->revision = revision;
+void captureTrackControlProgram(const track::TrackState& track, synth::program::SynthProgram* out) {
+  *out = track.controlProgram;
 }
 
-void stageGrooveboxTarget(GrooveboxEditSession* session, const GrooveboxTargetState* target) {
-  session->target = target;
+void applySynthParamPatch(synth::program::SynthProgram* program,
+                          synth::param::ParamID paramID,
+                          float value) {
+  program->paramValues[static_cast<int>(paramID)] = value;
 }
 
-void abortGrooveboxEdit(GrooveboxEditSession* session, AppContext* app) {
-  if (app) {
-    auto& pending = app->documents.pendingApply;
-    abortPreparedSynth(app, pending);
-    abortPreparedMixer(app, pending);
-    abortPreparedSequencer(app, pending);
-    clearPendingPreparedFlags(&pending);
-    pending.ready.store(false, std::memory_order_release);
-    releasePendingWriter(&pending);
+void commitTrackControlProgram(track::TrackState* track,
+                               const synth::program::SynthProgram& program) {
+  track->controlProgram = program;
+  track->controlProgramValid = true;
+}
+bool applyMixerPatchWrite(mixer::MixerSnapshot* snapshot,
+                          const MixerParamPatchWrite& write,
+                          doc::DocRevision revision,
+                          doc::DocDiagnostics* diagnostics) {
+  const float value = app::params::clampAppParam(write.paramID, write.value);
+
+  switch (write.paramID) {
+  case app::params::AppParamID::TrackGain:
+    snapshot->tracks[write.trackIndex].gain = value;
+    return true;
+  case app::params::AppParamID::TrackPan:
+    snapshot->tracks[write.trackIndex].pan = value;
+    return true;
+  case app::params::AppParamID::TrackMute:
+    snapshot->tracks[write.trackIndex].enabled = value < 0.5f;
+    return true;
+  case app::params::AppParamID::MasterGain:
+    snapshot->masterGain = value;
+    return true;
+  case app::params::AppParamID::LimiterThresholdDB:
+    snapshot->limiterThreshold = dsp::math::dBToLinear(value);
+    return true;
+  case app::params::AppParamID::Count:
+    break;
   }
-  if (session)
-    *session = GrooveboxEditSession{};
+
+  diagnostics->push_back(makeEditDiagnostic(revision,
+                                            doc::docdiag::MixerAdmissionFailed,
+                                            "unhandled mixer patch param"));
+  return false;
 }
 
-GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
-                                        AppContext* app,
-                                        GrooveboxApplyTiming timing,
-                                        doc::DocDiagnostics* diagnostics) {
+bool composeMixerPatch(const MixerPatch& patch,
+                       const mixer::MixerSnapshot& current,
+                       mixer::MixerSnapshot* out,
+                       doc::DocRevision revision,
+                       doc::DocDiagnostics* diagnostics) {
+  *out = current;
+  for (uint16_t i = 0; i < patch.writeCount; ++i) {
+    if (!applyMixerPatchWrite(out, patch.writes[i], revision, diagnostics))
+      return false;
+  }
+  return true;
+}
+
+void applyStepPatch(sequencer::StepEvent* step, const StepEventPatch& patch) {
+  if (patch.op == PatchObjectOp::Clear) {
+    sequencer::resetStepEvent(step);
+    return;
+  }
+
+  if (patch.hasActive) {
+    step->active = patch.active;
+    step->noteOn = patch.active;
+  }
+  if (patch.hasNoteOn)
+    step->noteOn = patch.noteOn;
+  if (patch.hasLegato)
+    step->legato = patch.legato;
+  if (patch.hasGate)
+    step->gate = patch.gate;
+  if (patch.hasNote)
+    step->note = patch.note;
+  if (patch.hasVelocity)
+    step->velocity = patch.velocity;
+
+  if (patch.locks.op == PatchObjectOp::Clear) {
+    step->numLocks = 0;
+  } else if (patch.locks.op == PatchObjectOp::Replace) {
+    step->numLocks = patch.locks.lockCount;
+    for (uint8_t i = 0; i < patch.locks.lockCount; ++i)
+      step->locks[i] = patch.locks.locks[i];
+  }
+}
+
+void applyPatternPatch(sequencer::LanePattern* pattern, const PatternPatch& patch) {
+  if (patch.op == PatchObjectOp::Clear) {
+    sequencer::resetLanePattern(pattern);
+    return;
+  }
+
+  if (patch.hasNumSteps) {
+    if (patch.numSteps < pattern->numSteps) {
+      for (uint8_t step = patch.numSteps; step < sequencer::MAX_PATTERN_STEPS; ++step)
+        sequencer::resetStepEvent(&pattern->steps[step]);
+    }
+    pattern->numSteps = patch.numSteps;
+  }
+
+  if (patch.hasStepsPerBeat)
+    pattern->stepsPerBeat = patch.stepsPerBeat;
+
+  for (uint8_t step = 0; step < sequencer::MAX_PATTERN_STEPS; ++step) {
+    if (patch.hasStep[step])
+      applyStepPatch(&pattern->steps[step], patch.steps[step]);
+  }
+}
+
+bool composeSequencerPatch(const SequencerPatch& patch,
+                           const sequencer::PatternSnapshot& current,
+                           sequencer::PatternSnapshot* out,
+                           doc::DocRevision revision,
+                           doc::DocDiagnostics* diagnostics) {
+  *out = current;
+
+  for (uint8_t track = 0; track < MAX_TRACKS; ++track) {
+    if (!patch.hasTrack[track])
+      continue;
+
+    const TrackSequencerPatch& trackPatch = patch.tracks[track];
+    sequencer::PatternBank& bank = out->lanes[track];
+
+    if (trackPatch.bankOp == PatchObjectOp::Clear)
+      sequencer::resetPatternBank(&bank);
+
+    for (uint8_t slot = 0; slot < sequencer::PATTERNS_PER_LANE; ++slot) {
+      if (!trackPatch.hasSlot[slot])
+        continue;
+
+      const PatternSlotPatch& slotPatch = trackPatch.slots[slot];
+      if (slotPatch.op == PatchObjectOp::Clear) {
+        bank.slots[slot].occupied = false;
+        sequencer::resetLanePattern(&bank.slots[slot].pattern);
+        if (bank.activeSlot == slot)
+          bank.activeSlot = sequencer::INVALID_PATTERN_SLOT;
+        continue;
+      }
+
+      bank.slots[slot].occupied = true;
+      applyPatternPatch(&bank.slots[slot].pattern, slotPatch.pattern);
+      if (bank.activeSlot == sequencer::INVALID_PATTERN_SLOT)
+        bank.activeSlot = slot;
+    }
+
+    if (trackPatch.hasActiveSlot)
+      bank.activeSlot = trackPatch.activeSlot;
+  }
+
+  auto validate = sequencer::validatePatternSnapshot(*out);
+  if (!validate.ok) {
+    diagnostics->push_back(
+        makeEditDiagnostic(revision, doc::docdiag::SequencerAdmissionFailed, validate.err));
+    return false;
+  }
+
+  return true;
+}
+
+bool composeSynthPatch(track::TrackState& track,
+                       const TrackSynthPatch& patch,
+                       synth::program::SynthProgram* out,
+                       doc::DocRevision revision,
+                       doc::DocDiagnostics* diagnostics) {
+  if (!track.controlProgramValid) {
+    diagnostics->push_back(makeEditDiagnostic(revision,
+                                              doc::docdiag::SynthAdmissionFailed,
+                                              "missing track control program"));
+    return false;
+  }
+
+  captureTrackControlProgram(track, out);
+
+  for (uint16_t i = 0; i < patch.writeCount; ++i) {
+    const SynthParamPatchWrite& write = patch.writes[i];
+    if (write.paramID == synth::param::PARAM_UNKNOWN ||
+        static_cast<int>(write.paramID) >= synth::param::PARAM_COUNT) {
+      diagnostics->push_back(makeEditDiagnostic(revision,
+                                                doc::docdiag::SynthAdmissionFailed,
+                                                "invalid synth patch param"));
+      return false;
+    }
+    applySynthParamPatch(out, write.paramID, write.value);
+  }
+
+  return true;
+}
+
+GrooveboxEditResult commitGrooveboxPatchEdit(GrooveboxEditSession* session,
+                                             AppContext* app,
+                                             GrooveboxApplyTiming timing,
+                                             doc::DocDiagnostics* diagnostics) {
   GrooveboxEditResult result{};
-  if (!session || !app || !diagnostics || !session->target) {
-    if (diagnostics)
-      diagnostics->push_back(
-          makeEditDiagnostic(0, doc::docdiag::InternalPlannerError, "invalid edit session"));
-    return result;
-  }
-
   auto& pending = app->documents.pendingApply;
   if (!acquirePendingWriter(&pending)) {
     diagnostics->push_back(makeEditDiagnostic(session->revision,
@@ -145,16 +305,27 @@ GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
   pending.revision = session->revision;
   pending.timing = timing;
 
-  const GrooveboxTargetState& target = *session->target;
+  const GrooveboxPatch& patch = *session->patch;
+  if (!hasGrooveboxPatchEdits(patch)) {
+    clearPendingPreparedFlags(&pending);
+    releasePendingWriter(&pending);
+    result.ok = true;
+    return result;
+  }
 
-  // Prepare synth engine write buffers. This is non-observable until the audio
-  // callback commits and publishes them.
+  synth::program::SynthProgram synthPrograms[MAX_TRACKS]{};
   for (uint8_t t = 0; t < MAX_TRACKS; ++t) {
-    if (!target.hasSynthProgram[t])
+    if (!patch.hasSynth[t])
       continue;
-
-    auto prepare =
-        synth::program::prepareProgramSwap(app->tracks[t].engine, target.synthPrograms[t]);
+    if (!composeSynthPatch(app->tracks[t],
+                           patch.synth[t],
+                           &synthPrograms[t],
+                           session->revision,
+                           diagnostics)) {
+      abortGrooveboxEdit(session, app);
+      return result;
+    }
+    auto prepare = synth::program::prepareProgramSwap(app->tracks[t].engine, synthPrograms[t]);
     if (!prepare.ok) {
       diagnostics->push_back(
           makeEditDiagnostic(session->revision, doc::docdiag::SynthAdmissionFailed, prepare.err));
@@ -164,9 +335,17 @@ GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
     pending.synthPrepared[t] = true;
   }
 
-  // Prepare mixer pending buffer. This is non-observable until audio publish.
-  if (target.hasMixer) {
-    auto prepare = mixer::prepareMixerSnapshotSwap(app->mixer, target.mixer);
+  if (patch.hasMixer) {
+    mixer::MixerSnapshot mixerSnapshot{};
+    if (!composeMixerPatch(patch.mixer,
+                           app->mixer.current,
+                           &mixerSnapshot,
+                           session->revision,
+                           diagnostics)) {
+      abortGrooveboxEdit(session, app);
+      return result;
+    }
+    auto prepare = mixer::prepareMixerSnapshotSwap(app->mixer, mixerSnapshot);
     if (!prepare.ok) {
       diagnostics->push_back(
           makeEditDiagnostic(session->revision, doc::docdiag::MixerAdmissionFailed, prepare.err));
@@ -176,19 +355,18 @@ GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
     pending.mixerPrepared = true;
   }
 
-  // Validate and prepare sequencer write buffer. Validation is separate from
-  // inactive-buffer preparation so commit cannot discover structural errors.
-  if (target.hasSequencer) {
-    auto validate = sequencer::validatePatternSnapshot(target.sequencer);
-    if (!validate.ok) {
-      diagnostics->push_back(makeEditDiagnostic(session->revision,
-                                                doc::docdiag::SequencerAdmissionFailed,
-                                                validate.err));
+  if (patch.hasSequencer) {
+    sequencer::PatternSnapshot seqSnapshot{};
+    const sequencer::PatternSnapshot& current = app::sequencer::getPatternSnapshot(app->sequencer);
+    if (!composeSequencerPatch(patch.sequencer,
+                               current,
+                               &seqSnapshot,
+                               session->revision,
+                               diagnostics)) {
       abortGrooveboxEdit(session, app);
       return result;
     }
-
-    auto prepare = sequencer::prepareSequencerSnapshotSwap(app->sequencer, target.sequencer);
+    auto prepare = sequencer::prepareSequencerSnapshotSwap(app->sequencer, seqSnapshot);
     if (!prepare.ok) {
       diagnostics->push_back(makeEditDiagnostic(session->revision,
                                                 doc::docdiag::SequencerAdmissionFailed,
@@ -199,10 +377,54 @@ GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
     pending.sequencerPrepared = true;
   }
 
+  for (uint8_t t = 0; t < MAX_TRACKS; ++t) {
+    if (pending.synthPrepared[t])
+      commitTrackControlProgram(&app->tracks[t], synthPrograms[t]);
+  }
+
   pending.ready.store(true, std::memory_order_release);
   releasePendingWriter(&pending);
   result.ok = true;
   return result;
+}
+
+} // namespace
+
+void beginGrooveboxEdit(GrooveboxEditSession* session, doc::DocRevision revision) {
+  *session = GrooveboxEditSession{};
+  session->revision = revision;
+}
+
+void stageGrooveboxPatch(GrooveboxEditSession* session, const GrooveboxPatch* patch) {
+  session->patch = patch;
+}
+void abortGrooveboxEdit(GrooveboxEditSession* session, AppContext* app) {
+  if (app) {
+    auto& pending = app->documents.pendingApply;
+    abortPreparedSynth(app, pending);
+    abortPreparedMixer(app, pending);
+    abortPreparedSequencer(app, pending);
+    clearPendingPreparedFlags(&pending);
+    pending.ready.store(false, std::memory_order_release);
+    releasePendingWriter(&pending);
+  }
+  if (session)
+    *session = GrooveboxEditSession{};
+}
+
+GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
+                                        AppContext* app,
+                                        GrooveboxApplyTiming timing,
+                                        doc::DocDiagnostics* diagnostics) {
+  GrooveboxEditResult result{};
+  if (!session || !app || !diagnostics || !session->patch) {
+    if (diagnostics)
+      diagnostics->push_back(
+          makeEditDiagnostic(0, doc::docdiag::InternalPlannerError, "invalid edit session"));
+    return result;
+  }
+
+  return commitGrooveboxPatchEdit(session, app, timing, diagnostics);
 }
 
 void publishPendingGrooveboxEditIfReady(AppContext* app,

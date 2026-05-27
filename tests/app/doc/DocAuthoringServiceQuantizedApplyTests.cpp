@@ -5,7 +5,7 @@
 #include "app/GrooveboxEditSession.h"
 #include "app/Transport.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/DocGrooveboxTargetBuilder.h"
+#include "app/doc/DocGrooveboxPatchBuilder.h"
 #include "app/doc/DocSequencerParser.h"
 #include "app/sessions/AudioSession.h"
 
@@ -36,14 +36,14 @@ bool prepareDoc(app::AppContext* app, const char* doc, app::GrooveboxApplyTiming
   if (!parsed.ok)
     return false;
 
-  app::GrooveboxTargetState* target = &app->documents.authoring.applyWorkspace->target;
-  auto build = app::doc::buildGrooveboxTargetState(&ws->model, 1, 1, target);
+  app::GrooveboxPatch* patch = &app->documents.authoring.applyWorkspace->patch;
+  auto build = app::doc::buildGrooveboxPatch(&ws->model, 1, 1, patch);
   if (!build.ok)
     return false;
 
   app::GrooveboxEditSession session{};
   app::beginGrooveboxEdit(&session, 1);
-  app::stageGrooveboxTarget(&session, target);
+  app::stageGrooveboxPatch(&session, patch);
   app::doc::DocDiagnostics diagnostics{};
   auto edit = app::commitGrooveboxEdit(&session, app, timing, &diagnostics);
   return edit.ok;

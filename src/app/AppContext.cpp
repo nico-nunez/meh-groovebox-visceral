@@ -66,6 +66,8 @@ AppContext* createAppContext(audio::DeviceInfo deviceInfo) {
 
   for (uint8_t i = 0; i < MAX_TRACKS; i++) {
     synth::initEngine(ctx->tracks[i].engine, engineConfig);
+    synth::program::initSynthProgram(ctx->tracks[i].controlProgram);
+    ctx->tracks[i].controlProgramValid = true;
   }
 
   if (!initAudioBuffers(ctx)) {

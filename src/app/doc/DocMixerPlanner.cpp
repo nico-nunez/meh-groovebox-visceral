@@ -1,9 +1,7 @@
 #include "app/doc/DocMixerPlanner.h"
 
 #include "app/AppParams.h"
-#include "app/Mixer.h"
 #include "app/doc/DocMetadata.h"
-#include "dsp/Math.h"
 
 namespace app::doc {
 namespace {
@@ -37,14 +35,17 @@ DocDiagnostic makeMixerTargetDiagnostic(DocID documentID,
   return d;
 }
 
-bool applyMixerWrite(app::mixer::MixerSnapshot* mixer,
-                     uint8_t trackIndex,
-                     const AuthoredMixerParamWrite& write,
-                     DocID documentID,
-                     DocRevision revision,
-                     DocDiagnostics* diagnostics) {
-  if (!mixer || !diagnostics)
+bool appendMixerPatchWrite(app::MixerPatch* patch,
+                           uint8_t trackIndex,
+                           const AuthoredMixerParamWrite& write,
+                           DocID documentID,
+                           DocRevision revision,
+                           DocDiagnostics* diagnostics) {
+  if (patch->writeCount >= app::MAX_MIXER_PARAM_PATCH_WRITES) {
+    diagnostics->push_back(
+        makeMixerTargetDiagnostic(documentID, revision, &write, "mixer patch capacity exceeded"));
     return false;
+  }
 
   if (!app::params::isValidAppParamID(write.paramID)) {
     diagnostics->push_back(
@@ -59,55 +60,35 @@ bool applyMixerWrite(app::mixer::MixerSnapshot* mixer,
     return false;
   }
 
-  const float value = app::params::clampAppParam(write.paramID, write.value);
-
-  switch (write.paramID) {
-  case app::params::AppParamID::TrackGain:
-    mixer->tracks[trackIndex].gain = value;
-    return true;
-  case app::params::AppParamID::TrackPan:
-    mixer->tracks[trackIndex].pan = value;
-    return true;
-  case app::params::AppParamID::TrackMute:
-    mixer->tracks[trackIndex].enabled = value < 0.5f;
-    return true;
-  case app::params::AppParamID::MasterGain:
-    mixer->masterGain = value;
-    return true;
-  case app::params::AppParamID::LimiterThresholdDB:
-    mixer->limiterThreshold = dsp::math::dBToLinear(value);
-    return true;
-  case app::params::AppParamID::Count:
-    break;
-  }
-
-  diagnostics->push_back(
-      makeMixerTargetDiagnostic(documentID, revision, &write, "unhandled mixer param id"));
-  return false;
+  app::MixerParamPatchWrite& dst = patch->writes[patch->writeCount++];
+  dst.paramID = write.paramID;
+  dst.trackIndex = trackIndex;
+  dst.value = app::params::clampAppParam(write.paramID, write.value);
+  return true;
 }
 
 } // namespace
 
-MixerTargetResult buildMixerTargetSnapshot(const AuthoredDocModel* model,
-                                           DocID documentID,
-                                           DocRevision revision,
-                                           mixer::MixerSnapshot* out) {
+MixerTargetResult buildMixerPatch(const AuthoredDocModel* model,
+                                  DocID documentID,
+                                  DocRevision revision,
+                                  app::MixerPatch* out) {
   MixerTargetResult result{};
   if (!model || !out) {
-    const char* errMsg = !model ? "null authored model" : "null mixer target out";
+    const char* errMsg = !model ? "null authored model" : "null mixer patch out";
     result.diagnostics.push_back(makeMixerTargetDiagnostic(documentID, revision, nullptr, errMsg));
     return result;
   }
 
-  mixer::initMixerSnapshot(out);
+  *out = app::MixerPatch{};
 
   for (uint8_t trackIndex = 0; trackIndex < app::MAX_TRACKS; ++trackIndex) {
     if (!model->hasMixerState[trackIndex])
       continue;
 
-    const AuthoredTrackMixerPatch& patch = model->mixerTracks[trackIndex];
-    for (const auto& write : patch.writes) {
-      if (!applyMixerWrite(out, trackIndex, write, documentID, revision, &result.diagnostics))
+    const AuthoredTrackMixerPatch& authored = model->mixerTracks[trackIndex];
+    for (const auto& write : authored.writes) {
+      if (!appendMixerPatchWrite(out, trackIndex, write, documentID, revision, &result.diagnostics))
         return result;
     }
   }

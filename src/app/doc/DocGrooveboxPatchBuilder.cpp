@@ -1,4 +1,4 @@
-#include "app/doc/DocGrooveboxTargetBuilder.h"
+#include "app/doc/DocGrooveboxPatchBuilder.h"
 
 #include "app/doc/DocMetadata.h"
 #include "app/doc/DocMixerPlanner.h"
@@ -16,12 +16,11 @@ void appendDiagnostics(DocDiagnostics* dst, const DocDiagnostics& src) {
 
 } // namespace
 
-GrooveboxTargetBuildResult buildGrooveboxTargetState(const AuthoredDocModel* model,
-                                                     DocID documentID,
-                                                     DocRevision revision,
-                                                     app::GrooveboxTargetState* out) {
+GrooveboxTargetBuildResult buildGrooveboxPatch(const AuthoredDocModel* model,
+                                               DocID documentID,
+                                               DocRevision revision,
+                                               app::GrooveboxPatch* out) {
   GrooveboxTargetBuildResult result{};
-
   if (!model || !out) {
     DocDiagnostic d{};
     d.severity = DiagnosticSeverity::Error;
@@ -29,35 +28,33 @@ GrooveboxTargetBuildResult buildGrooveboxTargetState(const AuthoredDocModel* mod
     d.documentID = documentID;
     d.revision = revision;
     d.code = docdiag::InternalPlannerError;
-    d.message = !model ? "null authored model" : "null groovebox target output";
+    d.message = !model ? "null authored model" : "null groovebox patch output";
     result.diagnostics.push_back(d);
     return result;
   }
 
-  app::resetGrooveboxTargetStateFlags(out);
+  app::resetGrooveboxPatch(out);
 
-  auto synth = buildSynthTargetPrograms(model, documentID, revision, out->synthPrograms);
+  auto synth = buildSynthPatches(model, documentID, revision, out->synth, out->hasSynth);
   appendDiagnostics(&result.diagnostics, synth.diagnostics);
   if (!synth.ok)
     return result;
 
-  auto mixer = buildMixerTargetSnapshot(model, documentID, revision, &out->mixer);
+  auto mixer = buildMixerPatch(model, documentID, revision, &out->mixer);
   appendDiagnostics(&result.diagnostics, mixer.diagnostics);
   if (!mixer.ok)
     return result;
+  out->hasMixer = out->mixer.writeCount > 0;
 
-  auto sequencer =
-      buildSequencerTargetSnapshot(&model->sequencer, documentID, revision, &out->sequencer);
+  auto sequencer = buildSequencerPatch(&model->sequencer, documentID, revision, &out->sequencer);
   appendDiagnostics(&result.diagnostics, sequencer.diagnostics);
   if (!sequencer.ok)
     return result;
-
-  for (uint8_t t = 0; t < MAX_TRACKS; ++t)
-    out->hasSynthProgram[t] = true;
-
-  out->hasMixer = true;
-
-  out->hasSequencer = true;
+  for (uint8_t track = 0; track < app::MAX_TRACKS; ++track) {
+    out->hasSequencer =
+        out->hasSequencer || (out->sequencer.hasTrack[track] &&
+                              app::hasTrackSequencerPatchEdits(out->sequencer.tracks[track]));
+  }
 
   result.ok = true;
   return result;
