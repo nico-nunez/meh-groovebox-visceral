@@ -20,16 +20,24 @@ namespace app::display {
 namespace {
 using editor::LanguageServiceStatus;
 
-constexpr std::size_t kTextCapacity = 64 * 1024;
 constexpr std::size_t kPathCapacity = 1024;
 
 struct EditorUiScratch {
-  std::vector<char> textBuffer = std::vector<char>(kTextCapacity, '\0');
   char pathBuffer[kPathCapacity]{};
   bool initialized = false;
 };
 
 EditorUiScratch gScratch{};
+
+static int inputTextResizeCallback(ImGuiInputTextCallbackData* data) {
+  if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+    auto* text = static_cast<std::string*>(data->UserData);
+    text->resize(static_cast<size_t>(data->BufTextLen));
+    data->Buf = text->data();
+    data->BufSize = static_cast<int>(text->capacity());
+  }
+  return 0;
+}
 
 const char* severityLabel(app::doc::DiagnosticSeverity severity) {
   switch (severity) {
@@ -81,27 +89,6 @@ void drawLineNumberGutter(std::size_t lineCount, float gutterWidth, float editor
   ImGui::PopStyleColor();
 
   ImGui::EndChild();
-}
-
-void syncScratchFromState(const AuthoredDocEditorState& editor) {
-  if (!gScratch.initialized) {
-    std::fill(gScratch.textBuffer.begin(), gScratch.textBuffer.end(), '\0');
-    const std::size_t copySize =
-        std::min(editor.buffer.text.size(), gScratch.textBuffer.size() - 1);
-    std::memcpy(gScratch.textBuffer.data(), editor.buffer.text.data(), copySize);
-
-    std::snprintf(gScratch.pathBuffer,
-                  sizeof(gScratch.pathBuffer),
-                  "%s",
-                  editor.buffer.filePath.c_str());
-    gScratch.initialized = true;
-  }
-}
-
-void forceScratchText(const std::string& text) {
-  std::fill(gScratch.textBuffer.begin(), gScratch.textBuffer.end(), '\0');
-  const std::size_t copySize = std::min(text.size(), gScratch.textBuffer.size() - 1);
-  std::memcpy(gScratch.textBuffer.data(), text.data(), copySize);
 }
 
 void forceScratchPath(const std::string& path) {
@@ -259,19 +246,16 @@ void drawFileControls(EditorRuntime& editor) {
 
   if (ImGui::Button("New")) {
     newBlankDocument(editor.authoredEditor);
-    forceScratchText(editor.authoredEditor.buffer.text);
     forceScratchPath(editor.authoredEditor.buffer.filePath);
   }
   ImGui::SameLine();
   if (ImGui::Button("New Template")) {
     newTemplateDocument(editor.authoredEditor);
-    forceScratchText(editor.authoredEditor.buffer.text);
     forceScratchPath(editor.authoredEditor.buffer.filePath);
   }
   ImGui::SameLine();
   if (ImGui::Button("Open")) {
     if (loadDocument(editor.authoredEditor, gScratch.pathBuffer)) {
-      forceScratchText(editor.authoredEditor.buffer.text);
       forceScratchPath(editor.authoredEditor.buffer.filePath);
     }
   }
@@ -291,7 +275,6 @@ void drawFileControls(EditorRuntime& editor) {
   ImGui::SameLine();
   if (ImGui::Button("Reload")) {
     if (reloadDocument(editor.authoredEditor)) {
-      forceScratchText(editor.authoredEditor.buffer.text);
       forceScratchPath(editor.authoredEditor.buffer.filePath);
     }
   }
@@ -305,9 +288,6 @@ void drawEditorDisplayView(AppContext& app) {
 
   AuthoredDocEditorState& editor = app.editor.authoredEditor;
 
-  // ==== Internal editor ====
-  syncScratchFromState(editor);
-
   collectFinishedLuaLSDiagnostics(editor);
   maybeStartLuaLSDiagnostics(editor);
 
@@ -316,7 +296,7 @@ void drawEditorDisplayView(AppContext& app) {
   // =========== Text Input ================
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 15.0f));
 
-  const std::size_t lineCount = countBufferLines(gScratch.textBuffer.data());
+  const std::size_t lineCount = countBufferLines(editor.buffer.text.data());
   const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
   const float topHeight =
       showDiagnostics
@@ -336,15 +316,22 @@ void drawEditorDisplayView(AppContext& app) {
   drawLineNumberGutter(lineCount, gutterWidth, editorHeight);
   ImGui::SameLine();
 
+  std::string& text = editor.buffer.text;
+
   const float editorWidth =
       std::max(360.0f, ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x);
+
   if (ImGui::InputTextMultiline("##authored-document-buffer",
-                                gScratch.textBuffer.data(),
-                                gScratch.textBuffer.size(),
+                                text.data(),
+                                text.capacity() + 1, // +1 for null terminator
                                 ImVec2(editorWidth, editorHeight),
-                                ImGuiInputTextFlags_AllowTabInput)) {
-    markBufferEdited(editor, gScratch.textBuffer.data());
+                                ImGuiInputTextFlags_AllowTabInput |
+                                    ImGuiInputTextFlags_CallbackResize,
+                                inputTextResizeCallback,
+                                &text)) {
+    markBufferTextChanged(editor);
   }
+
   ImGui::EndChild();
 
   if (ImGui::Button("Apply")) {

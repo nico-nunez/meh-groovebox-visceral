@@ -55,6 +55,7 @@ struct EditorMessage {
   std::string text{};
 };
 
+// UI (imgui)
 struct AuthoredDocBuffer {
   std::string text{};
   std::string filePath{};
@@ -96,7 +97,7 @@ inline constexpr const char* authoredDocumentTemplate() {
          "})\n";
 }
 
-void markBufferEdited(AuthoredDocEditorState& editor, std::string text);
+void markBufferTextChanged(AuthoredDocEditorState& editor);
 
 void newBlankDocument(AuthoredDocEditorState& editor);
 void newTemplateDocument(AuthoredDocEditorState& editor);

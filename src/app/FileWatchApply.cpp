@@ -13,7 +13,7 @@ void onSessionFileChanged(void* context) {
   const std::string pathString = app->grooveboxPaths.sessionFile.string();
 
   const doc::ApplyRevisionResult result =
-      doc::applySequencerFile(app->documents.authoring, *app, pathString.c_str());
+      doc::submitAuthoredDocFile(app->documents.authoring, *app, pathString.c_str());
 }
 
 } // namespace app

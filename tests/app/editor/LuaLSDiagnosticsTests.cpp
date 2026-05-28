@@ -65,7 +65,8 @@ static void test_mark_buffer_edited_marks_luals_pending() {
   TEST("mark_buffer_edited_marks_luals_pending");
 
   app::editor::AuthoredDocEditorState editor{};
-  app::editor::markBufferEdited(editor, "applyFile(\"song.lua\")");
+  editor.buffer.text = "applyFile(\"song.lua\")";
+  app::editor::markBufferTextChanged(editor);
 
   CHECK("edit serial incremented", editor.editSerial == 1);
   CHECK("luals pending", editor.luals.status == app::editor::LanguageServiceStatus::Pending);

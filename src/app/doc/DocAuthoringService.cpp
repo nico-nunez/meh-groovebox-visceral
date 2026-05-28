@@ -80,10 +80,10 @@ void buildAdmittedDocumentModel(const AuthoredDocModel* nextModel, DocApplyState
 
 } // namespace
 
-ApplyRevisionResult applyAuthoredDocRevision(DocAuthoringService& service,
-                                             app::AppContext& app,
-                                             DocRevision revision,
-                                             const char* bufferText) {
+ApplyRevisionResult submitAuthoredDocRevision(DocAuthoringService& service,
+                                              app::AppContext& app,
+                                              DocRevision revision,
+                                              const char* bufferText) {
   ApplyRevisionResult result{};
   const ApplyOperationID operationID = beginApplyOperation(service);
   result.applyOperationID = operationID;
@@ -142,9 +142,9 @@ ApplyRevisionResult applyAuthoredDocRevision(DocAuthoringService& service,
   return result;
 }
 
-ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
-                                       app::AppContext& app,
-                                       const char* path) {
+ApplyRevisionResult submitAuthoredDocFile(DocAuthoringService& service,
+                                          app::AppContext& app,
+                                          const char* path) {
   const DocRevision revision = service.buffer.currentRevision + 1;
   service.buffer.path = path ? path : "";
 
@@ -163,7 +163,7 @@ ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
   std::ostringstream buffer;
   buffer << input.rdbuf();
   const std::string fileText = buffer.str();
-  return applyAuthoredDocRevision(service, app, revision, fileText.c_str());
+  return submitAuthoredDocRevision(service, app, revision, fileText.c_str());
 }
 
 void initDocAuthoringService(DocAuthoringService& service) {

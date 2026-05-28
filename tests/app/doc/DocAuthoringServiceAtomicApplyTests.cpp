@@ -27,7 +27,7 @@ static void test_doc_apply_prepares_but_does_not_publish_until_audio_boundary() 
   CHECK("context", app != nullptr);
 
   const char* doc = "synth(1, SynthSettings { osc1 = { mix = 0.25 } })";
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
+  auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
   CHECK("apply accepted", result.ok);
   CHECK("pending ready", app->documents.pendingApply.ready.load());
@@ -49,7 +49,7 @@ static void test_doc_apply_publishes_mixer_and_synth_together() {
 
   const char* doc = "synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
                     "mixer(1, MixerSettings { gain = 0.25 })";
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
+  auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
   CHECK("apply accepted", result.ok);
   CHECK("synth old before publish",
@@ -71,15 +71,15 @@ static void test_second_doc_apply_rejected_while_pending_unpublished() {
   CHECK("context", app != nullptr);
 
   auto first =
-      app::doc::applyAuthoredDocRevision(app->documents.authoring,
-                                         *app,
-                                         1,
-                                         "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+      app::doc::submitAuthoredDocRevision(app->documents.authoring,
+                                          *app,
+                                          1,
+                                          "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
   auto second =
-      app::doc::applyAuthoredDocRevision(app->documents.authoring,
-                                         *app,
-                                         2,
-                                         "synth(1, SynthSettings { osc1 = { mix = 0.25 } })");
+      app::doc::submitAuthoredDocRevision(app->documents.authoring,
+                                          *app,
+                                          2,
+                                          "synth(1, SynthSettings { osc1 = { mix = 0.25 } })");
 
   CHECK("first accepted", first.ok);
   CHECK("second rejected", !second.ok);

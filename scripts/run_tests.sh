@@ -3,15 +3,16 @@ set -euo pipefail
 
 CLEAN=0
 RUNNER_ARGS=()
+INCREMENTAL_BUILD=false
 
 for arg in "$@"; do
   case "$arg" in
-    -c|--clean) CLEAN=1 ;;
+    -i|--incremental) INCREMENTAL_BUILD=true ;;
     *) RUNNER_ARGS+=("$arg") ;;
   esac
 done
 
-if [ $CLEAN -eq 1 ]; then
+if [ "$INCREMENTAL_BUILD" = false ]; then
   make clean
 fi
 

@@ -66,7 +66,8 @@ static void test_mark_buffer_edited_sets_text_and_dirty() {
   TEST("mark_buffer_edited_sets_text_and_dirty");
 
   app::editor::AuthoredDocEditorState editor{};
-  app::editor::markBufferEdited(editor, "track(1, TrackSettings {})");
+  editor.buffer.text = "track(1, TrackSettings {})";
+  app::editor::markBufferTextChanged(editor);
 
   CHECK("text updated", editor.buffer.text == "track(1, TrackSettings {})");
   CHECK("dirty", editor.buffer.dirty);

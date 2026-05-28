@@ -49,8 +49,7 @@ bool validPath(const char* path) {
 
 } // namespace
 
-void markBufferEdited(AuthoredDocEditorState& editor, std::string text) {
-  editor.buffer.text = std::move(text);
+void markBufferTextChanged(AuthoredDocEditorState& editor) {
   editor.buffer.dirty = true;
   editor.editSerial++;
   editor.luals.status = LanguageServiceStatus::Pending;
@@ -130,10 +129,10 @@ bool applyEditorBuffer(AuthoredDocEditorState& editor, app::AppContext& app) {
   const app::doc::DocRevision revision = ++editor.buffer.applyRevision;
 
   app::doc::ApplyRevisionResult result =
-      app::doc::applyAuthoredDocRevision(app.documents.authoring,
-                                         app,
-                                         revision,
-                                         editor.buffer.text.c_str());
+      app::doc::submitAuthoredDocRevision(app.documents.authoring,
+                                          app,
+                                          revision,
+                                          editor.buffer.text.c_str());
 
   editor.backendDiagnostics = result.diagnostics;
   if (result.ok) {

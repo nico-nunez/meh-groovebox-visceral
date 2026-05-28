@@ -211,7 +211,7 @@ static void test_service_emitted_diagnostics_are_cataloged() {
   app::AppContext app{};
 
   auto result =
-      app::doc::applyAuthoredDocRevision(service, app, 1, "track('one', TrackSettings {})");
+      app::doc::submitAuthoredDocRevision(service, app, 1, "track('one', TrackSettings {})");
 
   CHECK("not ok", !result.ok);
   CHECK("has diagnostics", !result.diagnostics.empty());
@@ -226,7 +226,7 @@ static void test_file_apply_emitted_diagnostics_are_cataloged() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  auto result = app::doc::applySequencerFile(service, app, "/path/that/does/not/exist.lua");
+  auto result = app::doc::submitAuthoredDocFile(service, app, "/path/that/does/not/exist.lua");
 
   CHECK("not ok", !result.ok);
   CHECK("has diagnostics", !result.diagnostics.empty());

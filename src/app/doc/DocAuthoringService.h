@@ -50,14 +50,14 @@ struct DocAuthoringService {
 void initDocAuthoringService(DocAuthoringService& service);
 void destroyDocAuthoringService(DocAuthoringService& service);
 
-ApplyRevisionResult applyAuthoredDocRevision(DocAuthoringService& service,
-                                             app::AppContext& app,
-                                             DocRevision revision,
-                                             const char* bufferText);
+ApplyRevisionResult submitAuthoredDocRevision(DocAuthoringService& service,
+                                              app::AppContext& app,
+                                              DocRevision revision,
+                                              const char* bufferText);
 
-ApplyRevisionResult applySequencerFile(DocAuthoringService& service,
-                                       app::AppContext& app,
-                                       const char* path);
+ApplyRevisionResult submitAuthoredDocFile(DocAuthoringService& service,
+                                          app::AppContext& app,
+                                          const char* path);
 
 inline const DocDiagnostics& getDocDiagnostics(const DocAuthoringService& service) {
   return service.apply.diagnostics;

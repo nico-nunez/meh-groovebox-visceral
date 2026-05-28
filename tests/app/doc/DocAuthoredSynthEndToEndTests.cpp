@@ -54,7 +54,7 @@ static void test_luals_advertised_synth_shape_parses_and_applies() {
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
+  auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
   CHECK("apply ok", result.ok);
   test::publishPending(app);
@@ -82,7 +82,7 @@ static void test_mixed_synth_and_sequencer_document_applies() {
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
+  auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
   CHECK("apply ok", result.ok);
   CHECK("completed", app->documents.authoring.apply.status == app::doc::ApplyStatus::Completed);
@@ -103,10 +103,10 @@ static void test_deferred_synth_fields_fail_without_queueing_events() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
   auto result =
-      app::doc::applyAuthoredDocRevision(app->documents.authoring,
-                                         *app,
-                                         1,
-                                         "synth(1, SynthSettings { lfo1 = { rate = 2 } })");
+      app::doc::submitAuthoredDocRevision(app->documents.authoring,
+                                          *app,
+                                          1,
+                                          "synth(1, SynthSettings { lfo1 = { rate = 2 } })");
 
   CHECK("apply failed", !result.ok);
   CHECK("unknown param diagnostic",
@@ -122,7 +122,7 @@ static void test_valid_synth_document_never_emits_apply_not_implemented() {
 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
-  auto result = app::doc::applyAuthoredDocRevision(
+  auto result = app::doc::submitAuthoredDocRevision(
       app->documents.authoring,
       *app,
       1,
@@ -143,10 +143,10 @@ static void test_synth_param_patch_preserves_other_live_params() {
   synth::param::sync::setParamDeferred(app->tracks[0].engine, synth::param::OSC2_MIX_LEVEL, 0.8f);
 
   auto result =
-      app::doc::applyAuthoredDocRevision(app->documents.authoring,
-                                         *app,
-                                         1,
-                                         "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+      app::doc::submitAuthoredDocRevision(app->documents.authoring,
+                                          *app,
+                                          1,
+                                          "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
   CHECK("apply ok", result.ok);
   test::publishPending(app);
 
@@ -164,7 +164,7 @@ static void test_sequencer_patch_preserves_synth() {
   app->tracks[0].controlProgramValid = true;
   synth::param::sync::setParamDeferred(app->tracks[0].engine, synth::param::OSC1_MIX_LEVEL, 0.9f);
 
-  auto result = app::doc::applyAuthoredDocRevision(
+  auto result = app::doc::submitAuthoredDocRevision(
       app->documents.authoring,
       *app,
       1,

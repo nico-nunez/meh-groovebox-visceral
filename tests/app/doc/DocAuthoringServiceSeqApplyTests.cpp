@@ -30,10 +30,10 @@ static void test_parse_failure_sets_failed_without_admission() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring,
-                                                   *app,
-                                                   1,
-                                                   "track('one', TrackSettings {})");
+  auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring,
+                                                    *app,
+                                                    1,
+                                                    "track('one', TrackSettings {})");
 
   CHECK("not ok", !result.ok);
   CHECK("status Failed", app->documents.authoring.apply.status == app::doc::ApplyStatus::Failed);
@@ -52,7 +52,7 @@ static void test_successful_sequencer_apply_publishes_at_boundary() {
   CHECK("context", app != nullptr);
 
   auto result =
-      app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+      app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
 
   CHECK("ok", result.ok);
   CHECK("status Completed",
@@ -80,11 +80,12 @@ static void test_empty_document_is_noop() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto seed = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+  auto seed =
+      app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
   CHECK("seed ok", seed.ok);
   test::publishPending(app);
 
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 2, "");
+  auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 2, "");
 
   CHECK("ok", result.ok);
   CHECK("no pending apply", !app->documents.pendingApply.ready.load());
@@ -103,7 +104,7 @@ static void test_sparse_note_patch_preserves_step_velocity_gate_and_active() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto seed = app::doc::applyAuthoredDocRevision(
+  auto seed = app::doc::submitAuthoredDocRevision(
       app->documents.authoring,
       *app,
       1,
@@ -112,7 +113,7 @@ static void test_sparse_note_patch_preserves_step_velocity_gate_and_active() {
   CHECK("seed ok", seed.ok);
   test::publishPending(app);
 
-  auto patch = app::doc::applyAuthoredDocRevision(
+  auto patch = app::doc::submitAuthoredDocRevision(
       app->documents.authoring,
       *app,
       2,
@@ -137,11 +138,12 @@ static void test_step_false_clears_step_at_admission() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto seed = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+  auto seed =
+      app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
   CHECK("seed ok", seed.ok);
   test::publishPending(app);
 
-  auto clear = app::doc::applyAuthoredDocRevision(
+  auto clear = app::doc::submitAuthoredDocRevision(
       app->documents.authoring,
       *app,
       2,
@@ -169,7 +171,7 @@ static void test_mixed_synth_mixer_sequencer_apply_publishes_together() {
                     "synth(1, SynthSettings { osc1 = { mix = 0.5 } })\n";
   doc += kNonEmptyTrack1;
 
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, doc.c_str());
+  auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc.c_str());
 
   CHECK("ok", result.ok);
   CHECK("pending ready", app->documents.pendingApply.ready.load());

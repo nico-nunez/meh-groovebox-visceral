@@ -64,7 +64,7 @@ constexpr RuntimeLuaFunctionMetadata kApplyFileFunction =
        spanOf(kPathArg),
        "",
        RuntimeLuaStatus::Transitional,
-       "Apply an authored document file through app::doc::applySequencerFile.");
+       "Apply an authored document file through app::doc::submitAuthoredDocFile.");
 constexpr RuntimeLuaFunctionMetadata kClearFunction = fn(rtglobal::Clear);
 constexpr RuntimeLuaFunctionMetadata kQuitFunction = fn(rtglobal::Quit);
 

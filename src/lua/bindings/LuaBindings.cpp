@@ -839,7 +839,7 @@ int l_applyFile(lua_State* L) {
   const char* path = luaL_checkstring(L, 1);
 
   auto* ctx = getLuaContext(L);
-  auto result = app::doc::applySequencerFile(ctx->app->documents.authoring, *ctx->app, path);
+  auto result = app::doc::submitAuthoredDocFile(ctx->app->documents.authoring, *ctx->app, path);
   if (!result.ok) {
     const char* message = result.diagnostics.empty() ? "document apply failed"
                                                      : result.diagnostics.front().message.c_str();

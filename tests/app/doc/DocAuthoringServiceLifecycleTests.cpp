@@ -25,7 +25,7 @@ static void test_successful_apply_completes_lifecycle() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  auto result = app::doc::applyAuthoredDocRevision(service, app, 1, kOneTrackDocument);
+  auto result = app::doc::submitAuthoredDocRevision(service, app, 1, kOneTrackDocument);
   CHECK("ok", result.ok);
   CHECK("applyOperationID == 1", result.applyOperationID == 1);
   CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
@@ -43,7 +43,7 @@ static void test_parse_failure_fails_lifecycle() {
   app::AppContext app{};
 
   auto result =
-      app::doc::applyAuthoredDocRevision(service, app, 1, "track('bad', TrackSettings {})");
+      app::doc::submitAuthoredDocRevision(service, app, 1, "track('bad', TrackSettings {})");
   CHECK("not ok", !result.ok);
   CHECK("status Failed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
   CHECK("activeApplyOperationID == 0", service.apply.activeApplyOperationID == 0);
@@ -62,7 +62,7 @@ static void test_supersedes_existing_active_operation() {
   service.apply.activeApplyOperationID = 41;
   service.apply.status = app::doc::ApplyStatus::Started;
 
-  auto result = app::doc::applyAuthoredDocRevision(service, app, 1, kOneTrackDocument);
+  auto result = app::doc::submitAuthoredDocRevision(service, app, 1, kOneTrackDocument);
   CHECK("ok", result.ok);
   CHECK("applyOperationID == 1", result.applyOperationID == 1);
   CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
@@ -81,7 +81,7 @@ static void test_file_apply_success_uses_buffer_pipeline() {
   fputs(kOneTrackDocument, f);
   fclose(f);
 
-  auto result = app::doc::applySequencerFile(service, app, kTempFilePath);
+  auto result = app::doc::submitAuthoredDocFile(service, app, kTempFilePath);
   CHECK("ok", result.ok);
   CHECK("status Completed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Completed);
   CHECK("buffer.path == tmpPath", service.buffer.path == kTempFilePath);
@@ -98,7 +98,7 @@ static void test_file_read_failure_is_failed_apply_operation() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  auto result = app::doc::applySequencerFile(service, app, "/path/that/does/not/exist.lua");
+  auto result = app::doc::submitAuthoredDocFile(service, app, "/path/that/does/not/exist.lua");
   CHECK("not ok", !result.ok);
   CHECK("applyOperationID non-zero", result.applyOperationID != 0);
   CHECK("status Failed", app::doc::getApplyStatus(service) == app::doc::ApplyStatus::Failed);
@@ -116,7 +116,7 @@ static void test_query_helpers_return_service_state() {
   app::doc::initDocAuthoringService(service);
   app::AppContext app{};
 
-  app::doc::applyAuthoredDocRevision(service, app, 1, "track('bad', TrackSettings {})");
+  app::doc::submitAuthoredDocRevision(service, app, 1, "track('bad', TrackSettings {})");
 
   CHECK("getDocDiagnostics matches",
         &app::doc::getDocDiagnostics(service) == &service.apply.diagnostics);
