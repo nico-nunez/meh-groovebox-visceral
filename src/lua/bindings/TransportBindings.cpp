@@ -1,5 +1,6 @@
 #include "LuaBindings.h"
-#include "lua/LuaRuntimeMetadata.h"
+
+#include "lua/metadata/LuaRuntimeMetadata.h"
 
 namespace lua::bindings {
 

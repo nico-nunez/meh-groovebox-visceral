@@ -2,7 +2,7 @@
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
-#include "app/doc/DocMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
 #include "app/editor/AuthoredDocEditor.h"
 
 #include <cstdio>

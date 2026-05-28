@@ -41,6 +41,8 @@
 ---@field osc4? SynthOscSettings
 ---@field noise? SynthNoiseSettings
 ---@field ampEnv? SynthAmpEnvSettings
+---@field modEnv? SynthModEnvSettings
+---@field filterEnv? SynthFilterEnvSettings
 ---@field svf? SynthSVFSettings
 ---@field ladder? SynthLadderSettings
 ---@field mono? SynthMonoSettings
@@ -68,6 +70,18 @@
 ---@field mix? number
 
 ---@class SynthAmpEnvSettings
+---@field attack? number
+---@field decay? number
+---@field sustain? number
+---@field release? number
+
+---@class SynthModEnvSettings
+---@field attack? number
+---@field decay? number
+---@field sustain? number
+---@field release? number
+
+---@class SynthFilterEnvSettings
 ---@field attack? number
 ---@field decay? number
 ---@field sustain? number
@@ -127,15 +141,15 @@
 ---@field pan? number
 ---@field mute? boolean
 
----@param settings table?
+---@param settings TrackSettings?
 ---@return TrackSettings
 function TrackSettings(settings) end
 
----@param settings table?
+---@param settings SynthSettings?
 ---@return SynthSettings
 function SynthSettings(settings) end
 
----@param settings table?
+---@param settings MixerSettings?
 ---@return MixerSettings
 function MixerSettings(settings) end
 

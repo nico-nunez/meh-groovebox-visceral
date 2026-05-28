@@ -16,6 +16,20 @@ bass.synth = SynthSettings {
     release = 180,
   },
 
+  modEnv = {
+    attack = 5,
+    decay = 120,
+    sustain = 0.7,
+    release = 180,
+  },
+
+  filterEnv = {
+    attack = 5,
+    decay = 120,
+    sustain = 0.7,
+    release = 180,
+  },
+
   svf = {
     enabled = true,
     mode = "lp",

@@ -1,7 +1,7 @@
 #include "TestRunner.h"
 
-#include "app/doc/DocMetadata.h"
-#include "app/doc/DocSynthSettingsMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/metadata/DocSynthSettingsMetadata.h"
 #include "synth/params/ParamDefs.h"
 #include "synth/params/ParamUtils.h"
 
@@ -38,6 +38,8 @@ static void test_authored_synth_mapping_has_first_slice_representatives() {
   CHECK("osc4 fixed freq", hasField("osc4.fixedFreq"));
   CHECK("noise type", hasField("noise.type"));
   CHECK("amp env attack", hasField("ampEnv.attack"));
+  CHECK("mod env attack", hasField("modEnv.attack"));
+  CHECK("filter env attack", hasField("filterEnv.attack"));
   CHECK("svf cutoff", hasField("svf.cutoff"));
   CHECK("ladder drive", hasField("ladder.drive"));
   CHECK("mono enabled", hasField("mono.enabled"));
@@ -59,6 +61,8 @@ static void test_authored_synth_mapping_is_subset_not_all_params() {
   CHECK("signal chain deferred", !hasField("signalChain"));
   CHECK("deep reverb decay deferred", !hasField("fx.reverb.decay"));
   CHECK("envelope curve deferred", !hasField("ampEnv.attackCurve"));
+  CHECK("envelope curve deferred", !hasField("modEnv.attackCurve"));
+  CHECK("envelope curve deferred", !hasField("filterEnv.attackCurve"));
 }
 
 static void test_authored_synth_aliases_map_to_canonical_params() {
@@ -68,6 +72,8 @@ static void test_authored_synth_aliases_map_to_canonical_params() {
   const auto* oscScan = requireField("osc1.scan");
   const auto* masterGain = requireField("master.gain");
   const auto* ampAttack = requireField("ampEnv.attack");
+  const auto* modAttack = requireField("modEnv.attack");
+  const auto* filterAttack = requireField("filterEnv.attack");
 
   CHECK("osc mix canonical", oscMix && strEq(oscMix->canonicalParam, "osc1.mixLevel"));
   CHECK("osc mix id", oscMix && oscMix->paramID == synth::param::OSC1_MIX_LEVEL);
@@ -77,6 +83,12 @@ static void test_authored_synth_aliases_map_to_canonical_params() {
   CHECK("master gain id", masterGain && masterGain->paramID == synth::param::MASTER_GAIN);
   CHECK("amp attack canonical", ampAttack && strEq(ampAttack->canonicalParam, "ampEnv.attackMs"));
   CHECK("amp attack id", ampAttack && ampAttack->paramID == synth::param::AMP_ENV_ATTACK);
+  CHECK("mod attack canonical", modAttack && strEq(modAttack->canonicalParam, "modEnv.attackMs"));
+  CHECK("mod attack id", modAttack && modAttack->paramID == synth::param::MOD_ENV_ATTACK);
+  CHECK("filter attack canonical",
+        filterAttack && strEq(filterAttack->canonicalParam, "filterEnv.attackMs"));
+  CHECK("filter attack id",
+        filterAttack && filterAttack->paramID == synth::param::FILTER_ENV_ATTACK);
 }
 
 static void test_authored_synth_all_canonical_params_resolve() {

@@ -1,4 +1,4 @@
-#include "lua/LuaRuntimeMetadata.h"
+#include "LuaRuntimeMetadata.h"
 
 #include "app/AppParams.h"
 #include "app/Constants.h"

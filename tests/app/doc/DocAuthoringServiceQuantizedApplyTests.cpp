@@ -4,9 +4,9 @@
 #include "app/AppContext.h"
 #include "app/GrooveboxEditSession.h"
 #include "app/Transport.h"
+#include "app/doc/AuthoredDocParser.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/DocGrooveboxPatchBuilder.h"
-#include "app/doc/DocSequencerParser.h"
 #include "app/sessions/AudioSession.h"
 
 #include "synth/params/ParamDefs.h"

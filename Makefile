@@ -116,8 +116,8 @@ LUALS_STUB_GENERATOR = $(BUILD_DIR)/generate_luals_stubs
 
 LUALS_STUB_GENERATOR_SOURCES = \
 	tools/luals/generate_luals_stubs.cpp \
-	src/app/doc/DocMetadata.cpp \
-	src/lua/LuaRuntimeMetadata.cpp \
+	src/app/doc/metadata/DocMetadata.cpp \
+	src/lua/metadata/LuaRuntimeMetadata.cpp \
 	src/app/AppParams.cpp
 
 $(LUALS_STUB_GENERATOR): $(LUALS_STUB_GENERATOR_SOURCES)

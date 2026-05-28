@@ -1,4 +1,4 @@
-#include "app/doc/DocMixerSettingsMetadata.h"
+#include "DocMixerSettingsMetadata.h"
 
 #include <cstring>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/doc/DocMetadata.h"
+#include "DocMetadata.h"
 #include "synth/params/ParamDefs.h"
 
 namespace app::doc {

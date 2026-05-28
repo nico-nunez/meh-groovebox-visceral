@@ -1,7 +1,7 @@
 #include "app/Constants.h"
 #include "app/Sequencer.h"
-#include "app/doc/DocMetadata.h"
-#include "lua/LuaRuntimeMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
+#include "lua/metadata/LuaRuntimeMetadata.h"
 
 #include <algorithm>
 #include <cctype>
@@ -231,7 +231,7 @@ RenderedFile renderAuthoredDocumentStub() {
     emitDocumentClass(out, type);
 
   for (const auto& ctor : app::doc::authoredDocumentConstructors()) {
-    appendLine(out, "---@param settings table?");
+    appendLine(out, std::string("---@param settings ") + ctor + "?");
     appendLine(out, std::string("---@return ") + ctor);
     appendLine(out, std::string("function ") + ctor + "(settings) end");
     appendLine(out);

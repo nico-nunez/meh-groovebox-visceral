@@ -49,10 +49,6 @@ bool validPath(const char* path) {
 
 } // namespace
 
-void initAuthoredDocumentEditor(AuthoredDocEditorState& editor) {
-  editor = AuthoredDocEditorState{};
-}
-
 void markBufferEdited(AuthoredDocEditorState& editor, std::string text) {
   editor.buffer.text = std::move(text);
   editor.buffer.dirty = true;

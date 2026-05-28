@@ -5,7 +5,7 @@
 #include "app/AppParams.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/DocMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
 
 #include <algorithm>
 
@@ -236,7 +236,8 @@ static void test_sequencer_only_document_still_applies_after_phase2() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
+  auto result =
+      app::doc::applyAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
   CHECK("ok", result.ok);
   app::destroyAppContext(app);
 }

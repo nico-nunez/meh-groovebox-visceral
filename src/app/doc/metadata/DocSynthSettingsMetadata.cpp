@@ -1,4 +1,4 @@
-#include "app/doc/DocSynthSettingsMetadata.h"
+#include "DocSynthSettingsMetadata.h"
 
 #include <cstring>
 
@@ -67,6 +67,22 @@ constexpr AuthoredSynthParamField kAuthoredSynthParamFields[] = {
     field("ampEnv.decay", "ampEnv.decayMs", sp::AMP_ENV_DECAY, DocLuaValueKind::Number),
     field("ampEnv.sustain", "ampEnv.sustainLevel", sp::AMP_ENV_SUSTAIN, DocLuaValueKind::Number),
     field("ampEnv.release", "ampEnv.releaseMs", sp::AMP_ENV_RELEASE, DocLuaValueKind::Number),
+
+    field("modEnv.attack", "modEnv.attackMs", sp::MOD_ENV_ATTACK, DocLuaValueKind::Number),
+    field("modEnv.decay", "modEnv.decayMs", sp::MOD_ENV_DECAY, DocLuaValueKind::Number),
+    field("modEnv.sustain", "modEnv.sustainLevel", sp::MOD_ENV_SUSTAIN, DocLuaValueKind::Number),
+    field("modEnv.release", "modEnv.releaseMs", sp::MOD_ENV_RELEASE, DocLuaValueKind::Number),
+
+    field("filterEnv.attack", "filterEnv.attackMs", sp::FILTER_ENV_ATTACK, DocLuaValueKind::Number),
+    field("filterEnv.decay", "filterEnv.decayMs", sp::FILTER_ENV_DECAY, DocLuaValueKind::Number),
+    field("filterEnv.sustain",
+          "filterEnv.sustainLevel",
+          sp::FILTER_ENV_SUSTAIN,
+          DocLuaValueKind::Number),
+    field("filterEnv.release",
+          "filterEnv.releaseMs",
+          sp::FILTER_ENV_RELEASE,
+          DocLuaValueKind::Number),
 
     field("svf.enabled", "svf.enabled", sp::SVF_ENABLED, DocLuaValueKind::Boolean),
     field("svf.mode", "svf.mode", sp::SVF_MODE, DocLuaValueKind::String),

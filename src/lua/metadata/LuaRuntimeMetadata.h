@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/doc/DocMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
 
 #include <cstdint>
 #include <string>

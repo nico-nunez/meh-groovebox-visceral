@@ -3,10 +3,9 @@
 #include "app/AppContext.h"
 #include "app/Constants.h"
 #include "app/Sequencer.h"
+#include "app/doc/AuthoredDocParser.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/DocMetadata.h"
-#include "app/doc/DocSequencerModel.h"
-#include "app/doc/DocSequencerParser.h"
+#include "app/doc/metadata/DocMetadata.h"
 
 #include <cstddef>
 #include <cstring>
@@ -251,6 +250,8 @@ static void test_synth_settings_metadata_is_implemented() {
         synth && synth->status == app::doc::DocMetadataStatus::Implemented);
   CHECK("SynthSettings has osc1", synth && findField(*synth, "osc1") != nullptr);
   CHECK("SynthSettings has ampEnv", synth && findField(*synth, "ampEnv") != nullptr);
+  CHECK("SynthSettings has modEnv", synth && findField(*synth, "modEnv") != nullptr);
+  CHECK("SynthSettings has filterEnv", synth && findField(*synth, "filterEnv") != nullptr);
   CHECK("SynthSettings has fx", synth && findField(*synth, "fx") != nullptr);
   CHECK("SynthOscSettings exists", osc != nullptr);
   CHECK("SynthOscSettings has bank", osc && findField(*osc, "bank") != nullptr);

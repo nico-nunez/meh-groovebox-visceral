@@ -59,10 +59,6 @@ std::filesystem::path makeWorkspacePath() {
   return base / "meh-groovebox-luals-editor";
 }
 
-// bool startsWith(const std::string& value, const std::string& prefix) {
-//   return value.rfind(prefix, 0) == 0;
-// }
-
 std::size_t findFixturePathEnd(const std::string& line) {
   const std::string fixtureSuffix = std::string(kFixtureFileName) + ":";
   const std::size_t fixture = line.find(fixtureSuffix);

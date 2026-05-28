@@ -6,7 +6,7 @@
 #include "app/Sequencer.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/DocMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
 #include "app/sessions/AudioSession.h"
 #include "synth/params/ParamDefs.h"
 
@@ -188,8 +188,10 @@ static void test_gain_patch_preserves_live_pan() {
 
   app->mixer.current.tracks[0].pan = -0.5f;
 
-  auto result = app::doc::applyAuthoredDocRevision(
-      app->documents.authoring, *app, 1, "mixer(1, MixerSettings { gain = 0.7 })");
+  auto result = app::doc::applyAuthoredDocRevision(app->documents.authoring,
+                                                   *app,
+                                                   1,
+                                                   "mixer(1, MixerSettings { gain = 0.7 })");
   CHECK("ok", result.ok);
   test::publishPending(app);
 
@@ -208,8 +210,10 @@ static void test_mixer_patch_preserves_sequencer() {
   CHECK("seed ok", seed.ok);
   test::publishPending(app);
 
-  auto mixer = app::doc::applyAuthoredDocRevision(
-      app->documents.authoring, *app, 2, "mixer(1, MixerSettings { gain = 0.7 })");
+  auto mixer = app::doc::applyAuthoredDocRevision(app->documents.authoring,
+                                                  *app,
+                                                  2,
+                                                  "mixer(1, MixerSettings { gain = 0.7 })");
   CHECK("mixer ok", mixer.ok);
   test::publishPending(app);
 

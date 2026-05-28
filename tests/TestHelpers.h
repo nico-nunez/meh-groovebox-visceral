@@ -2,10 +2,9 @@
 
 #include "app/AppContext.h"
 #include "app/GrooveboxEditSession.h"
+#include "app/doc/AuthoredDocParser.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/DocDiagnostics.h"
-#include "app/doc/DocSequencerModel.h"
-#include "app/doc/DocSequencerParser.h"
 #include "synth/WavetableBanks.h"
 
 namespace test {

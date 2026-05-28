@@ -1,10 +1,10 @@
 #pragma once
 
 #include "app/Constants.h"
-#include "app/doc/DocMixerSettingsMetadata.h"
 #include "app/doc/DocSequencerModel.h"
-#include "app/doc/DocSynthSettingsMetadata.h"
 #include "app/doc/DocTypes.h"
+#include "app/doc/metadata/DocMixerSettingsMetadata.h"
+#include "app/doc/metadata/DocSynthSettingsMetadata.h"
 
 #include <vector>
 

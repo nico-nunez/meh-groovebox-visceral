@@ -168,6 +168,8 @@ static void test_authored_stub_contains_first_slice_synth_surface() {
   checkContains(authored, "---@field synth? SynthSettings", "TrackSettings synth field");
   checkContains(authored, "---@field osc1? SynthOscSettings", "osc1 field");
   checkContains(authored, "---@field ampEnv? SynthAmpEnvSettings", "ampEnv field");
+  checkContains(authored, "---@field modEnv? SynthModEnvSettings", "modEnv field");
+  checkContains(authored, "---@field filterEnv? SynthFilterEnvSettings", "filterEnv field");
   checkContains(authored, "---@field svf? SynthSVFSettings", "svf field");
   checkContains(authored, "---@field fx? SynthFXSettings", "fx field");
   checkContains(authored, "---@field mix? number", "mix field");

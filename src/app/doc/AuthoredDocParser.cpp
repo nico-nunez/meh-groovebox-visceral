@@ -1,8 +1,8 @@
-#include "app/doc/DocSequencerParser.h"
+#include "app/doc/AuthoredDocParser.h"
 
 #include "app/doc/DocAuthoredModel.h"
-#include "app/doc/DocMetadata.h"
-#include "app/doc/DocSynthSettingsMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/metadata/DocSynthSettingsMetadata.h"
 #include "lua/LuaState.h"
 
 #include "synth/params/ParamUtils.h"

@@ -4,7 +4,7 @@
 #include "app/AppContext.h"
 #include "app/GrooveboxEditSession.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/DocMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
 #include "app/sessions/AudioSession.h"
 #include "synth/WavetableBanks.h"
 #include "synth/params/ParamDefs.h"
@@ -142,8 +142,11 @@ static void test_synth_param_patch_preserves_other_live_params() {
   app->tracks[0].controlProgramValid = true;
   synth::param::sync::setParamDeferred(app->tracks[0].engine, synth::param::OSC2_MIX_LEVEL, 0.8f);
 
-  auto result = app::doc::applyAuthoredDocRevision(
-      app->documents.authoring, *app, 1, "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+  auto result =
+      app::doc::applyAuthoredDocRevision(app->documents.authoring,
+                                         *app,
+                                         1,
+                                         "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
   CHECK("apply ok", result.ok);
   test::publishPending(app);
 

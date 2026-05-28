@@ -96,7 +96,6 @@ inline constexpr const char* authoredDocumentTemplate() {
          "})\n";
 }
 
-void initAuthoredDocEditor(AuthoredDocEditorState& editor);
 void markBufferEdited(AuthoredDocEditorState& editor, std::string text);
 
 void newBlankDocument(AuthoredDocEditorState& editor);

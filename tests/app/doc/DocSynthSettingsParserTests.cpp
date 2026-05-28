@@ -1,7 +1,7 @@
 #include "TestHelpers.h"
 #include "TestRunner.h"
 
-#include "app/doc/DocMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
 #include "synth/params/ParamDefs.h"
 #include "synth/params/ParamUtils.h"
 

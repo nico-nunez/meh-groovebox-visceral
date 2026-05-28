@@ -1,5 +1,5 @@
 #include "LuaBindings.h"
-#include "lua/LuaRuntimeMetadata.h"
+#include "lua/metadata/LuaRuntimeMetadata.h"
 
 #include "app/AppContext.h"
 #include "app/doc/DocAuthoringService.h"

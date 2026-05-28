@@ -2,8 +2,8 @@
 #include "TestRunner.h"
 
 #include "app/Sequencer.h"
-#include "app/doc/DocMetadata.h"
 #include "app/doc/DocTypes.h"
+#include "app/doc/metadata/DocMetadata.h"
 
 #include <cstdio>
 
@@ -111,8 +111,7 @@ static void test_omitted_active_slot_is_not_inferred() {
   CHECK("activeSlot == INVALID",
         ws->model.sequencer.tracks[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
   CHECK("activeSlotSource == Unset",
-        ws->model.sequencer.tracks[0].activeSlotSource ==
-            app::doc::ActivePatternSlotSource::Unset);
+        ws->model.sequencer.tracks[0].activeSlotSource == app::doc::ActivePatternSlotSource::Unset);
 }
 
 static void test_active_slot_without_patterns_rejects_revision() {
@@ -286,13 +285,15 @@ static void test_pattern_slot_false_clears_slot() {
   CHECK("ok", r.ok);
   CHECK("track present", ws->model.sequencer.hasTrackState[0]);
   CHECK("slot present", ws->model.sequencer.tracks[0].hasPatternSlot[0]);
-  CHECK("slot clear", ws->model.sequencer.tracks[0].patternSlots[0].op == app::PatchObjectOp::Clear);
+  CHECK("slot clear",
+        ws->model.sequencer.tracks[0].patternSlots[0].op == app::PatchObjectOp::Clear);
 }
 
 static void test_step_false_clears_step() {
   TEST("step_false_clears_step");
   auto* ws = getParseTestWorkspace();
-  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = false } } } })", ws);
+  auto r =
+      parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = false } } } })", ws);
   CHECK("ok", r.ok);
   const auto& step = ws->model.sequencer.tracks[0].patternSlots[0].pattern.steps[0];
   CHECK("track present", ws->model.sequencer.hasTrackState[0]);

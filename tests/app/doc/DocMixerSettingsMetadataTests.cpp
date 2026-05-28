@@ -1,8 +1,8 @@
 #include "TestRunner.h"
 
 #include "app/AppParams.h"
-#include "app/doc/DocMetadata.h"
-#include "app/doc/DocMixerSettingsMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/metadata/DocMixerSettingsMetadata.h"
 
 #include <string>
 

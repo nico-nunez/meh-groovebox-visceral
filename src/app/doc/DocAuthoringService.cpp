@@ -2,12 +2,12 @@
 
 #include "app/AppContext.h"
 #include "app/GrooveboxEditSession.h"
+#include "app/doc/AuthoredDocParser.h"
 #include "app/doc/DocGrooveboxPatchBuilder.h"
-#include "app/doc/DocMetadata.h"
 #include "app/doc/DocMixerPlanner.h"
-#include "app/doc/DocSequencerParser.h"
 #include "app/doc/DocSequencerPlanner.h"
 #include "app/doc/DocSynthPlanner.h"
+#include "app/doc/metadata/DocMetadata.h"
 
 #include <fstream>
 #include <sstream>

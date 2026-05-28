@@ -1,7 +1,7 @@
 #pragma once
 
+#include "DocMetadata.h"
 #include "app/AppParams.h"
-#include "app/doc/DocMetadata.h"
 
 namespace app::doc {
 

@@ -1,6 +1,6 @@
 #include "lua/bindings/LuaBindings.h"
 
-#include "lua/LuaRuntimeMetadata.h"
+#include "lua/metadata/LuaRuntimeMetadata.h"
 
 #include "app/AppParams.h"
 #include "app/ControlEvents.h"
