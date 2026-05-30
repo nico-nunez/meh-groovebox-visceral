@@ -45,6 +45,7 @@
 ---@field filterEnv? SynthFilterEnvSettings
 ---@field svf? SynthSVFSettings
 ---@field ladder? SynthLadderSettings
+---@field saturator? SynthSaturatorSettings
 ---@field mono? SynthMonoSettings
 ---@field porta? SynthPortaSettings
 ---@field unison? SynthUnisonSettings
@@ -60,6 +61,10 @@
 ---@field octave? integer
 ---@field scan? number
 ---@field fmDepth? number
+---@field phaseMode? string
+---@field randomRange? number
+---@field resetPhase? number
+---@field phaseMode? string
 ---@field ratio? number
 ---@field fixed? boolean
 ---@field fixedFreq? number
@@ -98,6 +103,11 @@
 ---@field cutoff? number
 ---@field resonance? number
 ---@field drive? number
+
+---@class SynthSaturatorSettings
+---@field enabled? boolean
+---@field drive? number
+---@field mix? number
 
 ---@class SynthMonoSettings
 ---@field enabled? boolean

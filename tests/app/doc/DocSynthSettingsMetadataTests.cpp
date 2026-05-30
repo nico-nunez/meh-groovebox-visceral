@@ -42,6 +42,7 @@ static void test_authored_synth_mapping_has_first_slice_representatives() {
   CHECK("filter env attack", hasField("filterEnv.attack"));
   CHECK("svf cutoff", hasField("svf.cutoff"));
   CHECK("ladder drive", hasField("ladder.drive"));
+  CHECK("saturator drive", hasField("saturator.drive"));
   CHECK("mono enabled", hasField("mono.enabled"));
   CHECK("porta time", hasField("porta.time"));
   CHECK("unison voices", hasField("unison.voices"));

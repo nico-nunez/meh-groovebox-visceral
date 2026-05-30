@@ -98,7 +98,83 @@ SynthTargetProgramsResult buildSynthPatches(const AuthoredDocModel* model,
         return result;
     }
 
-    hasSynth[trackIndex] = out[trackIndex].writeCount > 0;
+    hasSynth[trackIndex] = out[trackIndex].writeCount > 0 || out[trackIndex].hasModRoutes ||
+                           out[trackIndex].hasFMRoutes || out[trackIndex].hasSignalChain;
+
+    if (authored.hasModRoutes) {
+      if (authored.modRoutes.size() > synth::mod_matrix::MAX_MOD_ROUTES) {
+        result.diagnostics.push_back(makeSynthTargetDiagnostic(documentID,
+                                                               revision,
+                                                               nullptr,
+                                                               "mod route count exceeds capacity"));
+        return result;
+      }
+      out[trackIndex].hasModRoutes = true;
+      out[trackIndex].modRouteCount = static_cast<uint8_t>(authored.modRoutes.size());
+      for (size_t r = 0; r < authored.modRoutes.size(); ++r) {
+        const auto& ar = authored.modRoutes[r];
+        out[trackIndex].modRoutes[r] = {ar.src, ar.dest, ar.amount};
+      }
+    }
+
+    // FM routes — validate and expand flat list into [carrier][modulator] layout
+    // fmRouteCounts is already zeroed: out[trackIndex] = app::TrackSynthPatch{} at loop start
+    if (authored.hasFMRoutes) {
+      out[trackIndex].hasFMRoutes = true;
+
+      for (const auto& ar : authored.fmRoutes) {
+        if (ar.depth < 0.0f || ar.depth > 10.0f) {
+          result.diagnostics.push_back(
+              makeSynthTargetDiagnostic(documentID,
+                                        revision,
+                                        nullptr,
+                                        "fm route depth out of range [0.0, 10.0]"));
+          return result;
+        }
+
+        uint8_t& count = out[trackIndex].fmRouteCounts[ar.carrier];
+
+        // Check for duplicate (carrier, modulator) pair
+        const auto modFMSrc = static_cast<synth::wavetable::osc::FMSource>(ar.modulator + 1);
+        for (uint8_t r = 0; r < count; ++r) {
+          if (out[trackIndex].fmRoutes[ar.carrier][r].source == modFMSrc) {
+            result.diagnostics.push_back(
+                makeSynthTargetDiagnostic(documentID,
+                                          revision,
+                                          nullptr,
+                                          "duplicate fm route (carrier, mod) pair"));
+            return result;
+          }
+        }
+
+        if (count >= synth::preset::NUM_OSCS) {
+          result.diagnostics.push_back(
+              makeSynthTargetDiagnostic(documentID,
+                                        revision,
+                                        nullptr,
+                                        "too many fm routes for one carrier"));
+          return result;
+        }
+
+        out[trackIndex].fmRoutes[ar.carrier][count++] = {modFMSrc, ar.depth};
+      }
+    }
+
+    // Signal chain
+    if (authored.hasSignalChain) {
+      if (authored.signalChain.size() > synth::signal_chain::MAX_CHAIN_SLOTS) {
+        result.diagnostics.push_back(
+            makeSynthTargetDiagnostic(documentID,
+                                      revision,
+                                      nullptr,
+                                      "signal chain length exceeds capacity"));
+        return result;
+      }
+      out[trackIndex].hasSignalChain = true;
+      out[trackIndex].signalChainLength = static_cast<uint8_t>(authored.signalChain.size());
+      for (size_t s = 0; s < authored.signalChain.size(); ++s)
+        out[trackIndex].signalChain[s] = authored.signalChain[s];
+    }
   }
 
   result.ok = true;
@@ -120,6 +196,21 @@ void buildAdmittedSynthTargetModel(const AuthoredDocModel* nextModel, AuthoredDo
 
     for (const auto& write : nextModel->synthTracks[trackIndex].writes)
       upsertWrite(admittedPatch, write);
+
+    const AuthoredTrackSynthPatch& next = nextModel->synthTracks[trackIndex];
+
+    if (next.hasModRoutes) {
+      admittedPatch.hasModRoutes = true;
+      admittedPatch.modRoutes = next.modRoutes;
+    }
+    if (next.hasFMRoutes) {
+      admittedPatch.hasFMRoutes = true;
+      admittedPatch.fmRoutes = next.fmRoutes;
+    }
+    if (next.hasSignalChain) {
+      admittedPatch.hasSignalChain = true;
+      admittedPatch.signalChain = next.signalChain;
+    }
   }
 }
 

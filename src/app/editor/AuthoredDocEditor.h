@@ -12,6 +12,15 @@ struct AppContext;
 
 namespace app::editor {
 
+namespace {
+using doc::DocDiagnostic;
+using doc::DocDiagnostics;
+using doc::DocRevision;
+} // namespace
+
+// ======================
+// Diagnostics
+// ======================
 enum class LanguageServiceStatus : uint8_t {
   Unavailable,
   Idle,
@@ -38,6 +47,9 @@ struct LuaLSDiagnosticState {
   bool running = false;
 };
 
+// =================
+// Authored Doc
+// =================
 enum class EditorCommandStatus : uint8_t {
   Idle,
   Succeeded,
@@ -55,13 +67,12 @@ struct EditorMessage {
   std::string text{};
 };
 
-// UI (imgui)
+// in-app/external editor text
 struct AuthoredDocBuffer {
   std::string text{};
   std::string filePath{};
-  app::doc::DocRevision applyRevision = 0;
-  app::doc::DocRevision lastAppliedRevision = 0;
-  bool hasFilePath = false;
+  DocRevision applyRevision = 0;
+  DocRevision lastAppliedRevision = 0;
   bool dirty = false;
 };
 
@@ -73,7 +84,7 @@ struct DiagnosticJumpRequest {
 
 struct AuthoredDocEditorState {
   AuthoredDocBuffer buffer{};
-  app::doc::DocDiagnostics backendDiagnostics{};
+  DocDiagnostics backendDiagnostics{};
   EditorMessage fileMessage{};
   EditorMessage applyMessage{};
   EditorApplyStatus applyStatus = EditorApplyStatus::Idle;
@@ -107,10 +118,9 @@ bool saveDocument(AuthoredDocEditorState& editor);
 bool saveDocumentAs(AuthoredDocEditorState& editor, const char* path);
 bool reloadDocument(AuthoredDocEditorState& editor);
 
-bool applyEditorBuffer(AuthoredDocEditorState& editor, app::AppContext& app);
+bool submitEditorBuffer(AuthoredDocEditorState& editor, app::AppContext& app);
 
-void requestDiagnosticJump(AuthoredDocEditorState& editor,
-                           const app::doc::DocDiagnostic& diagnostic);
+void requestDiagnosticJump(AuthoredDocEditorState& editor, const DocDiagnostic& diagnostic);
 void clearDiagnosticJump(AuthoredDocEditorState& editor);
 
 } // namespace app::editor

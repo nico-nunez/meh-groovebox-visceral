@@ -125,6 +125,7 @@ inline constexpr const char* SynthModEnvSettings = "SynthModEnvSettings";
 inline constexpr const char* SynthFilterEnvSettings = "SynthFilterEnvSettings";
 inline constexpr const char* SynthSVFSettings = "SynthSVFSettings";
 inline constexpr const char* SynthLadderSettings = "SynthLadderSettings";
+inline constexpr const char* SynthSaturatorSettings = "SynthSaturatorSettings";
 inline constexpr const char* SynthMonoSettings = "SynthMonoSettings";
 inline constexpr const char* SynthPortaSettings = "SynthPortaSettings";
 inline constexpr const char* SynthUnisonSettings = "SynthUnisonSettings";
@@ -162,6 +163,23 @@ inline constexpr const char* SynthParamEnumUnknown = "synth.param.enum_unknown";
 inline constexpr const char* SynthParamOutOfRange = "synth.param.out_of_range";
 inline constexpr const char* SynthParamDuplicateWrite = "synth.param.duplicate_write";
 inline constexpr const char* SynthAdmissionFailed = "synth.admission_failed";
+inline constexpr const char* SynthModRouteInvalidShape = "synth.mod_route.invalid_shape";
+inline constexpr const char* SynthModRouteInvalidSrc = "synth.mod_route.invalid_src";
+inline constexpr const char* SynthModRouteInvalidDest = "synth.mod_route.invalid_dest";
+inline constexpr const char* SynthModRouteCapacityExceeded = "synth.mod_route.capacity_exceeded";
+inline constexpr const char* SynthFMRouteInvalidShape = "synth.fm_route.invalid_shape";
+inline constexpr const char* SynthFMRouteInvalidCarrier = "synth.fm_route.invalid_carrier";
+inline constexpr const char* SynthFMRouteInvalidMod = "synth.fm_route.invalid_mod";
+inline constexpr const char* SynthFMRouteSelfMod = "synth.fm_route.self_mod";
+inline constexpr const char* SynthFMRouteOutOfRange = "synth.fm_route.out_of_range";
+inline constexpr const char* SynthFMRouteDuplicate = "synth.fm_route.duplicate";
+inline constexpr const char* SynthFMRouteCapacityExceeded = "synth.fm_route.capacity_exceeded";
+inline constexpr const char* SynthSignalChainInvalidShape = "synth.signal_chain.invalid_shape";
+inline constexpr const char* SynthSignalChainUnknownProcessor =
+    "synth.signal_chain.unknown_processor";
+inline constexpr const char* SynthSignalChainDuplicate = "synth.signal_chain.duplicate";
+inline constexpr const char* SynthSignalChainCapacityExceeded =
+    "synth.signal_chain.capacity_exceeded";
 
 inline constexpr const char* SequencerPlanningFailed = "sequencer.planning_failed";
 inline constexpr const char* SequencerTrackInvalidIndex = "sequencer.track.invalid_index";

@@ -4,7 +4,11 @@
 #include "app/Constants.h"
 #include "app/Sequencer.h"
 
+#include "synth/ModMatrix.h"
+#include "synth/SignalChain.h"
+#include "synth/WavetableOsc.h"
 #include "synth/params/ParamDefs.h"
+#include "synth/preset/Preset.h"
 
 #include <cstdint>
 
@@ -17,16 +21,39 @@ enum class PatchObjectOp : uint8_t {
   Replace,
 };
 
+namespace {
+using synth::mod_matrix::ModRoute;
+using synth::param::ParamID;
+using synth::signal_chain::SignalProcessor;
+using synth::wavetable::osc::FMRoute;
+} // namespace
+
 struct SynthParamPatchWrite {
-  synth::param::ParamID paramID = synth::param::PARAM_UNKNOWN;
+  ParamID paramID = ParamID::PARAM_UNKNOWN;
   float value = 0.0f;
 };
 
 inline constexpr uint16_t MAX_SYNTH_PARAM_PATCH_WRITES = synth::param::PARAM_COUNT;
 
+/* `hasModRoutes`, `hasFMRoutes`, and `hasSignalChain` refer to whether the respective
+ *  property appeared in the doc at all:
+ *  - If not present no write/change to existing route data.  
+ *  - If present (i.e. mod = {}) than full overwrite of existing route data  */
 struct TrackSynthPatch {
   SynthParamPatchWrite writes[MAX_SYNTH_PARAM_PATCH_WRITES]{};
   uint16_t writeCount = 0;
+
+  ModRoute modRoutes[synth::mod_matrix::MAX_MOD_ROUTES]{};
+  uint8_t modRouteCount = 0;
+  bool hasModRoutes = false;
+
+  FMRoute fmRoutes[synth::preset::NUM_OSCS][synth::preset::NUM_OSCS]{};
+  uint8_t fmRouteCounts[synth::preset::NUM_OSCS]{};
+  bool hasFMRoutes = false;
+
+  SignalProcessor signalChain[synth::signal_chain::MAX_CHAIN_SLOTS]{};
+  uint8_t signalChainLength = 0;
+  bool hasSignalChain = false;
 };
 
 struct MixerParamPatchWrite {

@@ -38,7 +38,6 @@ static void test_new_blank_resets_text_without_resetting_apply_revision() {
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track(1, TrackSettings {})";
   editor.buffer.filePath = "/tmp/example.lua";
-  editor.buffer.hasFilePath = true;
   editor.buffer.dirty = true;
   editor.buffer.applyRevision = 7;
 
@@ -46,7 +45,6 @@ static void test_new_blank_resets_text_without_resetting_apply_revision() {
 
   CHECK("text empty", editor.buffer.text.empty());
   CHECK("path cleared", editor.buffer.filePath.empty());
-  CHECK("hasFilePath false", !editor.buffer.hasFilePath);
   CHECK("dirty false", !editor.buffer.dirty);
   CHECK("revision preserved", editor.buffer.applyRevision == 7);
 }
@@ -87,7 +85,6 @@ static void test_load_document_sets_path_and_clears_dirty() {
   CHECK("ok", ok);
   CHECK("text loaded", editor.buffer.text == "track(1, TrackSettings {})\n");
   CHECK("path set", editor.buffer.filePath == kTempEditorDocPath);
-  CHECK("has path", editor.buffer.hasFilePath);
   CHECK("dirty false", !editor.buffer.dirty);
   CHECK("message succeeded",
         editor.fileMessage.status == app::editor::EditorCommandStatus::Succeeded);
@@ -121,7 +118,6 @@ static void test_save_as_writes_text_and_sets_path() {
   CHECK("ok", ok);
   CHECK("file contents", readTempFile(kTempEditorDocPath) == editor.buffer.text);
   CHECK("path set", editor.buffer.filePath == kTempEditorDocPath);
-  CHECK("has path", editor.buffer.hasFilePath);
   CHECK("dirty false", !editor.buffer.dirty);
 }
 
@@ -144,7 +140,7 @@ static void test_apply_unsaved_valid_buffer_uses_revision_and_succeeds() {
   editor.buffer.text = "track(1, TrackSettings {})";
   editor.buffer.dirty = true;
 
-  const bool ok = app::editor::applyEditorBuffer(editor, app);
+  const bool ok = app::editor::submitEditorBuffer(editor, app);
 
   CHECK("ok", ok);
   CHECK("apply revision 1", editor.buffer.applyRevision == 1);
@@ -164,7 +160,7 @@ static void test_apply_invalid_buffer_caches_backend_diagnostics() {
   editor.buffer.text = "track('one', TrackSettings {})";
   editor.buffer.dirty = true;
 
-  const bool ok = app::editor::applyEditorBuffer(editor, app);
+  const bool ok = app::editor::submitEditorBuffer(editor, app);
 
   CHECK("not ok", !ok);
   CHECK("apply revision 1", editor.buffer.applyRevision == 1);
@@ -185,10 +181,10 @@ static void test_apply_attempt_revision_increments_on_failure_and_success() {
   app::editor::AuthoredDocEditorState editor{};
 
   editor.buffer.text = "track('one', TrackSettings {})";
-  CHECK("first apply fails", !app::editor::applyEditorBuffer(editor, app));
+  CHECK("first apply fails", !app::editor::submitEditorBuffer(editor, app));
 
   editor.buffer.text = "track(1, TrackSettings {})";
-  CHECK("second apply succeeds", app::editor::applyEditorBuffer(editor, app));
+  CHECK("second apply succeeds", app::editor::submitEditorBuffer(editor, app));
 
   CHECK("apply revision 2", editor.buffer.applyRevision == 2);
   CHECK("last applied revision 2", editor.buffer.lastAppliedRevision == 2);
@@ -222,7 +218,7 @@ static void test_save_requires_existing_path() {
   CHECK("not ok", !ok);
   CHECK("failed message", editor.fileMessage.status == app::editor::EditorCommandStatus::Failed);
   CHECK("dirty preserved", editor.buffer.dirty);
-  CHECK("no path", !editor.buffer.hasFilePath);
+  CHECK("no path", editor.buffer.filePath.empty());
 }
 static void test_save_writes_existing_path() {
   TEST("save_writes_existing_path");
@@ -230,7 +226,6 @@ static void test_save_writes_existing_path() {
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track(1, TrackSettings {})\n";
   editor.buffer.filePath = kTempEditorDocPath;
-  editor.buffer.hasFilePath = true;
   editor.buffer.dirty = true;
   const bool ok = app::editor::saveDocument(editor);
   CHECK("ok", ok);

@@ -277,6 +277,25 @@ bool composeSynthPatch(track::TrackState& track,
     applySynthParamPatch(out, write.paramID, write.value);
   }
 
+  if (patch.hasModRoutes) {
+    std::memcpy(out->modRoutes,
+                patch.modRoutes,
+                patch.modRouteCount * sizeof(synth::mod_matrix::ModRoute));
+    out->modRouteCount = patch.modRouteCount;
+  }
+
+  if (patch.hasFMRoutes) {
+    std::memcpy(out->oscFmRoutes, patch.fmRoutes, sizeof(out->oscFmRoutes));
+    std::memcpy(out->oscFmRouteCounts, patch.fmRouteCounts, sizeof(out->oscFmRouteCounts));
+  }
+
+  if (patch.hasSignalChain) {
+    std::memcpy(out->signalChain,
+                patch.signalChain,
+                patch.signalChainLength * sizeof(synth::signal_chain::SignalProcessor));
+    out->signalChainLength = patch.signalChainLength;
+  }
+
   return true;
 }
 

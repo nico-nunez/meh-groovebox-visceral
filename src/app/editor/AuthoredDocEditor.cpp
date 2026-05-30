@@ -84,7 +84,6 @@ bool loadDocument(AuthoredDocEditorState& editor, const char* path) {
 
   editor.buffer.text = std::move(text);
   editor.buffer.filePath = path;
-  editor.buffer.hasFilePath = true;
   editor.buffer.dirty = false;
   editor.backendDiagnostics.clear();
   setFileMessage(editor, EditorCommandStatus::Succeeded, "loaded file");
@@ -92,7 +91,7 @@ bool loadDocument(AuthoredDocEditorState& editor, const char* path) {
 }
 
 bool saveDocument(AuthoredDocEditorState& editor) {
-  if (!editor.buffer.hasFilePath) {
+  if (editor.buffer.filePath.empty()) {
     setFileMessage(editor, EditorCommandStatus::Failed, "save failed: no file path");
     return false;
   }
@@ -111,21 +110,20 @@ bool saveDocumentAs(AuthoredDocEditorState& editor, const char* path) {
   }
 
   editor.buffer.filePath = path;
-  editor.buffer.hasFilePath = true;
   editor.buffer.dirty = false;
   setFileMessage(editor, EditorCommandStatus::Succeeded, "saved file");
   return true;
 }
 
 bool reloadDocument(AuthoredDocEditorState& editor) {
-  if (!editor.buffer.hasFilePath) {
+  if (editor.buffer.filePath.empty()) {
     setFileMessage(editor, EditorCommandStatus::Failed, "reload failed: no file path");
     return false;
   }
   return loadDocument(editor, editor.buffer.filePath.c_str());
 }
 
-bool applyEditorBuffer(AuthoredDocEditorState& editor, app::AppContext& app) {
+bool submitEditorBuffer(AuthoredDocEditorState& editor, app::AppContext& app) {
   const app::doc::DocRevision revision = ++editor.buffer.applyRevision;
 
   app::doc::ApplyRevisionResult result =

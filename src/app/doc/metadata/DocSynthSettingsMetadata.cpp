@@ -1,5 +1,7 @@
 #include "DocSynthSettingsMetadata.h"
+#include "app/doc/metadata/DocMetadata.h"
 
+#include <cstdio>
 #include <cstring>
 
 namespace app::doc {
@@ -45,6 +47,18 @@ constexpr AuthoredSynthParamField field(const char* authoredPath,
       field("osc" #N ".fmDepth",                                                                   \
             "osc" #N ".fmDepth",                                                                   \
             sp::OSC##N##_FM_DEPTH,                                                                 \
+            DocLuaValueKind::Number),                                                              \
+      field("osc" #N ".phaseMode",                                                                 \
+            "osc" #N ".phaseMode",                                                                 \
+            sp::OSC##N##_PHASE_MODE,                                                               \
+            DocLuaValueKind::String),                                                              \
+      field("osc" #N ".randomRange",                                                               \
+            "osc" #N ".randomRange",                                                               \
+            sp::OSC##N##_RANDOM_RANGE,                                                             \
+            DocLuaValueKind::Number),                                                              \
+      field("osc" #N ".resetPhase",                                                                \
+            "osc" #N ".resetPhase",                                                                \
+            sp::OSC##N##_RESET_PHASE,                                                              \
             DocLuaValueKind::Number),                                                              \
       field("osc" #N ".ratio", "osc" #N ".ratio", sp::OSC##N##_RATIO, DocLuaValueKind::Number),    \
       field("osc" #N ".fixed", "osc" #N ".fixed", sp::OSC##N##_FIXED, DocLuaValueKind::Boolean),   \
@@ -93,6 +107,13 @@ constexpr AuthoredSynthParamField kAuthoredSynthParamFields[] = {
     field("ladder.cutoff", "ladder.cutoff", sp::LADDER_CUTOFF, DocLuaValueKind::Number),
     field("ladder.resonance", "ladder.resonance", sp::LADDER_RESONANCE, DocLuaValueKind::Number),
     field("ladder.drive", "ladder.drive", sp::LADDER_DRIVE, DocLuaValueKind::Number),
+
+    field("saturator.drive", "saturator.drive", sp::SATURATOR_DRIVE, DocLuaValueKind::Number),
+    field("saturator.mix", "saturator.mix", sp::SATURATOR_MIX, DocLuaValueKind::Number),
+    field("saturator.enabled",
+          "saturator.enabled",
+          sp::SATURATOR_ENABLED,
+          DocLuaValueKind::Boolean),
 
     field("mono.enabled", "mono.enabled", sp::MONO_ENABLED, DocLuaValueKind::Boolean),
     field("mono.legato", "mono.legato", sp::MONO_LEGATO, DocLuaValueKind::Boolean),

@@ -261,7 +261,7 @@ void drawFileControls(EditorRuntime& editor) {
   }
   ImGui::SameLine();
   if (ImGui::Button("Save")) {
-    if (editor.authoredEditor.buffer.hasFilePath)
+    if (!editor.authoredEditor.buffer.filePath.empty())
       saveDocument(editor.authoredEditor);
     else
       saveDocumentAs(editor.authoredEditor, gScratch.pathBuffer);
@@ -335,7 +335,7 @@ void drawEditorDisplayView(AppContext& app) {
   ImGui::EndChild();
 
   if (ImGui::Button("Apply")) {
-    applyEditorBuffer(editor, app);
+    submitEditorBuffer(editor, app);
   }
   ImGui::PopStyleVar();
 

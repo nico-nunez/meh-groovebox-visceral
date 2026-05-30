@@ -68,6 +68,10 @@ constexpr DocFieldMetadata kSynthOscFields[] = {
     {"octave", DocLuaValueKind::Integer, false},
     {"scan", DocLuaValueKind::Number, false},
     {"fmDepth", DocLuaValueKind::Number, false},
+    {"phaseMode", DocLuaValueKind::String, false},
+    {"randomRange", DocLuaValueKind::Number, false},
+    {"resetPhase", DocLuaValueKind::Number, false},
+    {"phaseMode", DocLuaValueKind::String, false},
     {"ratio", DocLuaValueKind::Number, false},
     {"fixed", DocLuaValueKind::Boolean, false},
     {"fixedFreq", DocLuaValueKind::Number, false},
@@ -112,6 +116,12 @@ constexpr DocFieldMetadata kSynthLadderFields[] = {
     {"cutoff", DocLuaValueKind::Number, false},
     {"resonance", DocLuaValueKind::Number, false},
     {"drive", DocLuaValueKind::Number, false},
+};
+
+constexpr DocFieldMetadata kSynthSaturatorFields[] = {
+    {"enabled", DocLuaValueKind::Boolean, false},
+    {"drive", DocLuaValueKind::Number, false},
+    {"mix", DocLuaValueKind::Number, false},
 };
 
 constexpr DocFieldMetadata kSynthMonoFields[] = {
@@ -254,6 +264,13 @@ constexpr DocFieldMetadata kSynthSettingsFields[] = {
      {},
      {},
      doctype::SynthLadderSettings},
+    {"saturator",
+     DocLuaValueKind::Table,
+     false,
+     DocMetadataStatus::Implemented,
+     {},
+     {},
+     doctype::SynthSaturatorSettings},
     {"mono",
      DocLuaValueKind::Table,
      false,
@@ -517,6 +534,13 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         DocMetadataStatus::Implemented,
         spanOf(kSynthLadderFields),
         "Ladder filter settings.",
+    },
+    {
+        doctype::SynthSaturatorSettings,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kSynthSaturatorFields),
+        "Saturator settings.",
     },
     {
         doctype::SynthMonoSettings,

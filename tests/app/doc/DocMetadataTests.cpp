@@ -242,6 +242,8 @@ static void test_synth_settings_metadata_is_implemented() {
   const auto* osc = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthOscSettings);
   const auto* svf = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthSVFSettings);
   const auto* ladder = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthLadderSettings);
+  const auto* saturator =
+      app::doc::findAuthoredDocumentType(app::doc::doctype::SynthSaturatorSettings);
   const auto* fx = app::doc::findAuthoredDocumentType(app::doc::doctype::SynthFXSettings);
 
   CHECK("TrackSettings synth field", track && findField(*track, "synth") != nullptr);
@@ -260,6 +262,8 @@ static void test_synth_settings_metadata_is_implemented() {
   CHECK("SynthSVFSettings no drive", svf && findField(*svf, "drive") == nullptr);
   CHECK("SynthLadderSettings has drive", ladder && findField(*ladder, "drive") != nullptr);
   CHECK("SynthLadderSettings no mode", ladder && findField(*ladder, "mode") == nullptr);
+  CHECK("SynthSaturatorSettings exists", saturator != nullptr);
+  CHECK("SynthSaturatorSettings has drive", saturator && findField(*saturator, "drive") != nullptr);
   CHECK("SynthFXSettings exists", fx != nullptr);
   CHECK("SynthFXSettings has delay", fx && findField(*fx, "delay") != nullptr);
 }
