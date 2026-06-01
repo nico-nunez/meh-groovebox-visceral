@@ -3,6 +3,7 @@
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/metadata/DocMetadata.h"
 
+#include "lua.h"
 #include "synth/ModMatrix.h"
 #include "synth/WavetableOsc.h"
 #include "synth/params/ParamUtils.h"
@@ -34,9 +35,9 @@ bool parseModRoutesSection(lua_State* L,
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
                    docdiag::SynthModRouteInvalidShape,
-                   "mod must be a table",
+                   "modMatrix must be a table",
                    span,
-                   synthTarget(patch.trackIndex, "mod").c_str());
+                   synthTarget(patch.trackIndex, "modMatrix").c_str());
     return false;
   }
 
@@ -47,9 +48,9 @@ bool parseModRoutesSection(lua_State* L,
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
                    docdiag::SynthModRouteCapacityExceeded,
-                   "too many mod routes",
+                   "too many modMatrix routes",
                    span,
-                   synthTarget(patch.trackIndex, "mod").c_str());
+                   synthTarget(patch.trackIndex, "modMatrix").c_str());
     return false;
   }
 
@@ -60,9 +61,9 @@ bool parseModRoutesSection(lua_State* L,
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SynthModRouteInvalidShape,
-                     "each mod route must be a table",
+                     "each modMatrix route must be a table",
                      span,
-                     synthTarget(patch.trackIndex, "mod").c_str());
+                     synthTarget(patch.trackIndex, "modMatrix").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -76,9 +77,9 @@ bool parseModRoutesSection(lua_State* L,
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SynthModRouteInvalidSrc,
-                     "mod route src must be a string",
+                     "modMatrix route src must be a string",
                      span,
-                     synthTarget(patch.trackIndex, "mod.src").c_str());
+                     synthTarget(patch.trackIndex, "modMatrix.src").c_str());
       lua_pop(L, 2);
       ok = false;
       continue;
@@ -90,9 +91,9 @@ bool parseModRoutesSection(lua_State* L,
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SynthModRouteInvalidSrc,
-                     "unknown mod route src",
+                     "unknown modMatrix route src",
                      span,
-                     synthTarget(patch.trackIndex, "mod.src").c_str());
+                     synthTarget(patch.trackIndex, "modMatrix.src").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -104,9 +105,9 @@ bool parseModRoutesSection(lua_State* L,
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SynthModRouteInvalidDest,
-                     "mod route dest must be a string",
+                     "modMatrix route dest must be a string",
                      span,
-                     synthTarget(patch.trackIndex, "mod.dest").c_str());
+                     synthTarget(patch.trackIndex, "modMatrix.dest").c_str());
       lua_pop(L, 2);
       ok = false;
       continue;
@@ -118,9 +119,9 @@ bool parseModRoutesSection(lua_State* L,
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SynthModRouteInvalidDest,
-                     "unknown mod route dest",
+                     "unknown modMatrix route dest",
                      span,
-                     synthTarget(patch.trackIndex, "mod.dest").c_str());
+                     synthTarget(patch.trackIndex, "modMatrix.dest").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -132,9 +133,9 @@ bool parseModRoutesSection(lua_State* L,
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SynthModRouteInvalidShape,
-                     "mod route amount must be a finite number",
+                     "modMatrix route amount must be a finite number",
                      span,
-                     synthTarget(patch.trackIndex, "mod.amount").c_str());
+                     synthTarget(patch.trackIndex, "modMatrix.amount").c_str());
       lua_pop(L, 2);
       ok = false;
       continue;
@@ -160,9 +161,9 @@ bool parseFMRoutesSection(lua_State* L,
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
                    docdiag::SynthFMRouteInvalidShape,
-                   "fm must be a table",
+                   "fmRoutes must be a table",
                    span,
-                   synthTarget(patch.trackIndex, "fm").c_str());
+                   synthTarget(patch.trackIndex, "fmRoutes").c_str());
     return false;
   }
 
@@ -176,7 +177,7 @@ bool parseFMRoutesSection(lua_State* L,
                    docdiag::SynthFMRouteCapacityExceeded,
                    "too many fm routes",
                    span,
-                   synthTarget(patch.trackIndex, "fm").c_str());
+                   synthTarget(patch.trackIndex, "fmRoutes").c_str());
     return false;
   }
 
@@ -189,7 +190,7 @@ bool parseFMRoutesSection(lua_State* L,
                      docdiag::SynthFMRouteInvalidShape,
                      "each fm route must be a table",
                      span,
-                     synthTarget(patch.trackIndex, "fm").c_str());
+                     synthTarget(patch.trackIndex, "fmRoutes").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -205,7 +206,7 @@ bool parseFMRoutesSection(lua_State* L,
                      docdiag::SynthFMRouteInvalidCarrier,
                      "fm route carrier must be a string (\"osc1\"–\"osc4\")",
                      span,
-                     synthTarget(patch.trackIndex, "fm.carrier").c_str());
+                     synthTarget(patch.trackIndex, "fmRoutes.carrier").c_str());
       lua_pop(L, 2);
       ok = false;
       continue;
@@ -219,7 +220,7 @@ bool parseFMRoutesSection(lua_State* L,
                      docdiag::SynthFMRouteInvalidCarrier,
                      "unknown fm route carrier",
                      span,
-                     synthTarget(patch.trackIndex, "fm.carrier").c_str());
+                     synthTarget(patch.trackIndex, "fmRoutes.carrier").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -233,7 +234,7 @@ bool parseFMRoutesSection(lua_State* L,
                      docdiag::SynthFMRouteInvalidMod,
                      "fm route mod must be a string (\"osc1\"–\"osc4\")",
                      span,
-                     synthTarget(patch.trackIndex, "fm.mod").c_str());
+                     synthTarget(patch.trackIndex, "fmRoutes.mod").c_str());
       lua_pop(L, 2);
       ok = false;
       continue;
@@ -247,7 +248,7 @@ bool parseFMRoutesSection(lua_State* L,
                      docdiag::SynthFMRouteInvalidMod,
                      "unknown fm route mod",
                      span,
-                     synthTarget(patch.trackIndex, "fm.mod").c_str());
+                     synthTarget(patch.trackIndex, "fmRoutes.mod").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -259,7 +260,7 @@ bool parseFMRoutesSection(lua_State* L,
                      docdiag::SynthFMRouteSelfMod,
                      "fm route carrier and mod must differ",
                      span,
-                     synthTarget(patch.trackIndex, "fm").c_str());
+                     synthTarget(patch.trackIndex, "fmRoutes").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -273,7 +274,7 @@ bool parseFMRoutesSection(lua_State* L,
                      docdiag::SynthFMRouteInvalidShape,
                      "fm route depth must be a finite number",
                      span,
-                     synthTarget(patch.trackIndex, "fm.depth").c_str());
+                     synthTarget(patch.trackIndex, "fmRoutes.depth").c_str());
       lua_pop(L, 2);
       ok = false;
       continue;
@@ -302,9 +303,9 @@ bool parseSignalChainSection(lua_State* L,
     pushDiagnostic(ctx,
                    DiagnosticSource::Validator,
                    docdiag::SynthSignalChainInvalidShape,
-                   "chain must be a table",
+                   "signalChain must be a table",
                    span,
-                   synthTarget(patch.trackIndex, "chain").c_str());
+                   synthTarget(patch.trackIndex, "signalChain").c_str());
     return false;
   }
 
@@ -317,20 +318,20 @@ bool parseSignalChainSection(lua_State* L,
                    docdiag::SynthSignalChainCapacityExceeded,
                    "too many signal chain processors",
                    span,
-                   synthTarget(patch.trackIndex, "chain").c_str());
+                   synthTarget(patch.trackIndex, "signalChain").c_str());
     return false;
   }
 
   bool ok = true;
   for (int i = 1; i <= count; ++i) {
     lua_rawgeti(L, absIndex, i);
-    if (!lua_isstring(L, -1)) {
+    if (lua_type(L, -1) != LUA_TSTRING) {
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SynthSignalChainInvalidShape,
                      "signal chain entry must be a string",
                      span,
-                     synthTarget(patch.trackIndex, "chain").c_str());
+                     synthTarget(patch.trackIndex, "signalChain").c_str());
       lua_pop(L, 1);
       ok = false;
       continue;
@@ -345,7 +346,7 @@ bool parseSignalChainSection(lua_State* L,
                      docdiag::SynthSignalChainUnknownProcessor,
                      "unknown signal chain processor",
                      span,
-                     synthTarget(patch.trackIndex, "chain").c_str());
+                     synthTarget(patch.trackIndex, "signalChain").c_str());
       ok = false;
       continue;
     }
@@ -363,7 +364,7 @@ bool parseSignalChainSection(lua_State* L,
                      docdiag::SynthSignalChainDuplicate,
                      "duplicate signal chain processor",
                      span,
-                     synthTarget(patch.trackIndex, "chain").c_str());
+                     synthTarget(patch.trackIndex, "signalChain").c_str());
       ok = false;
       continue;
     }
@@ -524,8 +525,9 @@ bool parseSynthGroup(lua_State* L,
 
     const char* key = lua_tostring(L, -2);
 
-    if (prefix.empty() && (std::strcmp(key, "mod") == 0 || std::strcmp(key, "fm") == 0 ||
-                           std::strcmp(key, "chain") == 0)) {
+    if (prefix.empty() &&
+        (std::strcmp(key, "modMatrix") == 0 || std::strcmp(key, "fmRoutes") == 0 ||
+         std::strcmp(key, "signalChain") == 0)) {
       lua_pop(L, 1);
       continue;
     }
@@ -589,22 +591,22 @@ bool parseSynthSettingsForTrack(lua_State* L,
 
   bool ok = true;
 
-  lua_getfield(L, settingsIndex, "mod");
+  lua_getfield(L, settingsIndex, "modMatrix");
   if (!lua_isnil(L, -1))
     ok = parseModRoutesSection(L, lua_absindex(L, -1), ctx, patch, span) && ok;
   lua_pop(L, 1);
 
-  lua_getfield(L, settingsIndex, "fm");
+  lua_getfield(L, settingsIndex, "fmRoutes");
   if (!lua_isnil(L, -1))
     ok = parseFMRoutesSection(L, lua_absindex(L, -1), ctx, patch, span) && ok;
   lua_pop(L, 1);
 
-  lua_getfield(L, settingsIndex, "chain");
+  lua_getfield(L, settingsIndex, "signalChain");
   if (!lua_isnil(L, -1))
     ok = parseSignalChainSection(L, lua_absindex(L, -1), ctx, patch, span) && ok;
   lua_pop(L, 1);
 
-  // Scalar params — parseSynthGroup skips "mod", "fm", "chain" at top level
+  // Scalar params — parseSynthGroup skips "modMatrix", "fmRoutes", "signalChain" at top level
   return parseSynthGroup(L, settingsIndex, ctx, patch, "", span) && ok;
 }
 

@@ -251,6 +251,217 @@ static void test_existing_sequencer_parser_api_still_returns_seq_model() {
   CHECK("seq active", pattern.steps[0].hasActive && pattern.steps[0].active);
 }
 
+static void test_mod_routes_parse_src_dest_amount() {
+  TEST("mod_routes_parse_src_dest_amount");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "modMatrix = { { src = 'lfo1', dest = 'osc1.pitch', amount = 12.0 } } })",
+                   ws);
+
+  CHECK("ok", r.ok);
+  const auto& patch = ws->model.synthTracks[0];
+  CHECK("hasModRoutes", patch.hasModRoutes);
+  CHECK("one route", patch.modRoutes.size() == 1);
+  CHECK("src", patch.modRoutes[0].src == synth::mod_matrix::ModSrc::LFO1);
+  CHECK("dest", patch.modRoutes[0].dest == synth::mod_matrix::ModDest::Osc1Pitch);
+  CHECK("amount", patch.modRoutes[0].amount == 12.0f);
+}
+
+static void test_empty_mod_routes_sets_flag() {
+  TEST("empty_mod_routes_sets_flag");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { modMatrix = {} })", ws);
+
+  CHECK("ok", r.ok);
+  const auto& patch = ws->model.synthTracks[0];
+  CHECK("hasModRoutes", patch.hasModRoutes);
+  CHECK("no routes", patch.modRoutes.empty());
+}
+
+static void test_scalar_params_and_mod_routes_coexist() {
+  TEST("scalar_params_and_mod_routes_coexist");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "osc1 = { mixLevel = 0.8 }, "
+                   "modMatrix = { { src = 'velocity', dest = 'osc1.pitch', amount = 2.0 } } })",
+                   ws);
+
+  CHECK("ok", r.ok);
+  const auto& patch = ws->model.synthTracks[0];
+  CHECK("has write", !patch.writes.empty());
+  CHECK("hasModRoutes", patch.hasModRoutes);
+  CHECK("one route", patch.modRoutes.size() == 1);
+}
+
+static void test_mod_route_not_table_is_diagnostic() {
+  TEST("mod_route_not_table_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { modMatrix = 'bad' })", ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthModRouteInvalidShape));
+}
+
+static void test_mod_route_entry_not_table_is_diagnostic() {
+  TEST("mod_route_entry_not_table_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { modMatrix = { 'bad' } })", ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthModRouteInvalidShape));
+}
+
+static void test_mod_route_invalid_src_is_diagnostic() {
+  TEST("mod_route_invalid_src_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "modMatrix = { { src = 'nope', dest = 'osc1.pitch', amount = 1.0 } } })",
+                   ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthModRouteInvalidSrc));
+}
+
+static void test_mod_route_invalid_dest_is_diagnostic() {
+  TEST("mod_route_invalid_dest_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "modMatrix = { { src = 'lfo1', dest = 'not.a.dest', amount = 1.0 } } })",
+                   ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthModRouteInvalidDest));
+}
+
+static void test_mod_route_missing_src_key_is_diagnostic() {
+  TEST("mod_route_missing_src_key_is_diagnostic");
+  // Positional table has no 'src' key — caught by the same string-check branch.
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "modMatrix = { { 'lfo1', 'osc1.pitch', 12.0 } } })",
+                   ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthModRouteInvalidSrc));
+}
+
+static void test_fm_routes_parse_carrier_mod_depth() {
+  TEST("fm_routes_parse_carrier_mod_depth");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "fmRoutes = { { carrier = 'osc1', mod = 'osc2', depth = 2.5 } } })",
+                   ws);
+
+  CHECK("ok", r.ok);
+  const auto& patch = ws->model.synthTracks[0];
+  CHECK("hasFMRoutes", patch.hasFMRoutes);
+  CHECK("one route", patch.fmRoutes.size() == 1);
+  CHECK("carrier", patch.fmRoutes[0].carrier == synth::wavetable::osc::FMSource::Osc1);
+  CHECK("modulator", patch.fmRoutes[0].modulator == synth::wavetable::osc::FMSource::Osc2);
+  CHECK("depth", patch.fmRoutes[0].depth == 2.5f);
+}
+
+static void test_fm_route_self_mod_is_diagnostic() {
+  TEST("fm_route_self_mod_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "fmRoutes = { { carrier = 'osc1', mod = 'osc1', depth = 1.0 } } })",
+                   ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthFMRouteSelfMod));
+}
+
+static void test_fm_route_invalid_carrier_is_diagnostic() {
+  TEST("fm_route_invalid_carrier_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "fmRoutes = { { carrier = 'osc9', mod = 'osc2', depth = 1.0 } } })",
+                   ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthFMRouteInvalidCarrier));
+}
+
+static void test_fm_route_invalid_mod_is_diagnostic() {
+  TEST("fm_route_invalid_mod_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { "
+                   "fmRoutes = { { carrier = 'osc1', mod = 'nope', depth = 1.0 } } })",
+                   ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthFMRouteInvalidMod));
+}
+
+static void test_signal_chain_parses_processor_list() {
+  TEST("signal_chain_parses_processor_list");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { signalChain = { 'ladder', 'svf' } })", ws);
+
+  CHECK("ok", r.ok);
+  const auto& patch = ws->model.synthTracks[0];
+  CHECK("hasSignalChain", patch.hasSignalChain);
+  CHECK("two processors", patch.signalChain.size() == 2);
+  CHECK("first", patch.signalChain[0] == synth::signal_chain::SignalProcessor::Ladder);
+  CHECK("second", patch.signalChain[1] == synth::signal_chain::SignalProcessor::SVF);
+}
+
+static void test_empty_signal_chain_sets_flag() {
+  TEST("empty_signal_chain_sets_flag");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { signalChain = {} })", ws);
+
+  CHECK("ok", r.ok);
+  CHECK("hasSignalChain", ws->model.synthTracks[0].hasSignalChain);
+  CHECK("empty", ws->model.synthTracks[0].signalChain.empty());
+}
+
+static void test_signal_chain_unknown_processor_is_diagnostic() {
+  TEST("signal_chain_unknown_processor_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { signalChain = { 'reverb' } })", ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic",
+        hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthSignalChainUnknownProcessor));
+}
+
+static void test_signal_chain_duplicate_processor_is_diagnostic() {
+  TEST("signal_chain_duplicate_processor_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { signalChain = { 'svf', 'svf' } })", ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthSignalChainDuplicate));
+}
+
+static void test_signal_chain_entry_must_be_string_is_diagnostic() {
+  TEST("signal_chain_entry_must_be_string_is_diagnostic");
+
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("synth(1, SynthSettings { signalChain = { 1 } })", ws);
+
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic",
+        hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthSignalChainInvalidShape));
+}
+
 void runDocSynthSettingsParserTests() {
   SUITE("DocSynthSettingsParser");
   test_top_level_synth_parses_patch_writes();
@@ -269,4 +480,21 @@ void runDocSynthSettingsParserTests() {
   test_duplicate_identical_write_is_allowed_once();
   test_duplicate_conflicting_write_is_diagnostic();
   test_existing_sequencer_parser_api_still_returns_seq_model();
+  test_mod_routes_parse_src_dest_amount();
+  test_empty_mod_routes_sets_flag();
+  test_scalar_params_and_mod_routes_coexist();
+  test_mod_route_not_table_is_diagnostic();
+  test_mod_route_entry_not_table_is_diagnostic();
+  test_mod_route_invalid_src_is_diagnostic();
+  test_mod_route_invalid_dest_is_diagnostic();
+  test_mod_route_missing_src_key_is_diagnostic();
+  test_fm_routes_parse_carrier_mod_depth();
+  test_fm_route_self_mod_is_diagnostic();
+  test_fm_route_invalid_carrier_is_diagnostic();
+  test_fm_route_invalid_mod_is_diagnostic();
+  test_signal_chain_parses_processor_list();
+  test_empty_signal_chain_sets_flag();
+  test_signal_chain_unknown_processor_is_diagnostic();
+  test_signal_chain_duplicate_processor_is_diagnostic();
+  test_signal_chain_entry_must_be_string_is_diagnostic();
 }

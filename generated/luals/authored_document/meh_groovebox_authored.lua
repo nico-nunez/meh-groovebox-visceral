@@ -53,6 +53,9 @@
 ---@field porta? SynthPortaSettings
 ---@field unison? SynthUnisonSettings
 ---@field pitchBend? SynthPitchBendSettings
+---@field modMatrix? SynthModRouteEntry[]
+---@field fmRoutes? SynthFMRouteEntry[]
+---@field signalChain? string[]
 ---@field master? SynthMasterSettings
 ---@field fx? SynthFXSettings
 
@@ -148,6 +151,16 @@
 
 ---@class SynthPitchBendSettings
 ---@field range? number
+
+---@class SynthModRouteEntry
+---@field src string
+---@field dest string
+---@field amount number
+
+---@class SynthFMRouteEntry
+---@field carrier string
+---@field mod string
+---@field depth number
 
 ---@class SynthMasterSettings
 ---@field gain? number
