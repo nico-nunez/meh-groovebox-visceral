@@ -131,7 +131,7 @@ static void test_mixer_e2e_valid_mixed_doc_applies() {
   CHECK("context", app != nullptr);
 
   std::string doc = "mixer(1, MixerSettings { gain = 0.8 })\n"
-                    "synth(1, SynthSettings { osc1 = { mix = 0.5 } })\n";
+                    "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } })\n";
   doc += kNonEmptyTrack1;
   auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc.c_str());
   CHECK("ok", result.ok);

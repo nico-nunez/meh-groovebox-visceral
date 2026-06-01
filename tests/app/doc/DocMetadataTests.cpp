@@ -257,7 +257,7 @@ static void test_synth_settings_metadata_is_implemented() {
   CHECK("SynthSettings has fx", synth && findField(*synth, "fx") != nullptr);
   CHECK("SynthOscSettings exists", osc != nullptr);
   CHECK("SynthOscSettings has bank", osc && findField(*osc, "bank") != nullptr);
-  CHECK("SynthOscSettings has mix", osc && findField(*osc, "mix") != nullptr);
+  CHECK("SynthOscSettings has mixLevel", osc && findField(*osc, "mixLevel") != nullptr);
   CHECK("SynthSVFSettings has mode", svf && findField(*svf, "mode") != nullptr);
   CHECK("SynthSVFSettings no drive", svf && findField(*svf, "drive") == nullptr);
   CHECK("SynthLadderSettings has drive", ladder && findField(*ladder, "drive") != nullptr);

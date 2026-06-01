@@ -176,17 +176,6 @@ static void test_authored_stub_contains_first_slice_synth_surface() {
   checkContains(authored, "---@field cutoff? number", "cutoff field");
 }
 
-static void test_authored_stub_excludes_deferred_synth_domains() {
-  TEST("authored_stub_excludes_deferred_synth_domains");
-
-  const std::string authored = readRequiredFile(kAuthoredStubPath);
-
-  checkNotContains(authored, "lfo1", "no lfo1");
-  checkNotContains(authored, "modMatrix", "no modMatrix");
-  checkNotContains(authored, "signalChain", "no signalChain");
-  checkNotContains(authored, "fxChain", "no fxChain");
-}
-
 static void test_runtime_stub_excludes_authored_synth_surface() {
   TEST("runtime_stub_excludes_authored_synth_surface");
 
@@ -239,7 +228,6 @@ void runLuaLSStubGenerationTests() {
   test_generated_stubs_are_nonempty();
   test_authored_stub_mentions_static_bounds();
   test_authored_stub_contains_first_slice_synth_surface();
-  test_authored_stub_excludes_deferred_synth_domains();
   test_generated_readme_documents_commands();
   test_authored_stubs_contain_mixer_function();
   test_authored_stubs_contain_mixer_settings_class();

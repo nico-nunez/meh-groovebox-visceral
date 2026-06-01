@@ -119,6 +119,7 @@ inline constexpr const char* MixerSettings = "MixerSettings";
 namespace doctype {
 inline constexpr const char* SynthSettings = "SynthSettings";
 inline constexpr const char* SynthOscSettings = "SynthOscSettings";
+inline constexpr const char* SynthLfoSettings = "SynthLfoSettings";
 inline constexpr const char* SynthNoiseSettings = "SynthNoiseSettings";
 inline constexpr const char* SynthAmpEnvSettings = "SynthAmpEnvSettings";
 inline constexpr const char* SynthModEnvSettings = "SynthModEnvSettings";
@@ -132,7 +133,11 @@ inline constexpr const char* SynthUnisonSettings = "SynthUnisonSettings";
 inline constexpr const char* SynthPitchBendSettings = "SynthPitchBendSettings";
 inline constexpr const char* SynthMasterSettings = "SynthMasterSettings";
 inline constexpr const char* SynthFXSettings = "SynthFXSettings";
-inline constexpr const char* SynthFXUnitSettings = "SynthFXUnitSettings";
+inline constexpr const char* SynthFXDistortionSettings = "SynthFXDistortionSettings";
+inline constexpr const char* SynthFXChorusSettings = "SynthFXChorusSettings";
+inline constexpr const char* SynthFXPhaserSettings = "SynthFXPhaserSettings";
+inline constexpr const char* SynthFXDelaySettings = "SynthFXDelaySettings";
+inline constexpr const char* SynthFXReverbSettings = "SynthFXReverbSettings";
 
 inline constexpr const char* MixerSettings = "MixerSettings";
 inline constexpr const char* MixerTrackSettings = "MixerTrackSettings";

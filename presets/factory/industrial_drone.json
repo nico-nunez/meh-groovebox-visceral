@@ -82,28 +82,28 @@
   },
   "envelopes": {
     "ampEnv": {
-      "attackMs": 500.0,
-      "decayMs": 500.0,
-      "sustainLevel": 1.0,
-      "releaseMs": 2000.0,
+      "attack": 500.0,
+      "decay": 500.0,
+      "sustain": 1.0,
+      "release": 2000.0,
       "attackCurve": -3.0,
       "decayCurve": -3.0,
       "releaseCurve": -4.0
     },
     "filterEnv": {
-      "attackMs": 2000.0,
-      "decayMs": 3000.0,
-      "sustainLevel": 0.3,
-      "releaseMs": 2000.0,
+      "attack": 2000.0,
+      "decay": 3000.0,
+      "sustain": 0.3,
+      "release": 2000.0,
       "attackCurve": -2.0,
       "decayCurve": -3.0,
       "releaseCurve": -4.0
     },
     "modEnv": {
-      "attackMs": 3000.0,
-      "decayMs": 5000.0,
-      "sustainLevel": 0.5,
-      "releaseMs": 3000.0,
+      "attack": 3000.0,
+      "decay": 5000.0,
+      "sustain": 0.5,
+      "release": 3000.0,
       "attackCurve": -2.0,
       "decayCurve": -3.0,
       "releaseCurve": -3.0

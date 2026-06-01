@@ -26,7 +26,7 @@ static void test_doc_apply_prepares_but_does_not_publish_until_audio_boundary() 
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  const char* doc = "synth(1, SynthSettings { osc1 = { mix = 0.25 } })";
+  const char* doc = "synth(1, SynthSettings { osc1 = { mixLevel = 0.25 } })";
   auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
   CHECK("apply accepted", result.ok);
@@ -47,7 +47,7 @@ static void test_doc_apply_publishes_mixer_and_synth_together() {
   app::AppContext* app = makeContext();
   CHECK("context", app != nullptr);
 
-  const char* doc = "synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
+  const char* doc = "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } }) "
                     "mixer(1, MixerSettings { gain = 0.25 })";
   auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
@@ -74,12 +74,12 @@ static void test_second_doc_apply_rejected_while_pending_unpublished() {
       app::doc::submitAuthoredDocRevision(app->documents.authoring,
                                           *app,
                                           1,
-                                          "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+                                          "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } })");
   auto second =
       app::doc::submitAuthoredDocRevision(app->documents.authoring,
                                           *app,
                                           2,
-                                          "synth(1, SynthSettings { osc1 = { mix = 0.25 } })");
+                                          "synth(1, SynthSettings { osc1 = { mixLevel = 0.25 } })");
 
   CHECK("first accepted", first.ok);
   CHECK("second rejected", !second.ok);

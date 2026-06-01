@@ -42,7 +42,7 @@ static void test_osc_mix_only_emits_one_synth_write() {
   TEST("osc_mix_only_emits_one_synth_write");
 
   auto* ws = getParseTestWorkspace();
-  auto parsed = parseWS("synth(1, SynthSettings { osc1 = { mix = 0.5 } })", ws);
+  auto parsed = parseWS("synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } })", ws);
   CHECK("parse ok", parsed.ok);
 
   app::TrackSynthPatch patches[app::MAX_TRACKS]{};
@@ -61,7 +61,7 @@ static void test_multiple_synth_values_emit_sparse_writes() {
   TEST("multiple_synth_values_emit_sparse_writes");
 
   auto* ws = getParseTestWorkspace();
-  auto parsed = parseWS("synth(1, SynthSettings { osc1 = { mix = 0.8 }, "
+  auto parsed = parseWS("synth(1, SynthSettings { osc1 = { mixLevel = 0.8 }, "
                         "svf = { cutoff = 1200 } })",
                         ws);
   CHECK("parse ok", parsed.ok);
@@ -73,9 +73,9 @@ static void test_multiple_synth_values_emit_sparse_writes() {
   CHECK("target ok", result.ok);
   CHECK("track has synth", hasSynth[0]);
   CHECK("two writes", patches[0].writeCount == 2);
-  const auto* mix = findSynthWrite(patches[0], synth::param::OSC1_MIX_LEVEL);
+  const auto* mixLevel = findSynthWrite(patches[0], synth::param::OSC1_MIX_LEVEL);
   const auto* cutoff = findSynthWrite(patches[0], synth::param::SVF_CUTOFF);
-  CHECK("mix applied", mix && mix->value == 0.8f);
+  CHECK("mixLevel applied", mixLevel && mixLevel->value == 0.8f);
   CHECK("cutoff applied", cutoff && cutoff->value == 1200.0f);
 }
 
@@ -83,7 +83,7 @@ static void test_other_tracks_remain_absent() {
   TEST("other_tracks_remain_absent");
 
   auto* ws = getParseTestWorkspace();
-  auto parsed = parseWS("synth(2, SynthSettings { osc1 = { mix = 0.25 } })", ws);
+  auto parsed = parseWS("synth(2, SynthSettings { osc1 = { mixLevel = 0.25 } })", ws);
   CHECK("parse ok", parsed.ok);
 
   app::TrackSynthPatch patches[app::MAX_TRACKS]{};
@@ -92,8 +92,9 @@ static void test_other_tracks_remain_absent() {
 
   CHECK("target ok", result.ok);
   CHECK("track 2 authored", hasSynth[1]);
-  CHECK("track 2 value", patches[1].writes[0].paramID == synth::param::OSC1_MIX_LEVEL &&
-                            patches[1].writes[0].value == 0.25f);
+  CHECK("track 2 value",
+        patches[1].writes[0].paramID == synth::param::OSC1_MIX_LEVEL &&
+            patches[1].writes[0].value == 0.25f);
   CHECK("track 1 absent", !hasSynth[0]);
   CHECK("track 1 no writes", patches[0].writeCount == 0);
 }

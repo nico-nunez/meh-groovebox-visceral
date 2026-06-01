@@ -39,6 +39,9 @@
 ---@field osc2? SynthOscSettings
 ---@field osc3? SynthOscSettings
 ---@field osc4? SynthOscSettings
+---@field lfo1? SynthLfoSettings
+---@field lfo2? SynthLfoSettings
+---@field lfo3? SynthLfoSettings
 ---@field noise? SynthNoiseSettings
 ---@field ampEnv? SynthAmpEnvSettings
 ---@field modEnv? SynthModEnvSettings
@@ -56,10 +59,10 @@
 ---@class SynthOscSettings
 ---@field enabled? boolean
 ---@field bank? string
----@field mix? number
+---@field mixLevel? number
 ---@field detune? number
----@field octave? integer
----@field scan? number
+---@field octaveOffset? integer
+---@field scanPos? number
 ---@field fmDepth? number
 ---@field phaseMode? string
 ---@field randomRange? number
@@ -69,60 +72,79 @@
 ---@field fixed? boolean
 ---@field fixedFreq? number
 
+---@class SynthLfoSettings
+---@field bank? string
+---@field rate? number
+---@field amplitude? number
+---@field retrigger? boolean
+---@field delay? number
+---@field attack? number
+---@field subdivision? string
+---@field tempoSync? boolean
+
 ---@class SynthNoiseSettings
----@field enabled? boolean
 ---@field type? string
----@field mix? number
+---@field enabled? boolean
+---@field mixLevel? number
 
 ---@class SynthAmpEnvSettings
 ---@field attack? number
+---@field attackCurve? number
 ---@field decay? number
+---@field decayCurve? number
 ---@field sustain? number
 ---@field release? number
+---@field releaseCurve? number
 
 ---@class SynthModEnvSettings
 ---@field attack? number
+---@field attackCurve? number
 ---@field decay? number
+---@field decayCurve? number
 ---@field sustain? number
 ---@field release? number
+---@field releaseCurve? number
 
 ---@class SynthFilterEnvSettings
 ---@field attack? number
+---@field attackCurve? number
 ---@field decay? number
+---@field decayCurve? number
 ---@field sustain? number
 ---@field release? number
+---@field releaseCurve? number
 
 ---@class SynthSVFSettings
----@field enabled? boolean
 ---@field mode? string
 ---@field cutoff? number
 ---@field resonance? number
+---@field enabled? boolean
 
 ---@class SynthLadderSettings
----@field enabled? boolean
 ---@field cutoff? number
 ---@field resonance? number
 ---@field drive? number
+---@field enabled? boolean
 
 ---@class SynthSaturatorSettings
----@field enabled? boolean
 ---@field drive? number
 ---@field mix? number
+---@field enabled? boolean
 
 ---@class SynthMonoSettings
 ---@field enabled? boolean
 ---@field legato? boolean
 
 ---@class SynthPortaSettings
----@field enabled? boolean
 ---@field time? number
 ---@field legato? boolean
+---@field enabled? boolean
 
 ---@class SynthUnisonSettings
----@field enabled? boolean
 ---@field voices? integer
 ---@field detune? number
 ---@field spread? number
+---@field enabled? boolean
 
 ---@class SynthPitchBendSettings
 ---@field range? number
@@ -131,15 +153,55 @@
 ---@field gain? number
 
 ---@class SynthFXSettings
----@field distortion? SynthFXUnitSettings
----@field chorus? SynthFXUnitSettings
----@field phaser? SynthFXUnitSettings
----@field delay? SynthFXUnitSettings
----@field reverb? SynthFXUnitSettings
+---@field distortion? SynthFXDistortionSettings
+---@field chorus? SynthFXChorusSettings
+---@field phaser? SynthFXPhaserSettings
+---@field delay? SynthFXDelaySettings
+---@field reverb? SynthFXReverbSettings
 
----@class SynthFXUnitSettings
----@field enabled? boolean
+---@class SynthFXDistortionSettings
+---@field drive? number
 ---@field mix? number
+---@field type? string
+---@field enabled? boolean
+
+---@class SynthFXChorusSettings
+---@field rate? number
+---@field depth? number
+---@field mix? number
+---@field feedback? number
+---@field enabled? boolean
+
+---@class SynthFXPhaserSettings
+---@field stages? integer
+---@field rate? number
+---@field depth? number
+---@field feedback? number
+---@field mix? number
+---@field enabled? boolean
+
+---@class SynthFXDelaySettings
+---@field time? number
+---@field subdivision? string
+---@field tempoSync? boolean
+---@field feedback? number
+---@field damping? number
+---@field hpDamping? number
+---@field mix? number
+---@field pingPong? boolean
+---@field enabled? boolean
+
+---@class SynthFXReverbSettings
+---@field preDelay? number
+---@field decay? number
+---@field damping? number
+---@field lowDamping? number
+---@field diffusion? number
+---@field bandwidth? number
+---@field modRate? number
+---@field modDepth? number
+---@field mix? number
+---@field enabled? boolean
 
 ---@class MixerSettings
 ---@field gain? number

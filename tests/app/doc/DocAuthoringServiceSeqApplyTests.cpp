@@ -168,7 +168,7 @@ static void test_mixed_synth_mixer_sequencer_apply_publishes_together() {
   CHECK("context", app != nullptr);
 
   std::string doc = "mixer(1, MixerSettings { gain = 0.7 })\n"
-                    "synth(1, SynthSettings { osc1 = { mix = 0.5 } })\n";
+                    "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } })\n";
   doc += kNonEmptyTrack1;
 
   auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc.c_str());

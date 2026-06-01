@@ -251,7 +251,7 @@ static void test_synth_only_document_still_applies_after_phase2() {
       app::doc::submitAuthoredDocRevision(app->documents.authoring,
                                           *app,
                                           1,
-                                          "synth(1, SynthSettings { osc1 = { mix = 0.5 } })");
+                                          "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } })");
   CHECK("ok", result.ok);
   app::destroyAppContext(app);
 }

@@ -34,8 +34,11 @@ static void test_authored_synth_mapping_has_first_slice_representatives() {
   CHECK("fields nonempty", !fields.empty());
 
   CHECK("osc1 bank", hasField("osc1.bank"));
-  CHECK("osc1 mix alias", hasField("osc1.mix"));
+  CHECK("osc1 mixLevel", hasField("osc1.mixLevel"));
   CHECK("osc4 fixed freq", hasField("osc4.fixedFreq"));
+  CHECK("lfo1 bank", hasField("lfo1.bank"));
+  CHECK("lfo2 bank", hasField("lfo2.bank"));
+  CHECK("lfo3 bank", hasField("lfo3.bank"));
   CHECK("noise type", hasField("noise.type"));
   CHECK("amp env attack", hasField("ampEnv.attack"));
   CHECK("mod env attack", hasField("modEnv.attack"));
@@ -46,50 +49,17 @@ static void test_authored_synth_mapping_has_first_slice_representatives() {
   CHECK("mono enabled", hasField("mono.enabled"));
   CHECK("porta time", hasField("porta.time"));
   CHECK("unison voices", hasField("unison.voices"));
-  CHECK("master gain alias", hasField("master.gain"));
-  CHECK("fx delay mix", hasField("fx.delay.mix"));
+  CHECK("master gain", hasField("master.gain"));
+  CHECK("fx distortion drive", hasField("fx.distortion.drive"));
+  CHECK("fx distortion enabled", hasField("fx.distortion.enabled"));
+  CHECK("fx chorus depth", hasField("fx.chorus.depth"));
+  CHECK("fx chorus enabled", hasField("fx.chorus.enabled"));
+  CHECK("fx phaser stages", hasField("fx.phaser.stages"));
+  CHECK("fx phaser enabled", hasField("fx.phaser.enabled"));
+  CHECK("fx delay time", hasField("fx.delay.time"));
+  CHECK("fx delay enabled", hasField("fx.delay.enabled"));
+  CHECK("fx reverb preDelay", hasField("fx.reverb.preDelay"));
   CHECK("fx reverb enabled", hasField("fx.reverb.enabled"));
-}
-
-static void test_authored_synth_mapping_is_subset_not_all_params() {
-  TEST("authored_synth_mapping_is_subset_not_all_params");
-
-  const auto fields = app::doc::authoredSynthParamFields();
-
-  CHECK("subset smaller than PARAM_COUNT", fields.size < synth::param::PARAM_COUNT);
-  CHECK("lfo deferred", !hasField("lfo1.rate"));
-  CHECK("mod matrix deferred", !hasField("modMatrix"));
-  CHECK("signal chain deferred", !hasField("signalChain"));
-  CHECK("deep reverb decay deferred", !hasField("fx.reverb.decay"));
-  CHECK("envelope curve deferred", !hasField("ampEnv.attackCurve"));
-  CHECK("envelope curve deferred", !hasField("modEnv.attackCurve"));
-  CHECK("envelope curve deferred", !hasField("filterEnv.attackCurve"));
-}
-
-static void test_authored_synth_aliases_map_to_canonical_params() {
-  TEST("authored_synth_aliases_map_to_canonical_params");
-
-  const auto* oscMix = requireField("osc1.mix");
-  const auto* oscScan = requireField("osc1.scan");
-  const auto* masterGain = requireField("master.gain");
-  const auto* ampAttack = requireField("ampEnv.attack");
-  const auto* modAttack = requireField("modEnv.attack");
-  const auto* filterAttack = requireField("filterEnv.attack");
-
-  CHECK("osc mix canonical", oscMix && strEq(oscMix->canonicalParam, "osc1.mixLevel"));
-  CHECK("osc mix id", oscMix && oscMix->paramID == synth::param::OSC1_MIX_LEVEL);
-  CHECK("osc scan canonical", oscScan && strEq(oscScan->canonicalParam, "osc1.scanPos"));
-  CHECK("osc scan id", oscScan && oscScan->paramID == synth::param::OSC1_SCAN_POS);
-  CHECK("master gain canonical", masterGain && strEq(masterGain->canonicalParam, "masterGain"));
-  CHECK("master gain id", masterGain && masterGain->paramID == synth::param::MASTER_GAIN);
-  CHECK("amp attack canonical", ampAttack && strEq(ampAttack->canonicalParam, "ampEnv.attackMs"));
-  CHECK("amp attack id", ampAttack && ampAttack->paramID == synth::param::AMP_ENV_ATTACK);
-  CHECK("mod attack canonical", modAttack && strEq(modAttack->canonicalParam, "modEnv.attackMs"));
-  CHECK("mod attack id", modAttack && modAttack->paramID == synth::param::MOD_ENV_ATTACK);
-  CHECK("filter attack canonical",
-        filterAttack && strEq(filterAttack->canonicalParam, "filterEnv.attackMs"));
-  CHECK("filter attack id",
-        filterAttack && filterAttack->paramID == synth::param::FILTER_ENV_ATTACK);
 }
 
 static void test_authored_synth_all_canonical_params_resolve() {
@@ -131,12 +101,13 @@ static void test_authored_synth_uses_bool_and_integer_kinds() {
   const auto* enabled = requireField("osc1.enabled");
   const auto* fixed = requireField("osc1.fixed");
   const auto* voices = requireField("unison.voices");
-  const auto* octave = requireField("osc1.octave");
+  const auto* octaveOffset = requireField("osc1.octaveOffset");
 
   CHECK("enabled boolean", enabled && enabled->valueKind == app::doc::DocLuaValueKind::Boolean);
   CHECK("fixed boolean", fixed && fixed->valueKind == app::doc::DocLuaValueKind::Boolean);
   CHECK("voices integer", voices && voices->valueKind == app::doc::DocLuaValueKind::Integer);
-  CHECK("octave integer", octave && octave->valueKind == app::doc::DocLuaValueKind::Integer);
+  CHECK("octaveOffset integer",
+        octaveOffset && octaveOffset->valueKind == app::doc::DocLuaValueKind::Integer);
 }
 
 static void test_authored_synth_mapping_has_unique_authored_paths_and_params() {
@@ -161,20 +132,18 @@ static void test_authored_synth_mapping_has_unique_authored_paths_and_params() {
 static void test_authored_synth_lookup_by_canonical_param() {
   TEST("authored_synth_lookup_by_canonical_param");
 
-  const auto* mix = app::doc::findAuthoredSynthParamFieldByCanonicalParam("osc1.mixLevel");
-  const auto* master = app::doc::findAuthoredSynthParamFieldByCanonicalParam("masterGain");
+  const auto* mixLevel = app::doc::findAuthoredSynthParamFieldByCanonicalParam("osc1.mixLevel");
+  const auto* master = app::doc::findAuthoredSynthParamFieldByCanonicalParam("master.gain");
   const auto* lfo = app::doc::findAuthoredSynthParamFieldByCanonicalParam("lfo1.rate");
 
-  CHECK("mix found", mix && strEq(mix->authoredPath, "osc1.mix"));
+  CHECK("mixLevel found", mixLevel && strEq(mixLevel->authoredPath, "osc1.mixLevel"));
   CHECK("master found", master && strEq(master->authoredPath, "master.gain"));
-  CHECK("deferred lfo absent", lfo == nullptr);
+  CHECK("lfo found", lfo && strEq(lfo->authoredPath, "lfo1.rate"));
 }
 
 void runDocSynthSettingsMetadataTests() {
   SUITE("DocSynthSettingsMetadata");
   test_authored_synth_mapping_has_first_slice_representatives();
-  test_authored_synth_mapping_is_subset_not_all_params();
-  test_authored_synth_aliases_map_to_canonical_params();
   test_authored_synth_all_canonical_params_resolve();
   test_authored_synth_value_kinds_match_param_types();
   test_authored_synth_uses_string_first_enums();

@@ -58,7 +58,7 @@ static void test_next_bar_holds_until_bar_boundary() {
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
-                             "synth(1, SynthSettings { osc1 = { mix = 0.25 } })",
+                             "synth(1, SynthSettings { osc1 = { mixLevel = 0.25 } })",
                              app::GrooveboxApplyTiming::NextBar);
   CHECK("prepared", prepared);
 
@@ -83,7 +83,7 @@ static void test_next_beat_holds_until_beat_boundary() {
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
-                             "synth(1, SynthSettings { osc1 = { mix = 0.5 } })",
+                             "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } })",
                              app::GrooveboxApplyTiming::NextBeat);
   CHECK("prepared", prepared);
 
@@ -107,7 +107,7 @@ static void test_quantized_apply_publishes_immediately_when_stopped() {
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
-                             "synth(1, SynthSettings { osc1 = { mix = 0.75 } })",
+                             "synth(1, SynthSettings { osc1 = { mixLevel = 0.75 } })",
                              app::GrooveboxApplyTiming::NextBar);
   CHECK("prepared", prepared);
 
@@ -126,7 +126,7 @@ static void test_quantized_apply_holds_while_paused() {
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
-                             "synth(1, SynthSettings { osc1 = { mix = 0.33 } })",
+                             "synth(1, SynthSettings { osc1 = { mixLevel = 0.33 } })",
                              app::GrooveboxApplyTiming::NextBar);
   CHECK("prepared", prepared);
 

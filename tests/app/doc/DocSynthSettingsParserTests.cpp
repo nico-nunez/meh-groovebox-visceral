@@ -34,7 +34,7 @@ static void test_top_level_synth_parses_patch_writes() {
   TEST("top_level_synth_parses_patch_writes");
 
   auto* ws = getParseTestWorkspace();
-  auto r = parseWS("synth(1, SynthSettings { osc1 = { bank = 'saw', mix = 0.8 }, "
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { bank = 'saw', mixLevel = 0.8 }, "
                    "svf = { cutoff = 1200, enabled = true } })",
                    ws);
 
@@ -46,14 +46,14 @@ static void test_top_level_synth_parses_patch_writes() {
   CHECK("write count", patch.writes.size() == 4);
 
   const auto* bank = findWrite(patch, synth::param::OSC1_BANK_ID);
-  const auto* mix = findWrite(patch, synth::param::OSC1_MIX_LEVEL);
+  const auto* mixLevel = findWrite(patch, synth::param::OSC1_MIX_LEVEL);
   const auto* cutoff = findWrite(patch, synth::param::SVF_CUTOFF);
   const auto* enabled = findWrite(patch, synth::param::SVF_ENABLED);
 
   CHECK("bank write", bank != nullptr);
   CHECK("bank enum value",
         bank && bank->value == enumValue(synth::param::ParamType::OscBankID, "saw"));
-  CHECK("mix write", mix && mix->value == 0.8f);
+  CHECK("mixLevel write", mixLevel && mixLevel->value == 0.8f);
   CHECK("cutoff write", cutoff && cutoff->value == 1200.0f);
   CHECK("enabled write", enabled && enabled->value == 1.0f);
 }
@@ -163,16 +163,6 @@ static void test_unknown_synth_field_is_diagnostic() {
   CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamUnknown));
 }
 
-static void test_deferred_synth_field_is_diagnostic() {
-  TEST("deferred_synth_field_is_diagnostic");
-
-  auto* ws = getParseTestWorkspace();
-  auto r = parseWS("synth(1, SynthSettings { lfo1 = { rate = 2 } })", ws);
-
-  CHECK("not ok", !r.ok);
-  CHECK("diagnostic", hasDiagnostic(r.diagnostics, app::doc::docdiag::SynthParamUnknown));
-}
-
 static void test_bool_param_rejects_number() {
   TEST("bool_param_rejects_number");
 
@@ -217,9 +207,9 @@ static void test_duplicate_identical_write_is_allowed_once() {
   TEST("duplicate_identical_write_is_allowed_once");
 
   auto* ws = getParseTestWorkspace();
-  auto r = parseWS("synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } }) "
                    "local t = TrackSettings() "
-                   "t.synth = SynthSettings { osc1 = { mix = 0.5 } } "
+                   "t.synth = SynthSettings { osc1 = { mixLevel = 0.5 } } "
                    "track(1, t)",
                    ws);
 
@@ -231,9 +221,9 @@ static void test_duplicate_conflicting_write_is_diagnostic() {
   TEST("duplicate_conflicting_write_is_diagnostic");
 
   auto* ws = getParseTestWorkspace();
-  auto r = parseWS("synth(1, SynthSettings { osc1 = { mix = 0.5 } }) "
+  auto r = parseWS("synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } }) "
                    "local t = TrackSettings() "
-                   "t.synth = SynthSettings { osc1 = { mix = 0.8 } } "
+                   "t.synth = SynthSettings { osc1 = { mixLevel = 0.8 } } "
                    "track(1, t)",
                    ws);
 
@@ -272,7 +262,6 @@ void runDocSynthSettingsParserTests() {
   test_synth_settings_must_be_table();
   test_track_settings_synth_must_be_table();
   test_unknown_synth_field_is_diagnostic();
-  test_deferred_synth_field_is_diagnostic();
   test_bool_param_rejects_number();
   test_integer_param_rejects_float();
   test_enum_param_rejects_unknown_string();

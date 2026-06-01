@@ -275,24 +275,24 @@ function SeqStep.clearLock(paramName) end
 function SeqStep.clearLocks() end
 
 ---@class RuntimeAmpEnvParams
+---@field attack number
 ---@field attackCurve number
----@field attackMs number
+---@field decay number
 ---@field decayCurve number
----@field decayMs number
+---@field release number
 ---@field releaseCurve number
----@field releaseMs number
----@field sustainLevel number
+---@field sustain number
 ---@type RuntimeAmpEnvParams
 ampEnv = ampEnv or {}
 
 ---@class RuntimeFilterEnvParams
+---@field attack number
 ---@field attackCurve number
----@field attackMs number
+---@field decay number
 ---@field decayCurve number
----@field decayMs number
+---@field release number
 ---@field releaseCurve number
----@field releaseMs number
----@field sustainLevel number
+---@field sustain number
 ---@type RuntimeFilterEnvParams
 filterEnv = filterEnv or {}
 
@@ -360,9 +360,9 @@ ladder = ladder or {}
 
 ---@class RuntimeLfo1Params
 ---@field amplitude number
----@field attackMs number
+---@field attack number
 ---@field bank number
----@field delayMs number
+---@field delay number
 ---@field rate number
 ---@field retrigger boolean
 ---@field subdivision number
@@ -372,9 +372,9 @@ lfo1 = lfo1 or {}
 
 ---@class RuntimeLfo2Params
 ---@field amplitude number
----@field attackMs number
+---@field attack number
 ---@field bank number
----@field delayMs number
+---@field delay number
 ---@field rate number
 ---@field retrigger boolean
 ---@field subdivision number
@@ -384,9 +384,9 @@ lfo2 = lfo2 or {}
 
 ---@class RuntimeLfo3Params
 ---@field amplitude number
----@field attackMs number
+---@field attack number
 ---@field bank number
----@field delayMs number
+---@field delay number
 ---@field rate number
 ---@field retrigger boolean
 ---@field subdivision number
@@ -394,14 +394,19 @@ lfo2 = lfo2 or {}
 ---@type RuntimeLfo3Params
 lfo3 = lfo3 or {}
 
+---@class RuntimeMasterParams
+---@field gain number
+---@type RuntimeMasterParams
+master = master or {}
+
 ---@class RuntimeModEnvParams
+---@field attack number
 ---@field attackCurve number
----@field attackMs number
+---@field decay number
 ---@field decayCurve number
----@field decayMs number
+---@field release number
 ---@field releaseCurve number
----@field releaseMs number
----@field sustainLevel number
+---@field sustain number
 ---@type RuntimeModEnvParams
 modEnv = modEnv or {}
 

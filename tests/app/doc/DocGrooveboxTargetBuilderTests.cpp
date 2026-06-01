@@ -52,7 +52,8 @@ static void test_synth_only_doc_marks_only_synth_domain() {
 
   auto* ws = getParseTestWorkspace();
   auto parsed =
-      parseWS("synth(1, SynthSettings { osc1 = { mix = 0.25 }, svf = { cutoff = 1200 } })", ws);
+      parseWS("synth(1, SynthSettings { osc1 = { mixLevel = 0.25 }, svf = { cutoff = 1200 } })",
+              ws);
   CHECK("parse ok", parsed.ok);
 
   app::GrooveboxPatch patch{};
@@ -61,9 +62,9 @@ static void test_synth_only_doc_marks_only_synth_domain() {
   CHECK("target ok", result.ok);
   CHECK("track 1 synth present", patch.hasSynth[0]);
   CHECK("two synth writes", patch.synth[0].writeCount == 2);
-  const auto* mix = findSynthWrite(patch.synth[0], synth::param::OSC1_MIX_LEVEL);
+  const auto* mixLevel = findSynthWrite(patch.synth[0], synth::param::OSC1_MIX_LEVEL);
   const auto* cutoff = findSynthWrite(patch.synth[0], synth::param::SVF_CUTOFF);
-  CHECK("mix write", mix && mix->value == 0.25f);
+  CHECK("mixLevel write", mixLevel && mixLevel->value == 0.25f);
   CHECK("cutoff write", cutoff && cutoff->value == 1200.0f);
   CHECK("no mixer", !patch.hasMixer);
   CHECK("no sequencer", !patch.hasSequencer);
@@ -108,8 +109,9 @@ static void test_sequencer_only_doc_does_not_mark_synth_or_mixer() {
   CHECK("has sequencer", patch.hasSequencer);
   CHECK("track present", patch.sequencer.hasTrack[0]);
   CHECK("slot present", patch.sequencer.tracks[0].hasSlot[0]);
-  CHECK("step note", patch.sequencer.tracks[0].slots[0].pattern.steps[0].hasNote &&
-                         patch.sequencer.tracks[0].slots[0].pattern.steps[0].note == 60);
+  CHECK("step note",
+        patch.sequencer.tracks[0].slots[0].pattern.steps[0].hasNote &&
+            patch.sequencer.tracks[0].slots[0].pattern.steps[0].note == 60);
   CHECK("no mixer", !patch.hasMixer);
   for (uint8_t t = 0; t < app::MAX_TRACKS; ++t)
     CHECK("no synth", !patch.hasSynth[t]);

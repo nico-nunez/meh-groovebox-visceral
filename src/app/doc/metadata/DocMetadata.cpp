@@ -63,10 +63,10 @@ constexpr DocFunctionArgMetadata kMixerArgs[] = {
 constexpr DocFieldMetadata kSynthOscFields[] = {
     {"enabled", DocLuaValueKind::Boolean, false},
     {"bank", DocLuaValueKind::String, false},
-    {"mix", DocLuaValueKind::Number, false},
+    {"mixLevel", DocLuaValueKind::Number, false},
     {"detune", DocLuaValueKind::Number, false},
-    {"octave", DocLuaValueKind::Integer, false},
-    {"scan", DocLuaValueKind::Number, false},
+    {"octaveOffset", DocLuaValueKind::Integer, false},
+    {"scanPos", DocLuaValueKind::Number, false},
     {"fmDepth", DocLuaValueKind::Number, false},
     {"phaseMode", DocLuaValueKind::String, false},
     {"randomRange", DocLuaValueKind::Number, false},
@@ -77,51 +77,55 @@ constexpr DocFieldMetadata kSynthOscFields[] = {
     {"fixedFreq", DocLuaValueKind::Number, false},
 };
 
+constexpr DocFieldMetadata kSynthLfoFields[] = {
+    {"bank", DocLuaValueKind::String, false},
+    {"rate", DocLuaValueKind::Number, false},
+    {"amplitude", DocLuaValueKind::Number, false},
+    {"retrigger", DocLuaValueKind::Boolean, false},
+    {"delay", DocLuaValueKind::Number, false},
+    {"attack", DocLuaValueKind::Number, false},
+    {"subdivision", DocLuaValueKind::String, false},
+    {"tempoSync", DocLuaValueKind::Boolean, false},
+};
+
 constexpr DocFieldMetadata kSynthNoiseFields[] = {
-    {"enabled", DocLuaValueKind::Boolean, false},
     {"type", DocLuaValueKind::String, false},
-    {"mix", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
+    {"mixLevel", DocLuaValueKind::Number, false},
 };
 
-constexpr DocFieldMetadata kSynthAmpEnvFields[] = {
+constexpr DocFieldMetadata kSynthEnvelopeFields[] = {
     {"attack", DocLuaValueKind::Number, false},
+    {"attackCurve", DocLuaValueKind::Number, false},
     {"decay", DocLuaValueKind::Number, false},
+    {"decayCurve", DocLuaValueKind::Number, false},
     {"sustain", DocLuaValueKind::Number, false},
     {"release", DocLuaValueKind::Number, false},
-};
-
-constexpr DocFieldMetadata kSynthModEnvFields[] = {
-    {"attack", DocLuaValueKind::Number, false},
-    {"decay", DocLuaValueKind::Number, false},
-    {"sustain", DocLuaValueKind::Number, false},
-    {"release", DocLuaValueKind::Number, false},
-};
-
-constexpr DocFieldMetadata kSynthFilterEnvFields[] = {
-    {"attack", DocLuaValueKind::Number, false},
-    {"decay", DocLuaValueKind::Number, false},
-    {"sustain", DocLuaValueKind::Number, false},
-    {"release", DocLuaValueKind::Number, false},
+    {"releaseCurve", DocLuaValueKind::Number, false},
 };
 
 constexpr DocFieldMetadata kSynthSVFFields[] = {
-    {"enabled", DocLuaValueKind::Boolean, false},
     {"mode", DocLuaValueKind::String, false},
     {"cutoff", DocLuaValueKind::Number, false},
     {"resonance", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
 };
 
 constexpr DocFieldMetadata kSynthLadderFields[] = {
-    {"enabled", DocLuaValueKind::Boolean, false},
     {"cutoff", DocLuaValueKind::Number, false},
     {"resonance", DocLuaValueKind::Number, false},
     {"drive", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
 };
 
 constexpr DocFieldMetadata kSynthSaturatorFields[] = {
-    {"enabled", DocLuaValueKind::Boolean, false},
     {"drive", DocLuaValueKind::Number, false},
     {"mix", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
+};
+
+constexpr DocFieldMetadata kSynthPitchBendFields[] = {
+    {"range", DocLuaValueKind::Number, false},
 };
 
 constexpr DocFieldMetadata kSynthMonoFields[] = {
@@ -130,29 +134,69 @@ constexpr DocFieldMetadata kSynthMonoFields[] = {
 };
 
 constexpr DocFieldMetadata kSynthPortaFields[] = {
-    {"enabled", DocLuaValueKind::Boolean, false},
     {"time", DocLuaValueKind::Number, false},
     {"legato", DocLuaValueKind::Boolean, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
 };
 
 constexpr DocFieldMetadata kSynthUnisonFields[] = {
-    {"enabled", DocLuaValueKind::Boolean, false},
     {"voices", DocLuaValueKind::Integer, false},
     {"detune", DocLuaValueKind::Number, false},
     {"spread", DocLuaValueKind::Number, false},
-};
-
-constexpr DocFieldMetadata kSynthPitchBendFields[] = {
-    {"range", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
 };
 
 constexpr DocFieldMetadata kSynthMasterFields[] = {
     {"gain", DocLuaValueKind::Number, false},
 };
 
-constexpr DocFieldMetadata kSynthFXUnitFields[] = {
-    {"enabled", DocLuaValueKind::Boolean, false},
+constexpr DocFieldMetadata kSynthFXDistortionFields[] = {
+    {"drive", DocLuaValueKind::Number, false},
     {"mix", DocLuaValueKind::Number, false},
+    {"type", DocLuaValueKind::String, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
+};
+
+constexpr DocFieldMetadata kSynthFXChorusFields[] = {
+    {"rate", DocLuaValueKind::Number, false},
+    {"depth", DocLuaValueKind::Number, false},
+    {"mix", DocLuaValueKind::Number, false},
+    {"feedback", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
+};
+
+constexpr DocFieldMetadata kSynthFXPhaserFields[] = {
+    {"stages", DocLuaValueKind::Integer, false},
+    {"rate", DocLuaValueKind::Number, false},
+    {"depth", DocLuaValueKind::Number, false},
+    {"feedback", DocLuaValueKind::Number, false},
+    {"mix", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
+};
+
+constexpr DocFieldMetadata kSynthFXDelayFields[] = {
+    {"time", DocLuaValueKind::Number, false},
+    {"subdivision", DocLuaValueKind::String, false},
+    {"tempoSync", DocLuaValueKind::Boolean, false},
+    {"feedback", DocLuaValueKind::Number, false},
+    {"damping", DocLuaValueKind::Number, false},
+    {"hpDamping", DocLuaValueKind::Number, false},
+    {"mix", DocLuaValueKind::Number, false},
+    {"pingPong", DocLuaValueKind::Boolean, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
+};
+
+constexpr DocFieldMetadata kSynthFXReverbFields[] = {
+    {"preDelay", DocLuaValueKind::Number, false},
+    {"decay", DocLuaValueKind::Number, false},
+    {"damping", DocLuaValueKind::Number, false},
+    {"lowDamping", DocLuaValueKind::Number, false},
+    {"diffusion", DocLuaValueKind::Number, false},
+    {"bandwidth", DocLuaValueKind::Number, false},
+    {"modRate", DocLuaValueKind::Number, false},
+    {"modDepth", DocLuaValueKind::Number, false},
+    {"mix", DocLuaValueKind::Number, false},
+    {"enabled", DocLuaValueKind::Boolean, false},
 };
 
 constexpr DocFieldMetadata kSynthFXFields[] = {
@@ -162,35 +206,35 @@ constexpr DocFieldMetadata kSynthFXFields[] = {
      DocMetadataStatus::Implemented,
      {},
      {},
-     doctype::SynthFXUnitSettings},
+     doctype::SynthFXDistortionSettings},
     {"chorus",
      DocLuaValueKind::Table,
      false,
      DocMetadataStatus::Implemented,
      {},
      {},
-     doctype::SynthFXUnitSettings},
+     doctype::SynthFXChorusSettings},
     {"phaser",
      DocLuaValueKind::Table,
      false,
      DocMetadataStatus::Implemented,
      {},
      {},
-     doctype::SynthFXUnitSettings},
+     doctype::SynthFXPhaserSettings},
     {"delay",
      DocLuaValueKind::Table,
      false,
      DocMetadataStatus::Implemented,
      {},
      {},
-     doctype::SynthFXUnitSettings},
+     doctype::SynthFXDelaySettings},
     {"reverb",
      DocLuaValueKind::Table,
      false,
      DocMetadataStatus::Implemented,
      {},
      {},
-     doctype::SynthFXUnitSettings},
+     doctype::SynthFXReverbSettings},
 };
 
 constexpr DocFieldMetadata kSynthSettingsFields[] = {
@@ -222,6 +266,27 @@ constexpr DocFieldMetadata kSynthSettingsFields[] = {
      {},
      {},
      doctype::SynthOscSettings},
+    {"lfo1",
+     DocLuaValueKind::Table,
+     false,
+     DocMetadataStatus::Implemented,
+     {},
+     {},
+     doctype::SynthLfoSettings},
+    {"lfo2",
+     DocLuaValueKind::Table,
+     false,
+     DocMetadataStatus::Implemented,
+     {},
+     {},
+     doctype::SynthLfoSettings},
+    {"lfo3",
+     DocLuaValueKind::Table,
+     false,
+     DocMetadataStatus::Implemented,
+     {},
+     {},
+     doctype::SynthLfoSettings},
     {"noise",
      DocLuaValueKind::Table,
      false,
@@ -494,6 +559,13 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         "Oscillator settings.",
     },
     {
+        doctype::SynthLfoSettings,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kSynthLfoFields),
+        "LFO settings.",
+    },
+    {
         doctype::SynthNoiseSettings,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
@@ -504,21 +576,21 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         doctype::SynthAmpEnvSettings,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
-        spanOf(kSynthAmpEnvFields),
+        spanOf(kSynthEnvelopeFields),
         "Amp envelope settings.",
     },
     {
         doctype::SynthModEnvSettings,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
-        spanOf(kSynthModEnvFields),
+        spanOf(kSynthEnvelopeFields),
         "Mod envelope settings.",
     },
     {
         doctype::SynthFilterEnvSettings,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
-        spanOf(kSynthFilterEnvFields),
+        spanOf(kSynthEnvelopeFields),
         "Filter envelope settings.",
     },
     {
@@ -585,11 +657,39 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         "FX settings.",
     },
     {
-        doctype::SynthFXUnitSettings,
+        doctype::SynthFXDistortionSettings,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
-        spanOf(kSynthFXUnitFields),
-        "FX unit settings.",
+        spanOf(kSynthFXDistortionFields),
+        "FX distortion settings.",
+    },
+    {
+        doctype::SynthFXChorusSettings,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kSynthFXChorusFields),
+        "FX chorus settings.",
+    },
+    {
+        doctype::SynthFXPhaserSettings,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kSynthFXPhaserFields),
+        "FX phaser settings.",
+    },
+    {
+        doctype::SynthFXDelaySettings,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kSynthFXDelayFields),
+        "FX delay settings.",
+    },
+    {
+        doctype::SynthFXReverbSettings,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kSynthFXReverbFields),
+        "FX reverb settings.",
     },
     {
         doctype::MixerSettings,
