@@ -68,7 +68,6 @@ constexpr DocFieldMetadata kSynthOscFields[] = {
     {"octaveOffset", DocLuaValueKind::Integer, false},
     {"scanPos", DocLuaValueKind::Number, false},
     {"fmDepth", DocLuaValueKind::Number, false},
-    {"phaseMode", DocLuaValueKind::String, false},
     {"randomRange", DocLuaValueKind::Number, false},
     {"resetPhase", DocLuaValueKind::Number, false},
     {"phaseMode", DocLuaValueKind::String, false},

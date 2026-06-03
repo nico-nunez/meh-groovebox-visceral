@@ -67,7 +67,6 @@
 ---@field octaveOffset? integer
 ---@field scanPos? number
 ---@field fmDepth? number
----@field phaseMode? string
 ---@field randomRange? number
 ---@field resetPhase? number
 ---@field phaseMode? string

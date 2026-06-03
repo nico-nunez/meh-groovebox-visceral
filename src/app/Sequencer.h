@@ -36,6 +36,7 @@ inline constexpr uint8_t MAX_STEPS_PER_BEAT = 48;
 inline constexpr uint8_t DEFAULT_STEPS_PER_BEAT = 4;
 
 inline constexpr uint8_t MAX_LOCKS_PER_STEP = 4;
+inline constexpr uint8_t MAX_PENDING_NOTE_OFFS = MAX_PATTERN_STEPS;
 inline constexpr uint32_t MAX_PENDING_UNLOCKS = MAX_LOCKS_PER_STEP * MAX_PATTERN_STEPS;
 
 using ParamCallback = float (*)(uint8_t id, void* ctx);
@@ -68,6 +69,12 @@ struct PendingUnlocks {
 // ==================
 // Step / Pattern
 // ==================
+
+struct PendingNoteOff {
+  bool pending = false;
+  uint8_t note = 0;
+  double beat = -1.0;
+};
 
 struct StepEvent {
   ParamLock locks[MAX_LOCKS_PER_STEP]{};
@@ -124,11 +131,9 @@ struct LaneContext {
 
 struct LaneState {
   PendingUnlocks unlocks{};
-  double noteOffBeat = -1.0;
+  PendingNoteOff noteOffs[MAX_PENDING_NOTE_OFFS]{};
   int32_t lastStep = -1;
   int64_t lastStepCycle = -1;
-  bool noteActive = false;
-  uint8_t activeNote = 0;
 };
 
 struct PatternConfig {

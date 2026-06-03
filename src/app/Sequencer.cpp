@@ -28,6 +28,10 @@ ScheduledEvent makeNoteOffEvent(uint8_t note, uint32_t sampleOffset, ScheduledEv
   return evt;
 }
 
+ScheduledEvent makePostNoteOnNoteOffEvent(uint8_t note, uint32_t sampleOffset) {
+  return makeNoteOffEvent(note, sampleOffset, ScheduledEventOrder::PostNoteOnNoteOff);
+}
+
 ScheduledEvent makeNoteOnEvent(uint8_t note, uint8_t velocity, uint32_t sampleOffset) {
   ScheduledEvent evt{};
   evt.sampleOffset = sampleOffset;
@@ -204,6 +208,73 @@ int64_t lastPatternCycleInBlock(const SequencerBlockWindow& block, double patter
   return static_cast<int64_t>(std::floor((block.endBeat - kEndBeatEpsilon) / patternLengthBeats));
 }
 
+bool sameBeat(double a, double b) {
+  constexpr double kBeatEpsilon = 1e-9;
+  return std::fabs(a - b) <= kBeatEpsilon;
+}
+
+void clearPendingNoteOff(PendingNoteOff& pending) {
+  pending.pending = false;
+  pending.note = 0;
+  pending.beat = -1.0;
+}
+
+void addPendingNoteOff(LaneState& laneState, uint8_t note, double beat) {
+  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+    PendingNoteOff& pending = laneState.noteOffs[i];
+    if (!pending.pending) {
+      pending.pending = true;
+      pending.note = note;
+      pending.beat = beat;
+      return;
+    }
+  }
+}
+
+void firePendingNoteOffsBeforeBeat(LaneState& laneState,
+                                   LaneEvents& laneOut,
+                                   const SequencerBlockWindow& block,
+                                   double beat) {
+  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+    PendingNoteOff& pending = laneState.noteOffs[i];
+    if (!pending.pending)
+      continue;
+
+    if (pending.beat >= block.startBeat && pending.beat < block.endBeat && pending.beat < beat) {
+      uint32_t offset = beatToSampleOffset(pending.beat, block);
+      laneOut.push(makeNoteOffEvent(pending.note, offset, ScheduledEventOrder::GateNoteOff));
+      clearPendingNoteOff(pending);
+    }
+  }
+}
+
+void fireRemainingPendingNoteOffsInBlock(LaneState& laneState,
+                                         LaneEvents& laneOut,
+                                         const SequencerBlockWindow& block) {
+  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+    PendingNoteOff& pending = laneState.noteOffs[i];
+    if (!pending.pending)
+      continue;
+
+    if (pending.beat >= block.startBeat && pending.beat < block.endBeat) {
+      uint32_t offset = beatToSampleOffset(pending.beat, block);
+      laneOut.push(makeNoteOffEvent(pending.note, offset, ScheduledEventOrder::GateNoteOff));
+      clearPendingNoteOff(pending);
+    }
+  }
+}
+
+void fireAllPendingNoteOffs(LaneState& laneState, LaneEvents& laneOut) {
+  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+    PendingNoteOff& pending = laneState.noteOffs[i];
+    if (!pending.pending)
+      continue;
+
+    laneOut.push(makeNoteOffEvent(pending.note, 0, ScheduledEventOrder::NoteOff));
+    clearPendingNoteOff(pending);
+  }
+}
+
 void fireStep(uint32_t i,
               const LanePattern* pattern,
               LaneState& laneState,
@@ -216,6 +287,8 @@ void fireStep(uint32_t i,
   const StepEvent& step = pattern->steps[i];
   uint32_t stepOffset = beatToSampleOffset(absStepBeat, block);
 
+  firePendingNoteOffsBeforeBeat(laneState, laneOut, block, absStepBeat);
+
   resolvePendingUnlocks(laneState, laneOut, ctx, step, stepOffset);
 
   if (!step.active)
@@ -223,42 +296,44 @@ void fireStep(uint32_t i,
 
   applyParamLocks(step, laneState, laneOut, ctx, stepOffset);
 
-  // NoteOn event
-  if (step.noteOn) {
-    if (laneState.noteActive) {
-      // Kill prior
-      if (!laneOut.push(
-              makeNoteOffEvent(laneState.activeNote, stepOffset, ScheduledEventOrder::NoteOff)))
-        return;
-      laneState.noteActive = false;
-      laneState.noteOffBeat = -1.0;
+  if (!step.noteOn)
+    return;
+
+  // Same-note overlap is retrigger: cut existing same-pitch note before new NoteOn.
+  for (uint8_t n = 0; n < MAX_PENDING_NOTE_OFFS; ++n) {
+    PendingNoteOff& pending = laneState.noteOffs[n];
+    if (!pending.pending || pending.note != step.note)
+      continue;
+
+    if (pending.beat >= absStepBeat) {
+      laneOut.push(makeNoteOffEvent(step.note, stepOffset, ScheduledEventOrder::NoteOff));
+      clearPendingNoteOff(pending);
     }
+  }
 
-    if (!laneOut.push(makeNoteOnEvent(step.note, step.velocity, stepOffset)))
-      return;
+  laneOut.push(makeNoteOnEvent(step.note, step.velocity, stepOffset));
 
-    laneState.noteActive = true;
-    laneState.activeNote = step.note;
+  // Exact-boundary different-note releases must occur after NoteOn for mono legato.
+  for (uint8_t n = 0; n < MAX_PENDING_NOTE_OFFS; ++n) {
+    PendingNoteOff& pending = laneState.noteOffs[n];
+    if (!pending.pending || pending.note == step.note)
+      continue;
 
-    // GateNoteOff event
-    double gateBeats = std::max(static_cast<double>(step.gate) * stepLengthBeats, MIN_GATE_BEAT);
-    double scheduledNoteOffBeat = absStepBeat + gateBeats;
-
-    if (step.legato) {
-      laneState.noteOffBeat = -1; // hold note
-
-    } else if (scheduledNoteOffBeat < block.endBeat) {
-      uint32_t noteOffOffset = beatToSampleOffset(scheduledNoteOffBeat, block);
-      if (!laneOut.push(
-              makeNoteOffEvent(step.note, noteOffOffset, ScheduledEventOrder::GateNoteOff)))
-        return;
-
-      laneState.noteActive = false;
-      laneState.noteOffBeat = -1.0;
-
-    } else {
-      laneState.noteOffBeat = scheduledNoteOffBeat;
+    if (sameBeat(pending.beat, absStepBeat)) {
+      laneOut.push(makePostNoteOnNoteOffEvent(pending.note, stepOffset));
+      clearPendingNoteOff(pending);
     }
+  }
+
+  const double gateBeats =
+      std::max(static_cast<double>(step.gate) * stepLengthBeats, MIN_GATE_BEAT);
+  const double scheduledNoteOffBeat = absStepBeat + gateBeats;
+
+  if (scheduledNoteOffBeat < block.endBeat) {
+    uint32_t noteOffOffset = beatToSampleOffset(scheduledNoteOffBeat, block);
+    laneOut.push(makeNoteOffEvent(step.note, noteOffOffset, ScheduledEventOrder::GateNoteOff));
+  } else {
+    addPendingNoteOff(laneState, step.note, scheduledNoteOffBeat);
   }
 }
 
@@ -683,24 +758,11 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
     const LaneContext& ctx = state.laneCtxs[laneIndex];
 
     if (block.stoppedThisBlock) {
-      if (laneState.noteActive)
-        laneOut.push(makeNoteOffEvent(laneState.activeNote, 0, ScheduledEventOrder::NoteOff));
-
+      fireAllPendingNoteOffs(laneState, laneOut);
       fireAllPendingUnlocks(laneState, laneOut);
-      laneState.noteActive = false;
-      laneState.noteOffBeat = -1.0;
       laneState.lastStep = -1;
       laneState.lastStepCycle = -1;
       continue;
-    }
-
-    if (laneState.noteActive && laneState.noteOffBeat >= block.startBeat &&
-        laneState.noteOffBeat < block.endBeat) {
-      uint32_t offset = beatToSampleOffset(laneState.noteOffBeat, block);
-      laneOut.push(
-          makeNoteOffEvent(laneState.activeNote, offset, ScheduledEventOrder::GateNoteOff));
-      laneState.noteActive = false;
-      laneState.noteOffBeat = -1.0;
     }
 
     if (pattern->numSteps == 0 || pattern->stepsPerBeat == 0)
@@ -742,6 +804,7 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
         markStepOccurrenceFired(laneState, occurrence);
       }
     }
+    fireRemainingPendingNoteOffsInBlock(laneState, laneOut, block);
   }
 }
 

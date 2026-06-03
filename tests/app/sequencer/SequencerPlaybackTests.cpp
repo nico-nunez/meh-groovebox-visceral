@@ -90,6 +90,43 @@ bool hasNoteOn(const app::sequencer::LaneEvents& lane, uint8_t note) {
   return false;
 }
 
+int countMidiType(const app::sequencer::LaneEvents& lane,
+                  synth::events::MIDIEvent::Type type,
+                  uint8_t note) {
+  int count = 0;
+  for (uint16_t i = 0; i < lane.count; ++i) {
+    const auto& event = lane.events[i];
+    if (event.kind != synth::events::ScheduledEvent::Kind::MIDI)
+      continue;
+    if (event.data.midi.type != type)
+      continue;
+    if (type == synth::events::MIDIEvent::Type::NoteOn && event.data.midi.data.noteOn.note == note)
+      ++count;
+    if (type == synth::events::MIDIEvent::Type::NoteOff &&
+        event.data.midi.data.noteOff.note == note)
+      ++count;
+  }
+  return count;
+}
+
+const synth::events::ScheduledEvent* findMidiEvent(const app::sequencer::LaneEvents& lane,
+                                                   synth::events::MIDIEvent::Type type,
+                                                   uint8_t note) {
+  for (uint16_t i = 0; i < lane.count; ++i) {
+    const auto& event = lane.events[i];
+    if (event.kind != synth::events::ScheduledEvent::Kind::MIDI)
+      continue;
+    if (event.data.midi.type != type)
+      continue;
+    if (type == synth::events::MIDIEvent::Type::NoteOn && event.data.midi.data.noteOn.note == note)
+      return &event;
+    if (type == synth::events::MIDIEvent::Type::NoteOff &&
+        event.data.midi.data.noteOff.note == note)
+      return &event;
+  }
+  return nullptr;
+}
+
 } // namespace
 
 static void test_one_step_pattern_repeats_across_cycles() {
@@ -179,9 +216,86 @@ static void test_stop_resets_last_step_cycle_identity() {
   CHECK("restart note", hasNoteOn(restartEvents.lanes[0], 60));
 }
 
+static void test_gate_overlap_allows_different_note_legato() {
+  TEST("gate_overlap_allows_different_note_legato");
+
+  SequencerFixture fixture{};
+  app::sequencer::LanePattern pattern{};
+  pattern.numSteps = 4;
+  pattern.stepsPerBeat = 1;
+
+  pattern.steps[0].active = true;
+  pattern.steps[0].noteOn = true;
+  pattern.steps[0].note = 60;
+  pattern.steps[0].velocity = 100;
+  pattern.steps[0].gate = 2.5f;
+
+  pattern.steps[2].active = true;
+  pattern.steps[2].noteOn = true;
+  pattern.steps[2].note = 62;
+  pattern.steps[2].velocity = 100;
+  pattern.steps[2].gate = 1.0f;
+
+  admitPattern(fixture.sequencer, pattern);
+
+  app::sequencer::SequencerBlockWindow block{};
+  block.startBeat = 0.0;
+  block.endBeat = 4.0;
+  block.numFrames = 4000;
+
+  app::sequencer::SequencerLaneEvents events{};
+  app::sequencer::runSequencer(fixture.sequencer, block, events);
+
+  const auto* cOn = findMidiEvent(events.lanes[0], synth::events::MIDIEvent::Type::NoteOn, 60);
+  const auto* dOn = findMidiEvent(events.lanes[0], synth::events::MIDIEvent::Type::NoteOn, 62);
+  const auto* cOff = findMidiEvent(events.lanes[0], synth::events::MIDIEvent::Type::NoteOff, 60);
+
+  CHECK("C on", cOn != nullptr);
+  CHECK("D on", dOn != nullptr);
+  CHECK("C off", cOff != nullptr);
+  CHECK("D starts before C releases", dOn->sampleOffset < cOff->sampleOffset);
+}
+
+static void test_gate_overlap_same_note_retriggers() {
+  TEST("gate_overlap_same_note_retriggers");
+
+  SequencerFixture fixture{};
+  app::sequencer::LanePattern pattern{};
+  pattern.numSteps = 4;
+  pattern.stepsPerBeat = 1;
+
+  pattern.steps[0].active = true;
+  pattern.steps[0].noteOn = true;
+  pattern.steps[0].note = 60;
+  pattern.steps[0].velocity = 100;
+  pattern.steps[0].gate = 2.5f;
+
+  pattern.steps[2].active = true;
+  pattern.steps[2].noteOn = true;
+  pattern.steps[2].note = 60;
+  pattern.steps[2].velocity = 100;
+  pattern.steps[2].gate = 1.0f;
+
+  admitPattern(fixture.sequencer, pattern);
+
+  app::sequencer::SequencerBlockWindow block{};
+  block.startBeat = 0.0;
+  block.endBeat = 4.0;
+  block.numFrames = 4000;
+
+  app::sequencer::SequencerLaneEvents events{};
+  app::sequencer::runSequencer(fixture.sequencer, block, events);
+
+  CHECK("two same-note ons",
+        countMidiType(events.lanes[0], synth::events::MIDIEvent::Type::NoteOn, 60) == 2);
+  CHECK("two same-note offs",
+        countMidiType(events.lanes[0], synth::events::MIDIEvent::Type::NoteOff, 60) == 2);
+}
 void runSequencerPlaybackTests() {
   SUITE("SequencerPlayback");
   test_one_step_pattern_repeats_across_cycles();
   test_four_step_pattern_uses_num_steps_not_steps_per_beat();
   test_stop_resets_last_step_cycle_identity();
+  test_gate_overlap_allows_different_note_legato();
+  test_gate_overlap_same_note_retriggers();
 }

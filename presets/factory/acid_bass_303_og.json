@@ -76,10 +76,10 @@
       "releaseCurve": -4.0
     },
     "filterEnv": {
-      "attack": 5.0,
-      "decay": 1600.0,
-      "sustain": 0.08,
-      "release": 300.0,
+      "attack": 64.0,
+      "decay": 10000.0,
+      "sustain": 0.05,
+      "release": 3200.0,
       "attackCurve": -1.0,
       "decayCurve": -8.0,
       "releaseCurve": -5.0
@@ -149,7 +149,7 @@
     {
       "source": "keyTrack",
       "destination": "svf.cutoff",
-      "amount": 0.25
+      "amount": 1.0
     }
   ],
   "signalChain": [
