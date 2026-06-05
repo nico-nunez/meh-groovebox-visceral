@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/GrooveboxEditSession.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocDiagnostics.h"
 
@@ -39,6 +40,7 @@ struct DocApplyState {
 struct DocApplyWorkspace {
   AuthoredDocModel parseModel{};
   app::GrooveboxPatch patch{};
+  app::GrooveboxEditWorkspace editWorkspace{};
 };
 
 struct DocAuthoringService {

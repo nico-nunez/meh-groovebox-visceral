@@ -12,22 +12,14 @@ using test::hasDiagnostic;
 
 const char* kNonEmptyTrack1 =
     "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-    "steps = { { active = true, note = 60, velocity = 100 } } } }, activeSlot = 1 })";
-
-app::AppContext* makeContext() {
-  app::audio::DeviceInfo device{};
-  device.sampleRate = 48000;
-  device.bufferFrameSize = 64;
-  device.numChannels = 2;
-  return app::createAppContext(device);
-}
+    "steps = { { active = true, notes = { { note = 60, velocity = 100 } } } } } }, activeSlot = 1 })";
 
 } // namespace
 
 static void test_parse_failure_sets_failed_without_admission() {
   TEST("parse_failure_sets_failed_without_admission");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring,
@@ -42,13 +34,13 @@ static void test_parse_failure_sets_failed_without_admission() {
   CHECK("no admitted model", !app->documents.authoring.apply.hasLastAdmittedDocModel);
   CHECK("no pending apply", !app->documents.pendingApply.ready.load());
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_successful_sequencer_apply_publishes_at_boundary() {
   TEST("successful_sequencer_apply_publishes_at_boundary");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto result =
@@ -71,13 +63,13 @@ static void test_successful_sequencer_apply_publishes_at_boundary() {
   CHECK("published slot occupied", post.value->slots[0].occupied);
   CHECK("published active slot", post.value->activeSlot == 0);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_empty_document_is_noop() {
   TEST("empty_document_is_noop");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto seed =
@@ -93,15 +85,16 @@ static void test_empty_document_is_noop() {
   auto bank = app::sequencer::getPatternBank(app->sequencer, 0);
   CHECK("bank readable", bank.ok);
   CHECK("slot preserved", bank.value->slots[0].occupied);
-  CHECK("note preserved", bank.value->slots[0].pattern.steps[0].note == 60);
+  CHECK("note count preserved", bank.value->slots[0].pattern.steps[0].noteCount == 1);
+  CHECK("note preserved", bank.value->slots[0].pattern.steps[0].notes[0].note == 60);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_sparse_note_patch_preserves_step_velocity_gate_and_active() {
   TEST("sparse_note_patch_preserves_step_velocity_gate_and_active");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto seed = app::doc::submitAuthoredDocRevision(
@@ -109,7 +102,7 @@ static void test_sparse_note_patch_preserves_step_velocity_gate_and_active() {
       *app,
       1,
       "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { active = true, "
-      "note = 60, velocity = 100, gate = 0.4 } } } }, activeSlot = 1 })");
+      "notes = { { note = 60, velocity = 100, gate = 0.4 } } } } } }, activeSlot = 1 })");
   CHECK("seed ok", seed.ok);
   test::publishPending(app);
 
@@ -117,25 +110,26 @@ static void test_sparse_note_patch_preserves_step_velocity_gate_and_active() {
       app->documents.authoring,
       *app,
       2,
-      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { note = 64 } } } } })");
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { { note = 64 } } } } } } })");
   CHECK("patch ok", patch.ok);
   test::publishPending(app);
 
   auto bank = app::sequencer::getPatternBank(app->sequencer, 0);
   CHECK("bank readable", bank.ok);
   const auto& step = bank.value->slots[0].pattern.steps[0];
-  CHECK("note changed", step.note == 64);
+  CHECK("note count", step.noteCount == 1);
+  CHECK("note changed", step.notes[0].note == 64);
   CHECK("active preserved", step.active);
-  CHECK("velocity preserved", step.velocity == 100);
-  CHECK("gate preserved", step.gate == 0.4f);
+  CHECK("velocity preserved", step.notes[0].velocity == 100);
+  CHECK("gate preserved", step.notes[0].gate == 0.4f);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_step_false_clears_step_at_admission() {
   TEST("step_false_clears_step_at_admission");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto seed =
@@ -155,16 +149,17 @@ static void test_step_false_clears_step_at_admission() {
   CHECK("bank readable", bank.ok);
   const auto& step = bank.value->slots[0].pattern.steps[0];
   CHECK("inactive", !step.active);
-  CHECK("note reset", step.note == 0);
-  CHECK("velocity reset", step.velocity == 0);
+  CHECK("note count reset", step.noteCount == 0);
+  CHECK("note reset", step.notes[0].note == 0);
+  CHECK("velocity reset", step.notes[0].velocity == 0);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_mixed_synth_mixer_sequencer_apply_publishes_together() {
   TEST("mixed_synth_mixer_sequencer_apply_publishes_together");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   std::string doc = "mixer(1, MixerSettings { gain = 0.7 })\n"
@@ -187,7 +182,7 @@ static void test_mixed_synth_mixer_sequencer_apply_publishes_together() {
   auto post = app::sequencer::getPatternBank(app->sequencer, 0);
   CHECK("seq published", post.ok && post.value->slots[0].occupied);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 void runDocAuthoringServiceSeqApplyTests() {

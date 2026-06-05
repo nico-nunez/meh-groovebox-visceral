@@ -22,12 +22,16 @@
 ---@field stepsPerBeat integer -- 1..48
 ---@field steps Step
 
----@class Step
----@field active? boolean
+---@class StepNote
+---@field noteOn? boolean
+---@field tie? boolean
 ---@field note? integer -- 0..127
 ---@field velocity? integer -- 0..127
 ---@field gate? number
----@field legato? boolean
+
+---@class Step
+---@field active? boolean
+---@field notes? StepNote[]
 ---@field locks? StepLock
 
 ---@class StepLock

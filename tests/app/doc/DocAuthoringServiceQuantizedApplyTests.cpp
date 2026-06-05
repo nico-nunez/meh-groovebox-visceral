@@ -13,14 +13,6 @@
 
 namespace {
 
-app::AppContext* makeContext() {
-  app::audio::DeviceInfo device{};
-  device.sampleRate = 48000;
-  device.bufferFrameSize = 64;
-  device.numChannels = 2;
-  return app::createAppContext(device);
-}
-
 app::transport::TransportBlockInfo block(app::transport::TransportMode mode, uint32_t flags) {
   app::transport::TransportBlockInfo info{};
   info.mode = mode;
@@ -45,7 +37,8 @@ bool prepareDoc(app::AppContext* app, const char* doc, app::GrooveboxApplyTiming
   app::beginGrooveboxEdit(&session, 1);
   app::stageGrooveboxPatch(&session, patch);
   app::doc::DocDiagnostics diagnostics{};
-  auto edit = app::commitGrooveboxEdit(&session, app, timing, &diagnostics);
+  app::GrooveboxEditWorkspace editWorkspace{};
+  auto edit = app::commitGrooveboxEdit(&session, app, timing, &editWorkspace, &diagnostics);
   return edit.ok;
 }
 
@@ -54,7 +47,7 @@ bool prepareDoc(app::AppContext* app, const char* doc, app::GrooveboxApplyTiming
 static void test_next_bar_holds_until_bar_boundary() {
   TEST("next_bar_holds_until_bar_boundary");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
@@ -73,13 +66,13 @@ static void test_next_bar_holds_until_bar_boundary() {
   CHECK("published", !app->documents.pendingApply.ready.load());
   CHECK("param applied", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.25f);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_next_beat_holds_until_beat_boundary() {
   TEST("next_beat_holds_until_beat_boundary");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
@@ -97,13 +90,13 @@ static void test_next_beat_holds_until_beat_boundary() {
   CHECK("published", !app->documents.pendingApply.ready.load());
   CHECK("param applied", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_quantized_apply_publishes_immediately_when_stopped() {
   TEST("quantized_apply_publishes_immediately_when_stopped");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
@@ -116,13 +109,13 @@ static void test_quantized_apply_publishes_immediately_when_stopped() {
   CHECK("published", !app->documents.pendingApply.ready.load());
   CHECK("param applied", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.75f);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_quantized_apply_holds_while_paused() {
   TEST("quantized_apply_holds_while_paused");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   bool prepared = prepareDoc(app,
@@ -138,7 +131,7 @@ static void test_quantized_apply_holds_while_paused() {
   CHECK("still pending", app->documents.pendingApply.ready.load());
   CHECK("not published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] != 0.33f);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 void runDocAuthoringServiceQuantizedApplyTests() {

@@ -140,14 +140,6 @@ inline constexpr const char* White = "white";
 inline constexpr const char* Pink = "pink";
 } // namespace rtglobal
 
-namespace rttype {
-inline constexpr const char* SeqTrack = "SeqTrack";
-inline constexpr const char* SeqStep = "SeqStep";
-inline constexpr const char* RuntimePattern = "RuntimePattern";
-inline constexpr const char* RuntimePatternBank = "RuntimePatternBank";
-inline constexpr const char* RuntimeStep = "RuntimeStep";
-} // namespace rttype
-
 namespace rtmethod {
 inline constexpr const char* SetBPM = "setBPM";
 inline constexpr const char* Play = "play";
@@ -167,34 +159,8 @@ inline constexpr const char* Save = "save";
 inline constexpr const char* Init = "init";
 inline constexpr const char* Dump = "dump";
 inline constexpr const char* Set = "set";
-inline constexpr const char* Track = "track";
 inline constexpr const char* ListTracks = "listTracks";
 inline constexpr const char* SelectTrack = "selectTrack";
-inline constexpr const char* Edit = "edit";
-inline constexpr const char* New = "new";
-inline constexpr const char* Commit = "commit";
-inline constexpr const char* Step = "step";
-inline constexpr const char* SetNumSteps = "setNumSteps";
-inline constexpr const char* SetStepsPerBeat = "setStepsPerBeat";
-inline constexpr const char* GetPattern = "getPattern";
-inline constexpr const char* SetPattern = "setPattern";
-inline constexpr const char* SetNotes = "setNotes";
-inline constexpr const char* SetVelocities = "setVelocities";
-inline constexpr const char* ResetPattern = "resetPattern";
-inline constexpr const char* GetPatterns = "getPatterns";
-inline constexpr const char* ReplacePatterns = "replacePatterns";
-inline constexpr const char* ReplacePattern = "replacePattern";
-inline constexpr const char* ClearPatternSlot = "clearPatternSlot";
-inline constexpr const char* Get = "get";
-inline constexpr const char* SetActive = "setActive";
-inline constexpr const char* SetNoteOn = "setNoteOn";
-inline constexpr const char* SetNote = "setNote";
-inline constexpr const char* SetVelocity = "setVelocity";
-inline constexpr const char* SetGate = "setGate";
-inline constexpr const char* SetLegato = "setLegato";
-inline constexpr const char* SetLock = "setLock";
-inline constexpr const char* ClearLock = "clearLock";
-inline constexpr const char* ClearLocks = "clearLocks";
 } // namespace rtmethod
 
 } // namespace lua

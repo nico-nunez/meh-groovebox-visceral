@@ -81,11 +81,12 @@ static void test_synth_and_sequencer_can_parse_together() {
   TEST("synth_and_sequencer_can_parse_together");
 
   auto* ws = getParseTestWorkspace();
-  auto r = parseWS("track(1, TrackSettings { "
-                   "synth = SynthSettings { master = { gain = 0.7 } }, "
-                   "patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-                   "steps = { { active = true, note = 60 } } } }, activeSlot = 1 })",
-                   ws);
+  auto r =
+      parseWS("track(1, TrackSettings { "
+              "synth = SynthSettings { master = { gain = 0.7 } }, "
+              "patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
+              "steps = { { active = true, notes = { { note = 60 } } } } } }, activeSlot = 1 })",
+              ws);
 
   CHECK("ok", r.ok);
   CHECK("seq track present", ws->model.sequencer.hasTrackState[0]);
@@ -97,7 +98,9 @@ static void test_synth_and_sequencer_can_parse_together() {
   CHECK("seq stepsPerBeat", pattern.hasStepsPerBeat && pattern.stepsPerBeat == 4);
   CHECK("seq step patch", pattern.hasStep[0]);
   CHECK("seq active", pattern.steps[0].hasActive && pattern.steps[0].active);
-  CHECK("seq note", pattern.steps[0].hasNote && pattern.steps[0].note == 60);
+  CHECK("seq note count", pattern.steps[0].hasNoteCount && pattern.steps[0].noteCount == 1);
+  CHECK("seq note patch", pattern.steps[0].hasNotePatch[0]);
+  CHECK("seq note", pattern.steps[0].notes[0].hasNote && pattern.steps[0].notes[0].note == 60);
   CHECK("synth present", ws->model.hasSynthState[0]);
   CHECK("master gain", findWrite(ws->model.synthTracks[0], synth::param::MASTER_GAIN) != nullptr);
 }

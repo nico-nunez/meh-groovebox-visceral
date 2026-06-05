@@ -1,8 +1,8 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/Constants.h"
-#include "app/Sequencer.h"
 #include "app/doc/AuthoredDocParser.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/metadata/DocMetadata.h"
@@ -115,13 +115,30 @@ static void test_step_fields_match_lua_pattern_parser() {
   const auto* step = app::doc::findAuthoredDocumentType(app::doc::doctype::Step);
   CHECK("Step exists", step != nullptr);
   CHECK("active", step && findField(*step, "active") != nullptr);
-  CHECK("note", step && findField(*step, "note") != nullptr);
-  CHECK("velocity", step && findField(*step, "velocity") != nullptr);
-  CHECK("gate", step && findField(*step, "gate") != nullptr);
-  CHECK("legato", step && findField(*step, "legato") != nullptr);
+  CHECK("notes", step && findField(*step, "notes") != nullptr);
   CHECK("locks", step && findField(*step, "locks") != nullptr);
-  const auto* note = step ? findField(*step, "note") : nullptr;
-  const auto* velocity = step ? findField(*step, "velocity") : nullptr;
+  CHECK("no step noteOn", step && findField(*step, "noteOn") == nullptr);
+  CHECK("no step note", step && findField(*step, "note") == nullptr);
+  CHECK("no step velocity", step && findField(*step, "velocity") == nullptr);
+  CHECK("no step gate", step && findField(*step, "gate") == nullptr);
+  CHECK("no step legato", step && findField(*step, "legato") == nullptr);
+
+  const auto* notes = step ? findField(*step, "notes") : nullptr;
+  CHECK("notes element type", notes && strEq(notes->elementType, app::doc::doctype::StepNotes));
+}
+
+static void test_step_note_fields_match_lua_pattern_parser() {
+  TEST("step_note_fields_match_lua_pattern_parser");
+  const auto* noteType = app::doc::findAuthoredDocumentType(app::doc::doctype::StepNote);
+  CHECK("StepNote exists", noteType != nullptr);
+  CHECK("noteOn", noteType && findField(*noteType, "noteOn") != nullptr);
+  CHECK("tie", noteType && findField(*noteType, "tie") != nullptr);
+  CHECK("note", noteType && findField(*noteType, "note") != nullptr);
+  CHECK("velocity", noteType && findField(*noteType, "velocity") != nullptr);
+  CHECK("gate", noteType && findField(*noteType, "gate") != nullptr);
+
+  const auto* note = noteType ? findField(*noteType, "note") : nullptr;
+  const auto* velocity = noteType ? findField(*noteType, "velocity") : nullptr;
   CHECK("note 0..127", note && note->integerBounds.min == 0 && note->integerBounds.max == 127);
   CHECK("velocity 0..127",
         velocity && velocity->integerBounds.min == 0 && velocity->integerBounds.max == 127);
@@ -175,6 +192,9 @@ static void test_parser_emitted_diagnostics_are_cataloged() {
       "track('one', TrackSettings {})",
       "track(1, 123)",
       "track(1, TrackSettings { patterns = 123 })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { note = 60 } } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { { gate = -1.0 } } "
+      "} } } } })",
       "track(1, TrackSettings { patterns = { bad = { numSteps = 1, stepsPerBeat = 4, "
       "steps = { { active = true } } } } })",
       "track(1, TrackSettings { patterns = { [999] = { numSteps = 1, stepsPerBeat = 4, "
@@ -208,14 +228,16 @@ static void test_service_emitted_diagnostics_are_cataloged() {
 
   app::doc::DocAuthoringService service{};
   app::doc::initDocAuthoringService(service);
-  app::AppContext app{};
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
 
   auto result =
-      app::doc::submitAuthoredDocRevision(service, app, 1, "track('one', TrackSettings {})");
+      app::doc::submitAuthoredDocRevision(service, *app, 1, "track('one', TrackSettings {})");
 
   CHECK("not ok", !result.ok);
   CHECK("has diagnostics", !result.diagnostics.empty());
   CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(result.diagnostics));
+  test::destroyAppContext(app);
   app::doc::destroyDocAuthoringService(service);
 }
 
@@ -224,13 +246,15 @@ static void test_file_apply_emitted_diagnostics_are_cataloged() {
 
   app::doc::DocAuthoringService service{};
   app::doc::initDocAuthoringService(service);
-  app::AppContext app{};
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
 
-  auto result = app::doc::submitAuthoredDocFile(service, app, "/path/that/does/not/exist.lua");
+  auto result = app::doc::submitAuthoredDocFile(service, *app, "/path/that/does/not/exist.lua");
 
   CHECK("not ok", !result.ok);
   CHECK("has diagnostics", !result.diagnostics.empty());
   CHECK("diagnostics cataloged", allDiagnosticsAreCataloged(result.diagnostics));
+  test::destroyAppContext(app);
   app::doc::destroyDocAuthoringService(service);
 }
 
@@ -343,4 +367,5 @@ void runDocMetadataTests() {
   test_mixer_diagnostic_codes_are_cataloged();
   test_track_settings_has_mixer_field();
   test_mixer_settings_type_is_implemented();
+  test_step_note_fields_match_lua_pattern_parser();
 }

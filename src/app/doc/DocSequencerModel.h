@@ -22,18 +22,15 @@ struct AuthoredStepLocksPatch {
   SourceSpan span{};
 };
 
-struct AuthoredStepPatch {
+struct AuthoredStepNotePatch {
   app::PatchObjectOp op = app::PatchObjectOp::None;
   SourceSpan span{};
 
-  bool hasActive = false;
-  bool active = false;
-
   bool hasNoteOn = false;
-  bool noteOn = false;
+  bool noteOn = true;
 
-  bool hasLegato = false;
-  bool legato = false;
+  bool hasTie = false;
+  bool tie = false;
 
   bool hasGate = false;
   float gate = 0.0f;
@@ -43,6 +40,20 @@ struct AuthoredStepPatch {
 
   bool hasVelocity = false;
   uint8_t velocity = 0;
+};
+
+struct AuthoredStepPatch {
+  app::PatchObjectOp op = app::PatchObjectOp::None;
+  SourceSpan span{};
+
+  bool hasActive = false;
+  bool active = false;
+
+  bool hasNoteCount = false;
+  uint8_t noteCount = 0;
+
+  bool hasNotePatch[sequencer::MAX_NOTES_PER_STEP]{};
+  AuthoredStepNotePatch notes[sequencer::MAX_NOTES_PER_STEP]{};
 
   AuthoredStepLocksPatch locks{};
 };
@@ -94,10 +105,22 @@ struct AuthoredSeqDocModel {
   AuthoredTrackSeqModel tracks[app::MAX_TRACKS]{};
 };
 
-inline bool hasAuthoredStepPatchEdits(const AuthoredStepPatch& patch) {
+inline bool hasAuthoredStepNotePatchEdits(const AuthoredStepNotePatch& patch) {
   return patch.op == app::PatchObjectOp::Clear || patch.op == app::PatchObjectOp::Replace ||
-         patch.hasActive || patch.hasNoteOn || patch.hasLegato || patch.hasGate || patch.hasNote ||
-         patch.hasVelocity || patch.locks.op != app::PatchObjectOp::None;
+         patch.hasNoteOn || patch.hasTie || patch.hasGate || patch.hasNote || patch.hasVelocity;
+}
+
+inline bool hasAuthoredStepPatchEdits(const AuthoredStepPatch& patch) {
+  if (patch.op == app::PatchObjectOp::Clear || patch.op == app::PatchObjectOp::Replace ||
+      patch.hasActive || patch.hasNoteCount || patch.locks.op != app::PatchObjectOp::None) {
+    return true;
+  }
+
+  for (uint8_t i = 0; i < sequencer::MAX_NOTES_PER_STEP; ++i) {
+    if (patch.hasNotePatch[i] && hasAuthoredStepNotePatchEdits(patch.notes[i]))
+      return true;
+  }
+  return false;
 }
 
 inline bool hasAuthoredPatternPatchEdits(const AuthoredPatternPatch& patch) {

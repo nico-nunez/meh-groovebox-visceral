@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/Constants.h"
 #include "dsp/Buffers.h"
 #include "synth/Engine.h"
 #include "synth/events/EventQueues.h"
@@ -18,8 +19,6 @@ using synth::events::ParamEventQueue;
 using synth::events::ScheduledEvent;
 using synth::preset::Preset;
 using synth::program::SynthProgram;
-
-inline constexpr uint32_t MAX_EVENTS_PER_TRACK = 512;
 
 struct ScheduledEventBuffer {
   ScheduledEvent buffer[MAX_EVENTS_PER_TRACK]{};

@@ -1,8 +1,8 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/Constants.h"
-#include "app/Sequencer.h"
 #include "app/doc/metadata/DocMetadata.h"
 #include "lua/bindings/LuaBindings.h"
 #include "lua/metadata/LuaRuntimeMetadata.h"
@@ -81,18 +81,20 @@ bool luaTableHasFunction(lua_State* L, const char* tableName, const char* method
 }
 
 struct LuaFixture {
-  app::AppContext app{};
+  app::AppContext* app = nullptr;
   lua_State* L = nullptr;
 
   LuaFixture() {
+    app = test::makeAppContext();
     L = luaL_newstate();
     luaL_openlibs(L);
-    lua::bindings::registerSynthBindings(L, app);
+    lua::bindings::registerSynthBindings(L, *app);
   }
 
   ~LuaFixture() {
     if (L)
       lua_close(L);
+    test::destroyAppContext(app);
   }
 };
 
@@ -144,43 +146,16 @@ static void test_seq_metadata_uses_static_bounds() {
   const auto* seq = lua::findRuntimeLuaTable(lua::rtglobal::Seq);
   CHECK("seq exists", seq != nullptr);
 
-  const auto* track = seq ? findMethod(*seq, lua::rtmethod::Track) : nullptr;
-  CHECK("seq.track exists", track != nullptr);
-  CHECK("seq.track max track", track && track->args.data[0].integerBounds.max == app::MAX_TRACKS);
-
-  const auto* seqTrack = lua::findRuntimeLuaUserdataType(lua::rttype::SeqTrack);
-  CHECK("SeqTrack exists", seqTrack != nullptr);
-  const auto* step = seqTrack ? findMethod(*seqTrack, lua::rtmethod::Step) : nullptr;
-  const auto* replacePattern =
-      seqTrack ? findMethod(*seqTrack, lua::rtmethod::ReplacePattern) : nullptr;
-  CHECK("step max",
-        step && step->args.data[0].integerBounds.max == app::sequencer::MAX_PATTERN_STEPS);
-  CHECK("replacePattern slot max",
-        replacePattern &&
-            replacePattern->args.data[0].integerBounds.max == app::sequencer::PATTERNS_PER_LANE);
+  const auto* selectTrack = seq ? findMethod(*seq, lua::rtmethod::SelectTrack) : nullptr;
+  CHECK("seq.selectTrack exists", selectTrack != nullptr);
+  CHECK("seq.selectTrack max track",
+        selectTrack && selectTrack->args.data[0].integerBounds.max == app::MAX_TRACKS);
 }
 
-static void test_seq_userdata_methods_are_present() {
-  TEST("seq_userdata_methods_are_present");
-  CHECK("SeqTrack metadata exists", hasUserdataType(lua::rttype::SeqTrack));
-  CHECK("SeqStep metadata exists", hasUserdataType(lua::rttype::SeqStep));
-
-  const auto* seqTrack = lua::findRuntimeLuaUserdataType(lua::rttype::SeqTrack);
-  const auto* seqStep = lua::findRuntimeLuaUserdataType(lua::rttype::SeqStep);
-  CHECK("SeqTrack exists", seqTrack != nullptr);
-  CHECK("SeqStep exists", seqStep != nullptr);
-
-  CHECK("SeqTrack.step", seqTrack && findMethod(*seqTrack, lua::rtmethod::Step));
-  CHECK("SeqTrack.setNumSteps", seqTrack && findMethod(*seqTrack, lua::rtmethod::SetNumSteps));
-  CHECK("SeqTrack.replacePatterns",
-        seqTrack && findMethod(*seqTrack, lua::rtmethod::ReplacePatterns));
-  CHECK("SeqTrack.clearPatternSlot",
-        seqTrack && findMethod(*seqTrack, lua::rtmethod::ClearPatternSlot));
-
-  CHECK("SeqStep.get", seqStep && findMethod(*seqStep, lua::rtmethod::Get));
-  CHECK("SeqStep.set", seqStep && findMethod(*seqStep, lua::rtmethod::Set));
-  CHECK("SeqStep.setLock", seqStep && findMethod(*seqStep, lua::rtmethod::SetLock));
-  CHECK("SeqStep.clearLocks", seqStep && findMethod(*seqStep, lua::rtmethod::ClearLocks));
+static void test_seq_editing_userdata_metadata_is_absent() {
+  TEST("seq_editing_userdata_metadata_is_absent");
+  CHECK("SeqTrack metadata absent", !hasUserdataType("SeqTrack"));
+  CHECK("SeqStep metadata absent", !hasUserdataType("SeqStep"));
 }
 
 static void test_engine_param_proxy_fields_derive_from_param_defs() {
@@ -336,7 +311,7 @@ void runLuaRuntimeMetadataTests() {
   test_runtime_command_tables_are_present();
   test_top_level_helpers_are_present();
   test_seq_metadata_uses_static_bounds();
-  test_seq_userdata_methods_are_present();
+  test_seq_editing_userdata_metadata_is_absent();
   test_engine_param_proxy_fields_derive_from_param_defs();
   test_app_param_proxy_fields_derive_from_app_param_defs();
   test_runtime_metadata_has_unique_global_symbols();

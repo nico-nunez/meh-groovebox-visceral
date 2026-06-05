@@ -98,7 +98,7 @@ static void test_sequencer_only_doc_does_not_mark_synth_or_mixer() {
 
   auto* ws = getParseTestWorkspace();
   auto parsed = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
-                        "note = 60 } } } } })",
+                        "notes = { { note = 60 } } } } } } })",
                         ws);
   CHECK("parse ok", parsed.ok);
 
@@ -110,8 +110,9 @@ static void test_sequencer_only_doc_does_not_mark_synth_or_mixer() {
   CHECK("track present", patch.sequencer.hasTrack[0]);
   CHECK("slot present", patch.sequencer.tracks[0].hasSlot[0]);
   CHECK("step note",
-        patch.sequencer.tracks[0].slots[0].pattern.steps[0].hasNote &&
-            patch.sequencer.tracks[0].slots[0].pattern.steps[0].note == 60);
+        patch.sequencer.tracks[0].slots[0].pattern.steps[0].hasNotePatch[0] &&
+            patch.sequencer.tracks[0].slots[0].pattern.steps[0].notes[0].hasNote &&
+            patch.sequencer.tracks[0].slots[0].pattern.steps[0].notes[0].note == 60);
   CHECK("no mixer", !patch.hasMixer);
   for (uint8_t t = 0; t < app::MAX_TRACKS; ++t)
     CHECK("no synth", !patch.hasSynth[t]);

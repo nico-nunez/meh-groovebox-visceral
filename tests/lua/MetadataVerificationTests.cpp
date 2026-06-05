@@ -1,9 +1,9 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
 #include "app/AppParams.h"
 #include "app/Constants.h"
-#include "app/Sequencer.h"
 #include "app/doc/metadata/DocMetadata.h"
 #include "lua/bindings/LuaBindings.h"
 #include "lua/metadata/LuaRuntimeMetadata.h"
@@ -107,18 +107,20 @@ std::string number(int value) {
 }
 
 struct LuaFixture {
-  app::AppContext app{};
+  app::AppContext* app = nullptr;
   lua_State* L = nullptr;
 
   LuaFixture() {
+    app = test::makeAppContext();
     L = luaL_newstate();
     luaL_openlibs(L);
-    lua::bindings::registerSynthBindings(L, app);
+    lua::bindings::registerSynthBindings(L, *app);
   }
 
   ~LuaFixture() {
     if (L)
       lua_close(L);
+    test::destroyAppContext(app);
   }
 };
 
@@ -172,12 +174,8 @@ static void test_document_track_and_runtime_seq_track_do_not_collapse() {
   CHECK("authored metadata track", hasAuthoredFunction(app::doc::docglobal::Track));
   CHECK("runtime metadata no top-level track", !hasRuntimeGlobal(app::doc::docglobal::Track));
 
-  const auto* seq = lua::findRuntimeLuaTable(lua::rtglobal::Seq);
-  CHECK("runtime seq table", seq != nullptr);
-  CHECK("runtime seq.track metadata", seq && findMethod(*seq, lua::rtmethod::Track) != nullptr);
-
   checkContains(authored, "function track(", "authored function track");
-  checkContains(runtime, "function seq.track(", "runtime seq.track");
+  checkNotContains(runtime, "function seq.track(", "runtime seq.track");
   checkNotContains(runtime, "function track(", "runtime no top-level track");
 
   CHECK("authored metadata synth", hasAuthoredFunction(app::doc::docglobal::Synth));
@@ -229,29 +227,11 @@ static void test_static_bounds_match_generated_stub_comments() {
   CHECK("authored track min", track && track->args.data[0].integerBounds.min == 1);
   CHECK("authored track max", track && track->args.data[0].integerBounds.max == app::MAX_TRACKS);
 
-  const auto* seq = lua::findRuntimeLuaTable(lua::rtglobal::Seq);
-  const auto* seqTrack = seq ? findMethod(*seq, lua::rtmethod::Track) : nullptr;
-  CHECK("runtime seq.track", seqTrack != nullptr);
-  CHECK("runtime seq.track max",
-        seqTrack && seqTrack->args.data[0].integerBounds.max == app::MAX_TRACKS);
-
   const auto* midi = lua::findRuntimeLuaTable(lua::rtglobal::Midi);
   const auto* channel = midi ? findMethod(*midi, lua::rtmethod::Channel) : nullptr;
   CHECK("midi.channel", channel != nullptr);
   CHECK("midi.channel max",
         channel && channel->args.data[0].integerBounds.max == app::MAX_MIDI_CHANNELS);
-
-  const auto* seqTrackType = lua::findRuntimeLuaUserdataType(lua::rttype::SeqTrack);
-  const auto* replacePattern =
-      seqTrackType ? findMethod(*seqTrackType, lua::rtmethod::ReplacePattern) : nullptr;
-  const auto* setNumSteps =
-      seqTrackType ? findMethod(*seqTrackType, lua::rtmethod::SetNumSteps) : nullptr;
-  CHECK("replacePattern slot max",
-        replacePattern &&
-            replacePattern->args.data[0].integerBounds.max == app::sequencer::PATTERNS_PER_LANE);
-  CHECK("setNumSteps max",
-        setNumSteps &&
-            setNumSteps->args.data[0].integerBounds.max == app::sequencer::MAX_PATTERN_STEPS);
 
   checkContains(authored, "1.." + number(app::MAX_TRACKS), "authored track bound");
   checkContains(authored, "1.." + number(app::sequencer::PATTERNS_PER_LANE), "authored slot bound");
@@ -260,7 +240,8 @@ static void test_static_bounds_match_generated_stub_comments() {
                 "1.." + number(app::sequencer::MAX_STEPS_PER_BEAT),
                 "authored steps per beat bound");
   checkContains(authored, number(app::sequencer::MAX_LOCKS_PER_STEP), "authored lock bound");
-  checkContains(runtime, "function seq.track(", "runtime seq.track rendered");
+  checkContains(runtime, "function seq.selectTrack(", "runtime seq.selectTrack rendered");
+  checkNotContains(runtime, "function seq.track(", "runtime seq.track removed");
 }
 
 static void test_generated_outputs_have_expected_meta_names() {
@@ -354,7 +335,6 @@ static void test_runtime_visible_globals_match_metadata() {
   CHECK("transport.stop",
         luaTableHasFunction(fixture.L, lua::rtglobal::Transport, lua::rtmethod::Stop));
   CHECK("midi.routes", luaTableHasFunction(fixture.L, lua::rtglobal::Midi, lua::rtmethod::Routes));
-  CHECK("seq.track", luaTableHasFunction(fixture.L, lua::rtglobal::Seq, lua::rtmethod::Track));
   CHECK("preset.list", luaTableHasFunction(fixture.L, lua::rtglobal::Preset, lua::rtmethod::List));
 }
 

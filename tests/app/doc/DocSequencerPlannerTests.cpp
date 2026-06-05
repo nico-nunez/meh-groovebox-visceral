@@ -3,7 +3,6 @@
 #include "TestHelpers.h"
 
 #include "app/GrooveboxPatch.h"
-#include "app/Sequencer.h"
 #include "app/doc/DocSequencerPlanner.h"
 
 namespace {
@@ -22,12 +21,15 @@ void oneStepPatternPatch(uint8_t note, app::doc::AuthoredPatternPatch* pattern) 
   pattern->steps[0].op = app::PatchObjectOp::Patch;
   pattern->steps[0].hasActive = true;
   pattern->steps[0].active = true;
-  pattern->steps[0].hasNoteOn = true;
-  pattern->steps[0].noteOn = true;
-  pattern->steps[0].hasNote = true;
-  pattern->steps[0].note = note;
-  pattern->steps[0].hasVelocity = true;
-  pattern->steps[0].velocity = 100;
+  pattern->steps[0].hasNoteCount = true;
+  pattern->steps[0].noteCount = 1;
+  pattern->steps[0].hasNotePatch[0] = true;
+  pattern->steps[0].notes[0].hasNoteOn = true;
+  pattern->steps[0].notes[0].noteOn = true;
+  pattern->steps[0].notes[0].hasNote = true;
+  pattern->steps[0].notes[0].note = note;
+  pattern->steps[0].notes[0].hasVelocity = true;
+  pattern->steps[0].notes[0].velocity = 100;
 }
 
 void trackWithSlotPatch(uint8_t trackIndex,
@@ -79,15 +81,23 @@ static void test_build_sequencer_patch_copies_authored_slot_patch() {
   CHECK("slot patched", patch.tracks[0].hasSlot[0]);
   CHECK("slot op", patch.tracks[0].slots[0].op == app::PatchObjectOp::Patch);
   CHECK("pattern op", patch.tracks[0].slots[0].pattern.op == app::PatchObjectOp::Patch);
-  CHECK("num steps copied", patch.tracks[0].slots[0].pattern.hasNumSteps &&
-                                  patch.tracks[0].slots[0].pattern.numSteps == 1);
-  CHECK("steps per beat copied", patch.tracks[0].slots[0].pattern.hasStepsPerBeat &&
-                                         patch.tracks[0].slots[0].pattern.stepsPerBeat == 4);
+  CHECK("num steps copied",
+        patch.tracks[0].slots[0].pattern.hasNumSteps &&
+            patch.tracks[0].slots[0].pattern.numSteps == 1);
+  CHECK("steps per beat copied",
+        patch.tracks[0].slots[0].pattern.hasStepsPerBeat &&
+            patch.tracks[0].slots[0].pattern.stepsPerBeat == 4);
   CHECK("step copied", patch.tracks[0].slots[0].pattern.hasStep[0]);
-  CHECK("note copied", patch.tracks[0].slots[0].pattern.steps[0].hasNote &&
-                           patch.tracks[0].slots[0].pattern.steps[0].note == 61);
-  CHECK("velocity copied", patch.tracks[0].slots[0].pattern.steps[0].hasVelocity &&
-                               patch.tracks[0].slots[0].pattern.steps[0].velocity == 100);
+  CHECK("note count copied",
+        patch.tracks[0].slots[0].pattern.steps[0].hasNoteCount &&
+            patch.tracks[0].slots[0].pattern.steps[0].noteCount == 1);
+  CHECK("note patch copied", patch.tracks[0].slots[0].pattern.steps[0].hasNotePatch[0]);
+  CHECK("note copied",
+        patch.tracks[0].slots[0].pattern.steps[0].notes[0].hasNote &&
+            patch.tracks[0].slots[0].pattern.steps[0].notes[0].note == 61);
+  CHECK("velocity copied",
+        patch.tracks[0].slots[0].pattern.steps[0].notes[0].hasVelocity &&
+            patch.tracks[0].slots[0].pattern.steps[0].notes[0].velocity == 100);
 }
 
 static void test_build_sequencer_patch_preserves_sparse_tracks() {
@@ -102,7 +112,7 @@ static void test_build_sequencer_patch_preserves_sparse_tracks() {
 
   CHECK("target ok", result.ok);
   CHECK("lane 2 patched", patch.hasTrack[1]);
-  CHECK("lane 2 note", patch.tracks[1].slots[0].pattern.steps[0].note == 64);
+  CHECK("lane 2 note", patch.tracks[1].slots[0].pattern.steps[0].notes[0].note == 64);
   CHECK("lane 1 omitted", !patch.hasTrack[0]);
   CHECK("lane 1 default inactive",
         patch.tracks[0].activeSlot == app::sequencer::INVALID_PATTERN_SLOT);
@@ -128,11 +138,11 @@ static void test_build_sequencer_patch_copies_clear_ops() {
   CHECK("target ok", result.ok);
   CHECK("track patched", patch.hasTrack[0]);
   CHECK("bank clear", patch.tracks[0].bankOp == app::PatchObjectOp::Clear);
-  CHECK("slot clear", patch.tracks[0].hasSlot[1] &&
-                          patch.tracks[0].slots[1].op == app::PatchObjectOp::Clear);
-  CHECK("step clear", patch.tracks[0].slots[1].pattern.hasStep[0] &&
-                          patch.tracks[0].slots[1].pattern.steps[0].op ==
-                              app::PatchObjectOp::Clear);
+  CHECK("slot clear",
+        patch.tracks[0].hasSlot[1] && patch.tracks[0].slots[1].op == app::PatchObjectOp::Clear);
+  CHECK("step clear",
+        patch.tracks[0].slots[1].pattern.hasStep[0] &&
+            patch.tracks[0].slots[1].pattern.steps[0].op == app::PatchObjectOp::Clear);
 }
 
 static void test_empty_track_settings_produces_no_sequencer_patch() {
@@ -154,7 +164,7 @@ static void test_sparse_step_note_copies_to_patch() {
 
   auto* ws = getParseTestWorkspace();
   auto parsed = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
-                        "note = 64 } } } } })",
+                        "notes = { { note = 64 } } } } } } })",
                         ws);
   CHECK("parse ok", parsed.ok);
 
@@ -166,9 +176,12 @@ static void test_sparse_step_note_copies_to_patch() {
   CHECK("track present", patch.hasTrack[0]);
   CHECK("slot present", patch.tracks[0].hasSlot[0]);
   CHECK("step present", patch.tracks[0].slots[0].pattern.hasStep[0]);
-  CHECK("has note", step.hasNote);
-  CHECK("note copied", step.note == 64);
-  CHECK("velocity absent", !step.hasVelocity);
+  CHECK("has note count", step.hasNoteCount);
+  CHECK("note count", step.noteCount == 1);
+  CHECK("has note patch", step.hasNotePatch[0]);
+  CHECK("has note", step.notes[0].hasNote);
+  CHECK("note copied", step.notes[0].note == 64);
+  CHECK("velocity absent", !step.notes[0].hasVelocity);
 }
 
 void runDocSequencerPlannerTests() {

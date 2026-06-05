@@ -75,17 +75,14 @@ struct StepLockPatch {
   uint8_t lockCount = 0;
 };
 
-struct StepEventPatch {
+struct StepNotePatch {
   PatchObjectOp op = PatchObjectOp::None;
 
-  bool hasActive = false;
-  bool active = false;
-
   bool hasNoteOn = false;
-  bool noteOn = false;
+  bool noteOn = true;
 
-  bool hasLegato = false;
-  bool legato = false;
+  bool hasTie = false;
+  bool tie = false;
 
   bool hasGate = false;
   float gate = 0.0f;
@@ -95,6 +92,19 @@ struct StepEventPatch {
 
   bool hasVelocity = false;
   uint8_t velocity = 0;
+};
+
+struct StepEventPatch {
+  PatchObjectOp op = PatchObjectOp::None;
+
+  bool hasActive = false;
+  bool active = false;
+
+  bool hasNoteCount = false;
+  uint8_t noteCount = 0;
+
+  StepNotePatch notes[sequencer::MAX_NOTES_PER_STEP]{};
+  bool hasNotePatch[sequencer::MAX_NOTES_PER_STEP]{};
 
   StepLockPatch locks{};
 };

@@ -10,20 +10,33 @@ namespace app::doc {
 
 namespace {
 
-void copyStepPatch(const AuthoredStepPatch& src, app::StepEventPatch* dst) {
+void copyStepNotePatch(const AuthoredStepNotePatch& src, app::StepNotePatch* dst) {
   dst->op = src.op;
-  dst->hasActive = src.hasActive;
-  dst->active = src.active;
   dst->hasNoteOn = src.hasNoteOn;
   dst->noteOn = src.noteOn;
-  dst->hasLegato = src.hasLegato;
-  dst->legato = src.legato;
+  dst->hasTie = src.hasTie;
+  dst->tie = src.tie;
   dst->hasGate = src.hasGate;
   dst->gate = src.gate;
   dst->hasNote = src.hasNote;
   dst->note = src.note;
   dst->hasVelocity = src.hasVelocity;
   dst->velocity = src.velocity;
+}
+
+void copyStepPatch(const AuthoredStepPatch& src, app::StepEventPatch* dst) {
+  dst->op = src.op;
+  dst->hasActive = src.hasActive;
+  dst->active = src.active;
+  dst->hasNoteCount = src.hasNoteCount;
+  dst->noteCount = src.noteCount;
+  for (uint8_t i = 0; i < sequencer::MAX_NOTES_PER_STEP; ++i) {
+    if (!src.hasNotePatch[i])
+      continue;
+    dst->hasNotePatch[i] = true;
+    copyStepNotePatch(src.notes[i], &dst->notes[i]);
+  }
+
   dst->locks.op = src.locks.op;
   dst->locks.lockCount = src.locks.numLocks;
   for (uint8_t i = 0; i < src.locks.numLocks; ++i)

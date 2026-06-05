@@ -15,6 +15,122 @@ std::string trackTarget(uint8_t trackIndex, const char* suffix) {
 // ==================
 // Parsers
 // ==================
+bool stepHasInvalidScalarNoteFields(lua_State* L, int absStep) {
+  return tableHasField(L, absStep, "noteOn") || tableHasField(L, absStep, "tie") ||
+         tableHasField(L, absStep, "note") || tableHasField(L, absStep, "velocity") ||
+         tableHasField(L, absStep, "gate") || tableHasField(L, absStep, "legato");
+}
+
+std::string stepNoteTarget(const char* targetPrefix, const char* field) {
+  std::string target = targetPrefix ? targetPrefix : "step.note";
+  if (field && field[0] != '\0') {
+    target += ".";
+    target += field;
+  }
+  return target;
+}
+
+void pushStepNoteDiagnostic(LuaSequencerParseContext& ctx,
+                            SourceSpan span,
+                            const char* targetPrefix,
+                            const char* field,
+                            const char* message) {
+  const std::string target = stepNoteTarget(targetPrefix, field);
+  pushDiagnostic(ctx,
+                 DiagnosticSource::Validator,
+                 docdiag::SequencerPatternInvalidShape,
+                 message,
+                 span,
+                 target.c_str());
+}
+
+bool validateDenseArrayKeys(lua_State* L,
+                            int absTable,
+                            size_t count,
+                            LuaSequencerParseContext& ctx,
+                            SourceSpan span,
+                            const char* target) {
+  bool ok = true;
+  lua_pushnil(L);
+  while (lua_next(L, absTable) != 0) {
+    bool validKey = lua_isinteger(L, -2);
+    if (validKey) {
+      const lua_Integer key = lua_tointeger(L, -2);
+      validKey = key >= 1 && static_cast<size_t>(key) <= count;
+    }
+
+    if (!validKey) {
+      pushDiagnostic(ctx,
+                     DiagnosticSource::Validator,
+                     docdiag::SequencerPatternInvalidShape,
+                     "notes must be a dense array",
+                     span,
+                     target);
+      ok = false;
+    }
+    lua_pop(L, 1);
+  }
+  return ok;
+}
+
+bool parseStepNotePatch(lua_State* L,
+                        int absNote,
+                        AuthoredStepNotePatch* out,
+                        LuaSequencerParseContext& ctx,
+                        SourceSpan span,
+                        const char* targetPrefix) {
+  bool ok = true;
+  out->span = span;
+
+  if (tableHasField(L, absNote, "noteOn")) {
+    out->hasNoteOn = true;
+    if (!readBoolField(L, absNote, "noteOn", &out->noteOn)) {
+      pushStepNoteDiagnostic(ctx, span, targetPrefix, "noteOn", "noteOn must be boolean");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absNote, "tie")) {
+    out->hasTie = true;
+    if (!readBoolField(L, absNote, "tie", &out->tie)) {
+      pushStepNoteDiagnostic(ctx, span, targetPrefix, "tie", "tie must be boolean");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absNote, "note")) {
+    out->hasNote = true;
+    if (!readUInt7Field(L, absNote, "note", &out->note)) {
+      pushStepNoteDiagnostic(ctx, span, targetPrefix, "note", "note out of range");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absNote, "velocity")) {
+    out->hasVelocity = true;
+    if (!readUInt7Field(L, absNote, "velocity", &out->velocity)) {
+      pushStepNoteDiagnostic(ctx, span, targetPrefix, "velocity", "velocity out of range");
+      ok = false;
+    }
+  }
+
+  if (tableHasField(L, absNote, "gate")) {
+    lua_getfield(L, absNote, "gate");
+    const bool valid =
+        lua_isnumber(L, -1) && std::isfinite(lua_tonumber(L, -1)) && lua_tonumber(L, -1) >= 0.0;
+    if (valid) {
+      out->hasGate = true;
+      out->gate = static_cast<float>(lua_tonumber(L, -1));
+    } else {
+      pushStepNoteDiagnostic(ctx, span, targetPrefix, "gate", "gate out of range");
+      ok = false;
+    }
+    lua_pop(L, 1);
+  }
+
+  return ok;
+}
+
 bool parseSparseStepLocksPatch(lua_State* L,
                                int locksIndex,
                                LuaSequencerParseContext& ctx,
@@ -151,66 +267,74 @@ bool parseSparseStepPatch(lua_State* L,
                      "step.active");
       ok = false;
     }
-    out->hasNoteOn = true;
-    out->noteOn = out->active;
   }
 
-  if (tableHasField(L, absStep, "note")) {
-    out->hasNote = true;
-    if (!readUInt7Field(L, absStep, "note", &out->note)) {
+  const bool hasNotesArray = tableHasField(L, absStep, "notes");
+  const bool hasInvalidScalarNoteFields = stepHasInvalidScalarNoteFields(L, absStep);
+
+  if (hasInvalidScalarNoteFields) {
+    pushDiagnostic(ctx,
+                   DiagnosticSource::Validator,
+                   docdiag::SequencerPatternInvalidShape,
+                   "step note data must be authored through notes[]",
+                   out->span,
+                   "step.notes");
+    ok = false;
+  }
+
+  if (hasNotesArray) {
+    lua_getfield(L, absStep, "notes");
+    if (!lua_istable(L, -1)) {
       pushDiagnostic(ctx,
                      DiagnosticSource::Validator,
                      docdiag::SequencerPatternInvalidShape,
-                     "note out of range",
+                     "notes must be an array",
                      out->span,
-                     "step.note");
+                     "step.notes");
       ok = false;
-    }
-  }
-
-  if (tableHasField(L, absStep, "velocity")) {
-    out->hasVelocity = true;
-    if (!readUInt7Field(L, absStep, "velocity", &out->velocity)) {
-      pushDiagnostic(ctx,
-                     DiagnosticSource::Validator,
-                     docdiag::SequencerPatternInvalidShape,
-                     "velocity out of range",
-                     out->span,
-                     "step.velocity");
-      ok = false;
-    }
-  }
-
-  if (tableHasField(L, absStep, "gate")) {
-    lua_getfield(L, absStep, "gate");
-    const bool valid =
-        lua_isnumber(L, -1) && std::isfinite(lua_tonumber(L, -1)) && lua_tonumber(L, -1) >= 0.0;
-    if (valid) {
-      out->hasGate = true;
-      out->gate = static_cast<float>(lua_tonumber(L, -1));
     } else {
-      pushDiagnostic(ctx,
-                     DiagnosticSource::Validator,
-                     docdiag::SequencerPatternInvalidShape,
-                     "gate out of range",
-                     out->span,
-                     "step.gate");
-      ok = false;
+      const size_t count = lua_rawlen(L, -1);
+      const int absNotes = lua_absindex(L, -1);
+
+      ok = validateDenseArrayKeys(L, absNotes, count, ctx, out->span, "step.notes") && ok;
+
+      if (count > sequencer::MAX_NOTES_PER_STEP) {
+        pushDiagnostic(ctx,
+                       DiagnosticSource::Validator,
+                       docdiag::SequencerPatternInvalidShape,
+                       "too many notes in step",
+                       out->span,
+                       "step.notes");
+        ok = false;
+      }
+
+      const size_t capped = std::min<size_t>(count, sequencer::MAX_NOTES_PER_STEP);
+      out->hasNoteCount = true;
+      out->noteCount = static_cast<uint8_t>(capped);
+      for (size_t i = 0; i < capped; ++i) {
+        lua_rawgeti(L, absNotes, static_cast<lua_Integer>(i + 1));
+        if (!lua_istable(L, -1)) {
+          pushDiagnostic(ctx,
+                         DiagnosticSource::Validator,
+                         docdiag::SequencerPatternInvalidShape,
+                         "notes entry must be a table",
+                         out->span,
+                         "step.notes[]");
+          ok = false;
+        } else {
+          out->hasNotePatch[i] = true;
+          ok = parseStepNotePatch(L,
+                                  lua_absindex(L, -1),
+                                  &out->notes[i],
+                                  ctx,
+                                  out->span,
+                                  "step.notes[]") &&
+               ok;
+        }
+        lua_pop(L, 1);
+      }
     }
     lua_pop(L, 1);
-  }
-
-  if (tableHasField(L, absStep, "legato")) {
-    out->hasLegato = true;
-    if (!readBoolField(L, absStep, "legato", &out->legato)) {
-      pushDiagnostic(ctx,
-                     DiagnosticSource::Validator,
-                     docdiag::SequencerPatternInvalidShape,
-                     "legato must be boolean",
-                     out->span,
-                     "step.legato");
-      ok = false;
-    }
   }
 
   if (tableHasField(L, absStep, "locks")) {

@@ -1,7 +1,9 @@
 #pragma once
 
+#include "app/BlockScheduler.h"
 #include "app/Constants.h"
 #include "app/ControlEvents.h"
+#include "app/FileWatchApply.h"
 #include "app/GrooveboxEditSession.h"
 #include "app/GrooveboxPaths.h"
 #include "app/Mixer.h"
@@ -49,6 +51,7 @@ using editor::AuthoredDocEditorState;
 struct DocumentRuntime {
   DocAuthoringService authoring{};
   PendingGrooveboxApply pendingApply{};
+  ExternalFileApplyState externalFileApply{};
 };
 
 struct EditorRuntime {
@@ -62,6 +65,7 @@ struct AppContext {
 
   TrackState tracks[MAX_TRACKS]{};
   SequencerState sequencer{};
+  BlockSchedulerWorkspace blockScheduler{};
 
   uint8_t midiChannelMap[16];
   uint8_t currentTrack = 0;

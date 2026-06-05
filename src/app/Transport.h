@@ -1,17 +1,12 @@
 #pragma once
 
+#include "Constants.h"
 #include "app/sessions/AudioSession.h"
 
 #include <atomic>
 #include <cstdint>
 
 namespace app::transport {
-inline constexpr float MIN_BPM = 20.0f;
-inline constexpr float MAX_BPM = 300.0f;
-inline constexpr float DEFAULT_BPM = 120.0f;
-
-inline constexpr double BEATS_PER_BAR = 4.0;
-
 struct MusicalPosition {
   uint64_t bar = 1;
   uint8_t beat = 1;

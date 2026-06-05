@@ -101,12 +101,7 @@ AuthoredDocNormalizeResult parseAndNormalizeAuthoredDoc(DocID documentID,
     return result;
   }
 
-  *outModel = AuthoredDocModel{};
-
-  outModel->documentID = documentID;
-  outModel->revision = revision;
-  outModel->sequencer.documentID = documentID;
-  outModel->sequencer.revision = revision;
+  resetAuthoredDocModel(outModel, documentID, revision);
 
   LuaSequencerParseContext ctx{};
   ctx.documentID = documentID;

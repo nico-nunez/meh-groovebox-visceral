@@ -535,41 +535,16 @@ constexpr DocFieldMetadata kPatternFields[] = {
     },
 };
 
-constexpr DocFieldMetadata kStepFields[] = {
-    {"active", DocLuaValueKind::Boolean, false},
-    {
-        "note",
-        DocLuaValueKind::Integer,
-        false,
-        DocMetadataStatus::Implemented,
-        intBounds(0, 127),
-    },
-    {
-        "velocity",
-        DocLuaValueKind::Integer,
-        false,
-        DocMetadataStatus::Implemented,
-        intBounds(0, 127),
-    },
-    {
-        "gate",
-        DocLuaValueKind::Number,
-        false,
-        DocMetadataStatus::Implemented,
-        {},
-        finiteMin(0.0),
-    },
-    {"legato", DocLuaValueKind::Boolean, false},
-    {
-        "locks",
-        DocLuaValueKind::Table,
-        false,
-        DocMetadataStatus::Implemented,
-        {},
-        {},
-        doctype::StepLock,
-        "At most MAX_LOCKS_PER_STEP entries.",
-    },
+constexpr DocFieldMetadata kStepNoteFields[] = {
+    {"noteOn", DocLuaValueKind::Boolean, false},
+    {"tie", DocLuaValueKind::Boolean, false},
+    {"note", DocLuaValueKind::Integer, false, DocMetadataStatus::Implemented, intBounds(0, 127)},
+    {"velocity",
+     DocLuaValueKind::Integer,
+     false,
+     DocMetadataStatus::Implemented,
+     intBounds(0, 127)},
+    {"gate", DocLuaValueKind::Number, false, DocMetadataStatus::Implemented, {}, finiteMin(0.0)},
 };
 
 constexpr DocFieldMetadata kStepLockFields[] = {
@@ -584,6 +559,31 @@ constexpr DocFieldMetadata kStepLockFields[] = {
         "Synth parameter name from synth::param::PARAM_DEFS.",
     },
     {"value", DocLuaValueKind::Number, true},
+};
+
+constexpr DocFieldMetadata kStepFields[] = {
+    {"active", DocLuaValueKind::Boolean, false},
+    {
+        "notes",
+        DocLuaValueKind::Table,
+        false,
+        DocMetadataStatus::Implemented,
+        {},
+        {},
+        doctype::StepNotes,
+        "Array of up to MAX_NOTES_PER_STEP notes. Required for all note data, including one-note "
+        "steps.",
+    },
+    {
+        "locks",
+        DocLuaValueKind::Table,
+        false,
+        DocMetadataStatus::Implemented,
+        {},
+        {},
+        doctype::StepLock,
+        "At most MAX_LOCKS_PER_STEP entries.",
+    },
 };
 
 constexpr DocTypeMetadata kAuthoredTypes[] = {
@@ -607,6 +607,13 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         DocMetadataStatus::Implemented,
         spanOf(kPatternFields),
         "Sequencer lane pattern.",
+    },
+    {
+        doctype::StepNote,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kStepNoteFields),
+        "One note event inside a sequencer step.",
     },
     {
         doctype::Step,

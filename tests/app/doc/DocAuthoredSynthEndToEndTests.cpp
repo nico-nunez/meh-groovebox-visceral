@@ -4,7 +4,6 @@
 #include "app/AppContext.h"
 #include "app/GrooveboxEditSession.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/metadata/DocMetadata.h"
 #include "app/sessions/AudioSession.h"
 #include "synth/WavetableBanks.h"
 #include "synth/params/ParamDefs.h"
@@ -17,16 +16,7 @@ void initSynthParserGlobals() {
 }
 
 using test::getParseTestWorkspace;
-using test::hasDiagnostic;
 using test::parseWS;
-
-app::AppContext* makeContext() {
-  app::audio::DeviceInfo device{};
-  device.sampleRate = 48000;
-  device.bufferFrameSize = 64;
-  device.numChannels = 2;
-  return app::createAppContext(device);
-}
 
 } // namespace
 
@@ -52,7 +42,7 @@ static void test_luals_advertised_synth_shape_parses_and_applies() {
   CHECK("track 0 synth parsed", ws->model.hasSynthState[0]);
   CHECK("track 1 synth parsed", ws->model.hasSynthState[1]);
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
   auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
@@ -60,19 +50,19 @@ static void test_luals_advertised_synth_shape_parses_and_applies() {
   test::publishPending(app);
   CHECK("track 0 published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.8f);
   CHECK("track 1 published", app->tracks[1].engine.params[synth::param::MASTER_GAIN] == 0.9f);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_mixed_synth_and_sequencer_document_applies() {
   TEST("mixed_synth_and_sequencer_document_applies");
 
-  const char* doc =
-      "track(1, TrackSettings {\n"
-      "  synth = SynthSettings { osc1 = { bank = 'saw', mixLevel = 0.6 } },\n"
-      "  patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-      "                       steps = { { active = true, note = 48, velocity = 100 } } } },\n"
-      "  activeSlot = 1,\n"
-      "})\n";
+  const char* doc = "track(1, TrackSettings {\n"
+                    "  synth = SynthSettings { osc1 = { bank = 'saw', mixLevel = 0.6 } },\n"
+                    "  patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
+                    "                       steps = { { active = true, notes = { { note = 48, "
+                    "velocity = 100 } } } } } },\n"
+                    "  activeSlot = 1,\n"
+                    "})\n";
 
   auto* ws = getParseTestWorkspace();
   auto parsed = parseWS(doc, ws);
@@ -80,7 +70,7 @@ static void test_mixed_synth_and_sequencer_document_applies() {
   CHECK("seq parsed", ws->model.sequencer.hasTrackState[0]);
   CHECK("synth parsed", ws->model.hasSynthState[0]);
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
   auto result = app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, doc);
 
@@ -92,7 +82,7 @@ static void test_mixed_synth_and_sequencer_document_applies() {
   CHECK("admitted synth", app->documents.authoring.apply.lastAdmittedDocModel.hasSynthState[0]);
   test::publishPending(app);
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.6f);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_valid_synth_document_never_emits_apply_not_implemented() {
@@ -100,7 +90,7 @@ static void test_valid_synth_document_never_emits_apply_not_implemented() {
 
   initSynthParserGlobals();
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
   auto result = app::doc::submitAuthoredDocRevision(
       app->documents.authoring,
@@ -110,13 +100,13 @@ static void test_valid_synth_document_never_emits_apply_not_implemented() {
       "                         svf = { enabled = true, cutoff = 800 } })");
 
   CHECK("apply ok", result.ok);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_synth_param_patch_preserves_other_live_params() {
   TEST("synth_param_patch_preserves_other_live_params");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
   app->tracks[0].controlProgram.paramValues[synth::param::OSC2_MIX_LEVEL] = 0.8f;
   app->tracks[0].controlProgramValid = true;
@@ -132,28 +122,29 @@ static void test_synth_param_patch_preserves_other_live_params() {
 
   CHECK("osc1 changed", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
   CHECK("osc2 preserved", app->tracks[0].engine.params[synth::param::OSC2_MIX_LEVEL] == 0.8f);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_sequencer_patch_preserves_synth() {
   TEST("sequencer_patch_preserves_synth");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
   app->tracks[0].controlProgram.paramValues[synth::param::OSC1_MIX_LEVEL] = 0.9f;
   app->tracks[0].controlProgramValid = true;
   synth::param::sync::setParamDeferred(app->tracks[0].engine, synth::param::OSC1_MIX_LEVEL, 0.9f);
 
-  auto result = app::doc::submitAuthoredDocRevision(
-      app->documents.authoring,
-      *app,
-      1,
-      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { note = 64 } } } } })");
+  auto result =
+      app::doc::submitAuthoredDocRevision(app->documents.authoring,
+                                          *app,
+                                          1,
+                                          "track(1, TrackSettings { patterns = { [1] = { steps = { "
+                                          "[1] = { notes = { { note = 64 } } } } } } })");
   CHECK("apply ok", result.ok);
   test::publishPending(app);
 
   CHECK("synth preserved", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.9f);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 void runDocAuthoredSynthEndToEndTests() {

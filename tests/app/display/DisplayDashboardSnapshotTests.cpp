@@ -1,3 +1,4 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
@@ -14,25 +15,32 @@ void setParam(synth::Engine& engine, synth::param::ParamID id, float value) {
 }
 
 void createCommittedPattern(app::sequencer::SequencerState& seq) {
-  CHECK("begin edit", app::sequencer::beginPatternEdit(seq, false).ok);
-  CHECK("steps", app::sequencer::setPatternNumSteps(seq, 0, 8).ok);
-  CHECK("spb", app::sequencer::setPatternStepsPerBeat(seq, 0, 4).ok);
+  app::sequencer::LanePattern pattern{};
+  pattern.numSteps = 8;
+  pattern.stepsPerBeat = 4;
 
   app::sequencer::StepEvent step0{};
   step0.active = true;
-  step0.noteOn = true;
-  step0.note = 60;
-  step0.velocity = 100;
+  step0.noteCount = 1;
+  step0.notes[0] = app::sequencer::StepNote{true, false, 60, 100, 0.5f};
   step0.numLocks = 1;
   step0.locks[0] = {static_cast<uint8_t>(synth::param::OSC1_MIX_LEVEL), 0.5f};
-  CHECK("set step 0", app::sequencer::setStep(seq, 0, 0, step0).ok);
+  pattern.steps[0] = step0;
 
   app::sequencer::StepEvent step4{};
   step4.active = true;
-  step4.noteOn = false;
-  CHECK("set step 4", app::sequencer::setStep(seq, 0, 4, step4).ok);
+  step4.noteCount = 0;
+  pattern.steps[4] = step4;
 
-  CHECK("commit", app::sequencer::commitPattern(seq).ok);
+  app::sequencer::PatternSnapshot snapshot{};
+  snapshot.lanes[0].slots[0].occupied = true;
+  snapshot.lanes[0].slots[0].pattern = pattern;
+  snapshot.lanes[0].activeSlot = 0;
+
+  CHECK("prepare sequencer snapshot",
+        app::sequencer::prepareSequencerSnapshotSwap(seq, snapshot).ok);
+  CHECK("commit sequencer snapshot", app::sequencer::commitSequencerSnapshotSwap(seq).ok);
+  app::sequencer::publishPendingSequencerSnapshotIfReady(seq);
 }
 
 } // namespace
@@ -40,21 +48,22 @@ void createCommittedPattern(app::sequencer::SequencerState& seq) {
 static void test_control_snapshot_copies_track_midi_and_document_state() {
   TEST("control_snapshot_copies_track_midi_and_document_state");
 
-  app::AppContext app{};
-  app.currentTrack = 2;
-  app.midiStickyTrack = 1;
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app->currentTrack = 2;
+  app->midiStickyTrack = 1;
   for (uint8_t ch = 0; ch < app::MAX_MIDI_CHANNELS; ++ch)
-    app.midiChannelMap[ch] = app::MIDI_CHANNEL_UNASSIGNED;
-  app.midiChannelMap[3] = 2;
+    app->midiChannelMap[ch] = app::MIDI_CHANNEL_UNASSIGNED;
+  app->midiChannelMap[3] = 2;
 
-  app.editor.authoredEditor.buffer.dirty = true;
-  app.editor.authoredEditor.buffer.applyRevision = 7;
-  app.editor.authoredEditor.buffer.lastAppliedRevision = 5;
-  app.editor.authoredEditor.backendDiagnostics.push_back(app::doc::DocDiagnostic{});
-  app.editor.authoredEditor.luals.diagnostics.push_back(app::editor::LuaLSDiagnostic{});
-  app.editor.authoredEditor.luals.status = app::editor::LanguageServiceStatus::Succeeded;
+  app->editor.authoredEditor.buffer.dirty = true;
+  app->editor.authoredEditor.buffer.applyRevision = 7;
+  app->editor.authoredEditor.buffer.lastAppliedRevision = 5;
+  app->editor.authoredEditor.backendDiagnostics.push_back(app::doc::DocDiagnostic{});
+  app->editor.authoredEditor.luals.diagnostics.push_back(app::editor::LuaLSDiagnostic{});
+  app->editor.authoredEditor.luals.status = app::editor::LanguageServiceStatus::Succeeded;
 
-  const auto snapshot = app::display::makeDisplayControlSnapshot(app);
+  const auto snapshot = app::display::makeDisplayControlSnapshot(*app);
 
   CHECK("selected track", snapshot.track.selectedTrack == 2);
   CHECK("sticky", snapshot.track.midiStickyTrack == 1);
@@ -67,6 +76,7 @@ static void test_control_snapshot_copies_track_midi_and_document_state() {
   CHECK("luals diag count", snapshot.document.lualsDiagnosticCount == 1);
   CHECK("luals status",
         snapshot.document.lualsStatus == app::editor::LanguageServiceStatus::Succeeded);
+  test::destroyAppContext(app);
 }
 
 static void test_sequencer_pattern_snapshot_summarizes_active_pattern() {
@@ -155,22 +165,24 @@ static void test_runtime_merge_clamps_invalid_selected_track_to_zero() {
 static void test_dashboard_snapshot_reads_latest_publication_and_control_state() {
   TEST("dashboard_snapshot_reads_latest_publication_and_control_state");
 
-  app::AppContext app{};
-  app.currentTrack = 0;
-  app.editor.authoredEditor.buffer.dirty = true;
-  setParam(app.tracks[0].engine, synth::param::MASTER_GAIN, 1.1f);
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app->currentTrack = 0;
+  app->editor.authoredEditor.buffer.dirty = true;
+  setParam(app->tracks[0].engine, synth::param::MASTER_GAIN, 1.1f);
 
-  app::display::DisplayRuntimeTelemetry runtime = app::display::makeDisplayRuntimeTelemetry(app);
+  app::display::DisplayRuntimeTelemetry runtime = app::display::makeDisplayRuntimeTelemetry(*app);
   runtime.transport.bpm = 140.0f;
-  app::display::publishDisplayRuntimeTelemetry(app.displayPublication, runtime);
+  app::display::publishDisplayRuntimeTelemetry(app->displayPublication, runtime);
 
-  const auto snapshot = app::display::makeDisplayDashboardSnapshot(app);
+  const auto snapshot = app::display::makeDisplayDashboardSnapshot(*app);
   const auto* master = app::display::findSynthParam(snapshot.synth, synth::param::MASTER_GAIN);
 
   CHECK("dirty", snapshot.document.dirty);
   CHECK("bpm from publication", snapshot.transport.bpm == 140.0f);
   CHECK("master found", master != nullptr);
   CHECK("master value", master && master->value == 1.1f);
+  test::destroyAppContext(app);
 }
 
 void runDisplayDashboardSnapshotTests() {

@@ -1,3 +1,4 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
@@ -71,16 +72,17 @@ static void test_publication_flips_between_two_buffers() {
 static void test_make_runtime_telemetry_copies_transport_and_mixer() {
   TEST("make_runtime_telemetry_copies_transport_and_mixer");
 
-  app::AppContext app{};
-  app.transport.mode = app::transport::TransportMode::Playing;
-  app.transport.bpm = 128.0f;
-  app.transport.beatPosition = 12.5;
-  app.transport.samplePosition = 2048;
-  app.mixer.current.tracks[0].enabled = false;
-  app.mixer.current.tracks[0].gain = 0.25f;
-  app.mixer.current.tracks[0].pan = -0.5f;
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app->transport.mode = app::transport::TransportMode::Playing;
+  app->transport.bpm = 128.0f;
+  app->transport.beatPosition = 12.5;
+  app->transport.samplePosition = 2048;
+  app->mixer.current.tracks[0].enabled = false;
+  app->mixer.current.tracks[0].gain = 0.25f;
+  app->mixer.current.tracks[0].pan = -0.5f;
 
-  const auto telemetry = app::display::makeDisplayRuntimeTelemetry(app);
+  const auto telemetry = app::display::makeDisplayRuntimeTelemetry(*app);
 
   CHECK("sequence incremented", telemetry.sequence == 1);
   CHECK("mode copied", telemetry.transport.mode == app::transport::TransportMode::Playing);
@@ -90,25 +92,28 @@ static void test_make_runtime_telemetry_copies_transport_and_mixer() {
   CHECK("mixer enabled copied", !telemetry.tracks[0].mixer.enabled);
   CHECK("mixer gain copied", telemetry.tracks[0].mixer.gain == 0.25f);
   CHECK("mixer pan copied", telemetry.tracks[0].mixer.pan == -0.5f);
+  test::destroyAppContext(app);
 }
 
 static void test_make_runtime_telemetry_preserves_existing_midi_state() {
   TEST("make_runtime_telemetry_preserves_existing_midi_state");
 
-  app::AppContext app{};
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
   DisplayRuntimeTelemetry prior{};
   prior.sequence = 4;
   prior.tracks[1].midi.eventCounter = 9;
   prior.tracks[1].midi.lastNote = 60;
   prior.tracks[1].midi.hasLastEvent = true;
-  app::display::publishDisplayRuntimeTelemetry(app.displayPublication, prior);
+  app::display::publishDisplayRuntimeTelemetry(app->displayPublication, prior);
 
-  const auto telemetry = app::display::makeDisplayRuntimeTelemetry(app);
+  const auto telemetry = app::display::makeDisplayRuntimeTelemetry(*app);
 
   CHECK("sequence incremented from prior", telemetry.sequence == 5);
   CHECK("midi counter preserved", telemetry.tracks[1].midi.eventCounter == 9);
   CHECK("midi note preserved", telemetry.tracks[1].midi.lastNote == 60);
   CHECK("midi flag preserved", telemetry.tracks[1].midi.hasLastEvent);
+  test::destroyAppContext(app);
 }
 
 static void test_record_midi_event_captures_note_on() {
@@ -134,8 +139,9 @@ static void test_record_midi_event_captures_note_on() {
 static void test_push_midi_event_records_only_successful_queue_push() {
   TEST("push_midi_event_records_only_successful_queue_push");
 
-  app::AppContext app{};
-  app.currentTrack = 0;
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app->currentTrack = 0;
 
   synth::MIDIEvent evt{};
   evt.type = synth::MIDIEvent::Type::NoteOn;
@@ -143,22 +149,24 @@ static void test_push_midi_event_records_only_successful_queue_push() {
   evt.data.noteOn.note = 67;
   evt.data.noteOn.velocity = 127;
 
-  const bool ok = app::pushMIDIEvent(&app, evt);
-  const auto telemetry = app::display::readDisplayRuntimeTelemetry(app.displayPublication);
+  const bool ok = app::pushMIDIEvent(app, evt);
+  const auto telemetry = app::display::readDisplayRuntimeTelemetry(app->displayPublication);
 
   CHECK("queue push ok", ok);
   CHECK("counter", telemetry.tracks[0].midi.eventCounter == 1);
   CHECK("last note", telemetry.tracks[0].midi.lastNote == 67);
+  test::destroyAppContext(app);
 }
 
 static void test_push_midi_event_records_mapped_track() {
   TEST("push_midi_event_records_mapped_track");
 
-  app::AppContext app{};
-  app.currentTrack = 0;
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app->currentTrack = 0;
   for (uint8_t ch = 0; ch < app::MAX_MIDI_CHANNELS; ++ch)
-    app.midiChannelMap[ch] = app::MIDI_CHANNEL_UNASSIGNED;
-  app.midiChannelMap[3] = 2;
+    app->midiChannelMap[ch] = app::MIDI_CHANNEL_UNASSIGNED;
+  app->midiChannelMap[3] = 2;
 
   synth::MIDIEvent evt{};
   evt.type = synth::MIDIEvent::Type::NoteOn;
@@ -166,12 +174,13 @@ static void test_push_midi_event_records_mapped_track() {
   evt.data.noteOn.note = 72;
   evt.data.noteOn.velocity = 90;
 
-  CHECK("queue push ok", app::pushMIDIEvent(&app, evt));
-  const auto telemetry = app::display::readDisplayRuntimeTelemetry(app.displayPublication);
+  CHECK("queue push ok", app::pushMIDIEvent(app, evt));
+  const auto telemetry = app::display::readDisplayRuntimeTelemetry(app->displayPublication);
 
   CHECK("track zero untouched", telemetry.tracks[0].midi.eventCounter == 0);
   CHECK("mapped track counter", telemetry.tracks[2].midi.eventCounter == 1);
   CHECK("mapped track note", telemetry.tracks[2].midi.lastNote == 72);
+  test::destroyAppContext(app);
 }
 
 static void test_format_musical_position_is_one_based() {

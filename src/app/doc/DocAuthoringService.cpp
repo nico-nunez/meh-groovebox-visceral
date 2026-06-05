@@ -122,8 +122,11 @@ ApplyRevisionResult submitAuthoredDocRevision(DocAuthoringService& service,
   stageGrooveboxPatch(&session, patch);
 
   DocDiagnostics admissionDiagnostics{};
-  GrooveboxEditResult edit =
-      commitGrooveboxEdit(&session, &app, GrooveboxApplyTiming::NextBeat, &admissionDiagnostics);
+  GrooveboxEditResult edit = commitGrooveboxEdit(&session,
+                                                 &app,
+                                                 GrooveboxApplyTiming::NextBeat,
+                                                 &service.applyWorkspace->editWorkspace,
+                                                 &admissionDiagnostics);
 
   if (!edit.ok) {
     failApply(service, operationID, admissionDiagnostics);

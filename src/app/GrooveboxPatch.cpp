@@ -6,10 +6,22 @@ void resetGrooveboxPatch(GrooveboxPatch* patch) {
   *patch = GrooveboxPatch{};
 }
 
-bool hasStepPatchEdits(const StepEventPatch& patch) {
+bool hasStepNotePatchEdits(const StepNotePatch& patch) {
   return patch.op == PatchObjectOp::Clear || patch.op == PatchObjectOp::Replace ||
-         patch.hasActive || patch.hasNoteOn || patch.hasLegato || patch.hasGate || patch.hasNote ||
-         patch.hasVelocity || patch.locks.op != PatchObjectOp::None;
+         patch.hasNoteOn || patch.hasTie || patch.hasGate || patch.hasNote || patch.hasVelocity;
+}
+
+bool hasStepPatchEdits(const StepEventPatch& patch) {
+  if (patch.op == PatchObjectOp::Clear || patch.op == PatchObjectOp::Replace || patch.hasActive ||
+      patch.hasNoteCount || patch.locks.op != PatchObjectOp::None) {
+    return true;
+  }
+
+  for (uint8_t i = 0; i < sequencer::MAX_NOTES_PER_STEP; ++i) {
+    if (patch.hasNotePatch[i] && hasStepNotePatchEdits(patch.notes[i]))
+      return true;
+  }
+  return false;
 }
 
 bool hasPatternPatchEdits(const PatternPatch& patch) {

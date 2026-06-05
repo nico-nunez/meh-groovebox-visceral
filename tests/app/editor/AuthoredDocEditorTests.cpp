@@ -134,33 +134,36 @@ static void test_reload_requires_path() {
 static void test_apply_unsaved_valid_buffer_uses_revision_and_succeeds() {
   TEST("apply_unsaved_valid_buffer_uses_revision_and_succeeds");
 
-  app::AppContext app{};
-  app::doc::initDocAuthoringService(app.documents.authoring);
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app::doc::initDocAuthoringService(app->documents.authoring);
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track(1, TrackSettings {})";
   editor.buffer.dirty = true;
 
-  const bool ok = app::editor::submitEditorBuffer(editor, app);
+  const bool ok = app::editor::submitEditorBuffer(editor, *app);
 
   CHECK("ok", ok);
   CHECK("apply revision 1", editor.buffer.applyRevision == 1);
   CHECK("last applied revision 1", editor.buffer.lastAppliedRevision == 1);
   CHECK("apply succeeded", editor.applyStatus == app::editor::EditorApplyStatus::Succeeded);
   CHECK("backend diagnostics empty", editor.backendDiagnostics.empty());
-  CHECK("service revision 1", app.documents.authoring.buffer.currentRevision == 1);
-  app::doc::destroyDocAuthoringService(app.documents.authoring);
+  CHECK("service revision 1", app->documents.authoring.buffer.currentRevision == 1);
+  app::doc::destroyDocAuthoringService(app->documents.authoring);
+  test::destroyAppContext(app);
 }
 
 static void test_apply_invalid_buffer_caches_backend_diagnostics() {
   TEST("apply_invalid_buffer_caches_backend_diagnostics");
 
-  app::AppContext app{};
-  app::doc::initDocAuthoringService(app.documents.authoring);
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app::doc::initDocAuthoringService(app->documents.authoring);
   app::editor::AuthoredDocEditorState editor{};
   editor.buffer.text = "track('one', TrackSettings {})";
   editor.buffer.dirty = true;
 
-  const bool ok = app::editor::submitEditorBuffer(editor, app);
+  const bool ok = app::editor::submitEditorBuffer(editor, *app);
 
   CHECK("not ok", !ok);
   CHECK("apply revision 1", editor.buffer.applyRevision == 1);
@@ -170,25 +173,28 @@ static void test_apply_invalid_buffer_caches_backend_diagnostics() {
   CHECK("invalid index diagnostic",
         hasDiagnostic(editor.backendDiagnostics, app::doc::docdiag::SequencerTrackInvalidIndex));
   CHECK("dirty preserved", editor.buffer.dirty);
-  app::doc::destroyDocAuthoringService(app.documents.authoring);
+  app::doc::destroyDocAuthoringService(app->documents.authoring);
+  test::destroyAppContext(app);
 }
 
 static void test_apply_attempt_revision_increments_on_failure_and_success() {
   TEST("apply_attempt_revision_increments_on_failure_and_success");
 
-  app::AppContext app{};
-  app::doc::initDocAuthoringService(app.documents.authoring);
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app::doc::initDocAuthoringService(app->documents.authoring);
   app::editor::AuthoredDocEditorState editor{};
 
   editor.buffer.text = "track('one', TrackSettings {})";
-  CHECK("first apply fails", !app::editor::submitEditorBuffer(editor, app));
+  CHECK("first apply fails", !app::editor::submitEditorBuffer(editor, *app));
 
   editor.buffer.text = "track(1, TrackSettings {})";
-  CHECK("second apply succeeds", app::editor::submitEditorBuffer(editor, app));
+  CHECK("second apply succeeds", app::editor::submitEditorBuffer(editor, *app));
 
   CHECK("apply revision 2", editor.buffer.applyRevision == 2);
   CHECK("last applied revision 2", editor.buffer.lastAppliedRevision == 2);
-  app::doc::destroyDocAuthoringService(app.documents.authoring);
+  app::doc::destroyDocAuthoringService(app->documents.authoring);
+  test::destroyAppContext(app);
 }
 
 static void test_request_diagnostic_jump_uses_source_span() {

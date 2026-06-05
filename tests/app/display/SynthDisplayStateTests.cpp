@@ -1,3 +1,4 @@
+#include "TestHelpers.h"
 #include "TestRunner.h"
 
 #include "app/AppContext.h"
@@ -147,11 +148,12 @@ static void test_find_synth_param_returns_null_for_missing_param() {
 static void test_display_runtime_telemetry_includes_synth_params() {
   TEST("display_runtime_telemetry_includes_synth_params");
 
-  app::AppContext app{};
-  app.tracks[0].engine.noteCount = 2;
-  setParam(app.tracks[0].engine, synth::param::OSC1_MIX_LEVEL, 0.33f);
+  app::AppContext* app = test::makeAppContext();
+  CHECK("context", app != nullptr);
+  app->tracks[0].engine.noteCount = 2;
+  setParam(app->tracks[0].engine, synth::param::OSC1_MIX_LEVEL, 0.33f);
 
-  const auto runtime = app::display::makeDisplayRuntimeTelemetry(app);
+  const auto runtime = app::display::makeDisplayRuntimeTelemetry(*app);
   const auto synth = app::display::makeSynthSummarySnapshot(runtime.tracks[0].synth);
   const auto* oscMix = app::display::findSynthParam(synth, synth::param::OSC1_MIX_LEVEL);
 
@@ -160,6 +162,7 @@ static void test_display_runtime_telemetry_includes_synth_params() {
         runtime.tracks[0].synth.paramCount == app::display::DISPLAY_SYNTH_PARAM_CAPACITY);
   CHECK("osc mix found", oscMix != nullptr);
   CHECK("osc mix value", oscMix && oscMix->value == 0.33f);
+  test::destroyAppContext(app);
 }
 
 void runSynthDisplayStateTests() {

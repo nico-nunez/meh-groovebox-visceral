@@ -5,6 +5,7 @@
 #include "app/doc/AuthoredDocParser.h"
 #include "app/doc/DocAuthoringService.h"
 #include "app/doc/DocDiagnostics.h"
+#include "app/sessions/AudioSession.h"
 #include "synth/WavetableBanks.h"
 
 namespace test {
@@ -43,6 +44,20 @@ inline app::doc::AuthoredDocNormalizeResult parseWS(const char* text, ParseTestW
 inline void publishPending(app::AppContext* app) {
   auto blockInfo = app::transport::advanceTransportBlock(app->transport, app->transport.mode, 512);
   app::publishPendingGrooveboxEditIfReady(app, blockInfo);
+}
+
+inline app::AppContext* makeAppContext(uint32_t sampleRate = 48000,
+                                       uint32_t bufferFrameSize = 64,
+                                       uint16_t numChannels = 2) {
+  app::audio::DeviceInfo device{};
+  device.sampleRate = sampleRate;
+  device.bufferFrameSize = bufferFrameSize;
+  device.numChannels = numChannels;
+  return app::createAppContext(device);
+}
+
+inline void destroyAppContext(app::AppContext* app) {
+  app::destroyAppContext(app);
 }
 
 } // namespace test

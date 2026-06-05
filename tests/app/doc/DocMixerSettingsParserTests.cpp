@@ -15,15 +15,8 @@ using test::parseWorkspace;
 
 const char* kNonEmptyTrack1 =
     "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-    "steps = { { active = true, note = 60, velocity = 100 } } } }, activeSlot = 1 })";
+    "steps = { { active = true, notes = { { note = 60, velocity = 100 } } } } } }, activeSlot = 1 })";
 
-app::AppContext* makeContext() {
-  app::audio::DeviceInfo device{};
-  device.sampleRate = 48000;
-  device.bufferFrameSize = 64;
-  device.numChannels = 2;
-  return app::createAppContext(device);
-}
 } // namespace
 
 static void test_mixer_parser_sets_has_mixer_state_from_call() {
@@ -233,18 +226,18 @@ static void test_mixer_parser_duplicate_write_different_value_fails() {
 
 static void test_sequencer_only_document_still_applies_after_phase2() {
   TEST("sequencer_only_document_still_applies_after_phase2");
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto result =
       app::doc::submitAuthoredDocRevision(app->documents.authoring, *app, 1, kNonEmptyTrack1);
   CHECK("ok", result.ok);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_synth_only_document_still_applies_after_phase2() {
   TEST("synth_only_document_still_applies_after_phase2");
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto result =
@@ -253,7 +246,7 @@ static void test_synth_only_document_still_applies_after_phase2() {
                                           1,
                                           "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } })");
   CHECK("ok", result.ok);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 void runDocMixerSettingsParserTests() {

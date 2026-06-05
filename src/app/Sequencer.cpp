@@ -219,29 +219,63 @@ void clearPendingNoteOff(PendingNoteOff& pending) {
   pending.beat = -1.0;
 }
 
-void addPendingNoteOff(LaneState& laneState, uint8_t note, double beat) {
-  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+VoidResult addPendingNoteOff(LaneState& laneState, uint8_t note, double beat) {
+  for (uint16_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
     PendingNoteOff& pending = laneState.noteOffs[i];
     if (!pending.pending) {
       pending.pending = true;
       pending.note = note;
       pending.beat = beat;
-      return;
+      return {true, nullptr};
     }
   }
+  return {false, "pending note-off capacity exceeded"};
+}
+
+PendingNoteOff* findPendingNoteOff(LaneState& laneState, uint8_t note) {
+  for (uint16_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+    PendingNoteOff& pending = laneState.noteOffs[i];
+    if (pending.pending && pending.note == note)
+      return &pending;
+  }
+  return nullptr;
+}
+
+double stepNoteOffBeat(const StepNote& note, double absStepBeat, double stepLengthBeats) {
+  const double gateBeats =
+      std::max(static_cast<double>(note.gate) * stepLengthBeats, MIN_GATE_BEAT);
+  return absStepBeat + gateBeats;
+}
+
+bool stepHasActivePitch(const StepEvent& step, uint8_t note) {
+  for (uint8_t i = 0; i < step.noteCount; ++i) {
+    const StepNote& stepNote = step.notes[i];
+    if (stepNote.noteOn && stepNote.note == note)
+      return true;
+  }
+  return false;
+}
+
+void addOrAssertPendingNoteOff(LaneState& laneState, uint8_t note, double noteOffBeat) {
+  const auto added = addPendingNoteOff(laneState, note, noteOffBeat);
+  assert(added.ok && "pending note-off capacity exceeded");
+}
+
+void extendPendingNoteOff(PendingNoteOff* pending, double noteOffBeat) {
+  pending->beat = noteOffBeat;
 }
 
 void firePendingNoteOffsBeforeBeat(LaneState& laneState,
                                    LaneEvents& laneOut,
                                    const SequencerBlockWindow& block,
                                    double beat) {
-  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+  for (uint16_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
     PendingNoteOff& pending = laneState.noteOffs[i];
     if (!pending.pending)
       continue;
 
     if (pending.beat >= block.startBeat && pending.beat < block.endBeat && pending.beat < beat) {
-      uint32_t offset = beatToSampleOffset(pending.beat, block);
+      const uint32_t offset = beatToSampleOffset(pending.beat, block);
       laneOut.push(makeNoteOffEvent(pending.note, offset, ScheduledEventOrder::GateNoteOff));
       clearPendingNoteOff(pending);
     }
@@ -251,7 +285,7 @@ void firePendingNoteOffsBeforeBeat(LaneState& laneState,
 void fireRemainingPendingNoteOffsInBlock(LaneState& laneState,
                                          LaneEvents& laneOut,
                                          const SequencerBlockWindow& block) {
-  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+  for (uint16_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
     PendingNoteOff& pending = laneState.noteOffs[i];
     if (!pending.pending)
       continue;
@@ -265,12 +299,46 @@ void fireRemainingPendingNoteOffsInBlock(LaneState& laneState,
 }
 
 void fireAllPendingNoteOffs(LaneState& laneState, LaneEvents& laneOut) {
-  for (uint8_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+  for (uint16_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
     PendingNoteOff& pending = laneState.noteOffs[i];
     if (!pending.pending)
       continue;
 
     laneOut.push(makeNoteOffEvent(pending.note, 0, ScheduledEventOrder::NoteOff));
+    clearPendingNoteOff(pending);
+  }
+}
+
+void cutSamePitchPendingNotes(LaneState& laneState,
+                              LaneEvents& laneOut,
+                              uint8_t note,
+                              double absStepBeat,
+                              uint32_t stepOffset) {
+  for (uint16_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+    PendingNoteOff& pending = laneState.noteOffs[i];
+    if (!pending.pending || pending.note != note)
+      continue;
+    if (pending.beat >= absStepBeat) {
+      laneOut.push(makeNoteOffEvent(note, stepOffset, ScheduledEventOrder::NoteOff));
+      clearPendingNoteOff(pending);
+    }
+  }
+}
+
+void fireExactBoundaryNonStepPitchReleases(LaneState& laneState,
+                                           LaneEvents& laneOut,
+                                           const StepEvent& step,
+                                           double absStepBeat,
+                                           uint32_t stepOffset) {
+  for (uint16_t i = 0; i < MAX_PENDING_NOTE_OFFS; ++i) {
+    PendingNoteOff& pending = laneState.noteOffs[i];
+    if (!pending.pending)
+      continue;
+    if (!sameBeat(pending.beat, absStepBeat))
+      continue;
+    if (stepHasActivePitch(step, pending.note))
+      continue;
+    laneOut.push(makePostNoteOnNoteOffEvent(pending.note, stepOffset));
     clearPendingNoteOff(pending);
   }
 }
@@ -283,12 +351,10 @@ void fireStep(uint32_t i,
               double absStepBeat,
               double stepLengthBeats,
               const SequencerBlockWindow& block) {
-
   const StepEvent& step = pattern->steps[i];
-  uint32_t stepOffset = beatToSampleOffset(absStepBeat, block);
+  const uint32_t stepOffset = beatToSampleOffset(absStepBeat, block);
 
   firePendingNoteOffsBeforeBeat(laneState, laneOut, block, absStepBeat);
-
   resolvePendingUnlocks(laneState, laneOut, ctx, step, stepOffset);
 
   if (!step.active)
@@ -296,45 +362,37 @@ void fireStep(uint32_t i,
 
   applyParamLocks(step, laneState, laneOut, ctx, stepOffset);
 
-  if (!step.noteOn)
-    return;
+  bool heldTie[MAX_NOTES_PER_STEP]{};
 
-  // Same-note overlap is retrigger: cut existing same-pitch note before new NoteOn.
-  for (uint8_t n = 0; n < MAX_PENDING_NOTE_OFFS; ++n) {
-    PendingNoteOff& pending = laneState.noteOffs[n];
-    if (!pending.pending || pending.note != step.note)
+  for (uint8_t noteIndex = 0; noteIndex < step.noteCount; ++noteIndex) {
+    const StepNote& note = step.notes[noteIndex];
+    if (!note.noteOn)
       continue;
 
-    if (pending.beat >= absStepBeat) {
-      laneOut.push(makeNoteOffEvent(step.note, stepOffset, ScheduledEventOrder::NoteOff));
-      clearPendingNoteOff(pending);
+    const double noteOffBeat = stepNoteOffBeat(note, absStepBeat, stepLengthBeats);
+    PendingNoteOff* existing = findPendingNoteOff(laneState, note.note);
+
+    if (note.tie && existing) {
+      heldTie[noteIndex] = true;
+      extendPendingNoteOff(existing, noteOffBeat);
+      continue;
     }
+
+    cutSamePitchPendingNotes(laneState, laneOut, note.note, absStepBeat, stepOffset);
   }
 
-  laneOut.push(makeNoteOnEvent(step.note, step.velocity, stepOffset));
-
-  // Exact-boundary different-note releases must occur after NoteOn for mono legato.
-  for (uint8_t n = 0; n < MAX_PENDING_NOTE_OFFS; ++n) {
-    PendingNoteOff& pending = laneState.noteOffs[n];
-    if (!pending.pending || pending.note == step.note)
+  for (uint8_t noteIndex = 0; noteIndex < step.noteCount; ++noteIndex) {
+    const StepNote& note = step.notes[noteIndex];
+    if (!note.noteOn || heldTie[noteIndex])
       continue;
 
-    if (sameBeat(pending.beat, absStepBeat)) {
-      laneOut.push(makePostNoteOnNoteOffEvent(pending.note, stepOffset));
-      clearPendingNoteOff(pending);
-    }
+    laneOut.push(makeNoteOnEvent(note.note, note.velocity, stepOffset));
+
+    const double noteOffBeat = stepNoteOffBeat(note, absStepBeat, stepLengthBeats);
+    addOrAssertPendingNoteOff(laneState, note.note, noteOffBeat);
   }
 
-  const double gateBeats =
-      std::max(static_cast<double>(step.gate) * stepLengthBeats, MIN_GATE_BEAT);
-  const double scheduledNoteOffBeat = absStepBeat + gateBeats;
-
-  if (scheduledNoteOffBeat < block.endBeat) {
-    uint32_t noteOffOffset = beatToSampleOffset(scheduledNoteOffBeat, block);
-    laneOut.push(makeNoteOffEvent(step.note, noteOffOffset, ScheduledEventOrder::GateNoteOff));
-  } else {
-    addPendingNoteOff(laneState, step.note, scheduledNoteOffBeat);
-  }
+  fireExactBoundaryNonStepPitchReleases(laneState, laneOut, step, absStepBeat, stepOffset);
 }
 
 // =====================
@@ -365,11 +423,6 @@ VoidResult checkIsEditing(const SequencerState& state) {
 VoidResult checkLaneBounds(uint8_t lane) {
   const char* errMsg = lane < MAX_LANES ? nullptr : "lane index out of range";
   return {lane < MAX_LANES, errMsg};
-}
-
-VoidResult checkStepBounds(uint8_t step) {
-  const char* errMsg = step < MAX_PATTERN_STEPS ? nullptr : "step index out of range";
-  return {step < MAX_PATTERN_STEPS, errMsg};
 }
 
 // ======================
@@ -406,25 +459,6 @@ const LanePattern* resolveActivePatternForPlayback(const PatternBank& bank) {
   return resolvePatternSlot(bank, bank.activeSlot);
 }
 
-// LanePattern* getPendingSelectedPattern(SequencerState& state, uint8_t lane) {
-//   PatternBank* bank = getPendingLanePatternBank(state, lane);
-//   if (!bank)
-//     return nullptr;
-//
-//   if (bank->activeSlot == INVALID_PATTERN_SLOT)
-//     return nullptr;
-//
-//   const uint8_t slot = bank->activeSlot;
-//   if (slot >= PATTERNS_PER_LANE)
-//     return nullptr;
-//
-//   PatternBankSlot& patternSlot = bank->slots[slot];
-//   if (!patternSlot.occupied)
-//     return nullptr;
-//
-//   return &patternSlot.pattern;
-// }
-
 LanePattern* getOrCreatePendingSelectedPattern(SequencerState& state, uint8_t lane) {
   PatternBank* bank = getPendingLanePatternBank(state, lane);
   if (!bank)
@@ -453,12 +487,6 @@ LanePattern* getOrCreatePendingSelectedPattern(SequencerState& state, uint8_t la
 // Validators
 // ===============
 
-VoidResult validateArgs(const SequencerState& state, uint8_t lane = 0, uint8_t step = 0) {
-  CHECK_RESULT(checkIsEditing(state));
-  CHECK_RESULT(checkLaneBounds(lane));
-  return checkStepBounds(step);
-}
-
 VoidResult validateGate(float gate) {
   if (!std::isfinite(gate) || gate < 0.0f)
     return {false, "gate out of range"};
@@ -485,18 +513,48 @@ VoidResult validateNumLocks(uint8_t numLocks) {
   return {true, nullptr};
 }
 
-VoidResult validateStepEvent(const StepEvent& evt) {
-  VoidResult res{};
-  CHECK_RESULT(validateNote(evt.note));
-  CHECK_RESULT(validateVelocity(evt.velocity));
-  CHECK_RESULT(validateGate(evt.gate));
-  CHECK_RESULT(validateNumLocks(evt.numLocks));
-  return res;
+VoidResult validateNoteCount(uint8_t count) {
+  return count <= MAX_NOTES_PER_STEP ? VoidResult{true, nullptr}
+                                     : VoidResult{false, "too many notes in step"};
 }
 
-VoidResult checkPatternSlotBounds(uint8_t slot) {
-  return slot < PATTERNS_PER_LANE ? VoidResult{true, nullptr}
-                                  : VoidResult{false, "pattern slot out of range"};
+VoidResult validateUniqueActiveStepNotePitches(const StepEvent& evt) {
+  for (uint8_t i = 0; i < evt.noteCount; ++i) {
+    const StepNote& a = evt.notes[i];
+    if (!a.noteOn)
+      continue;
+    for (uint8_t j = static_cast<uint8_t>(i + 1); j < evt.noteCount; ++j) {
+      const StepNote& b = evt.notes[j];
+      if (!b.noteOn)
+        continue;
+      if (a.note == b.note)
+        return {false, "duplicate note pitch in step"};
+    }
+  }
+  return {true, nullptr};
+}
+
+VoidResult validateStepNote(const StepNote& note) {
+  CHECK_RESULT(validateNote(note.note));
+  CHECK_RESULT(validateVelocity(note.velocity));
+  CHECK_RESULT(validateGate(note.gate));
+  return {true, nullptr};
+}
+
+VoidResult validateStepNoteForPattern(const StepNote& note, uint8_t maxGateSteps) {
+  CHECK_RESULT(validateStepNote(note));
+  if (note.gate > static_cast<float>(maxGateSteps))
+    return {false, "gate exceeds pattern length"};
+  return {true, nullptr};
+}
+
+VoidResult validateStepEventForPattern(const StepEvent& evt, uint8_t maxGateSteps) {
+  CHECK_RESULT(validateNumLocks(evt.numLocks));
+  CHECK_RESULT(validateNoteCount(evt.noteCount));
+  for (uint8_t i = 0; i < evt.noteCount; ++i)
+    CHECK_RESULT(validateStepNoteForPattern(evt.notes[i], maxGateSteps));
+  CHECK_RESULT(validateUniqueActiveStepNotePitches(evt));
+  return {true, nullptr};
 }
 
 VoidResult validateLanePattern(const LanePattern& pattern) {
@@ -507,7 +565,7 @@ VoidResult validateLanePattern(const LanePattern& pattern) {
     return {false, "stepsPerBeat out of range"};
 
   for (uint8_t i = 0; i < pattern.numSteps; ++i)
-    CHECK_RESULT(validateStepEvent(pattern.steps[i]));
+    CHECK_RESULT(validateStepEventForPattern(pattern.steps[i], pattern.numSteps));
 
   return {true, nullptr};
 }
@@ -534,6 +592,45 @@ VoidResult validatePatternBank(const PatternBank& bank) {
     CHECK_RESULT(validateLanePattern(bank.slots[slot].pattern));
   }
 
+  return {true, nullptr};
+}
+
+// =====================
+// Edit Session
+// =====================
+VoidResult beginPatternEdit(SequencerState& state, bool copy) {
+  if (state.isEditing.load(std::memory_order_acquire))
+    return {false, "edit session already in progress"};
+
+  PatternSnapshot& writeBuf = getWriteBuffer(state);
+
+  if (copy) {
+    uint32_t readIndex = state.store.readIndex.load(std::memory_order_relaxed);
+    writeBuf = state.store.buffers[readIndex];
+  } else {
+    writeBuf = PatternSnapshot{};
+  }
+
+  state.isEditing.store(true, std::memory_order_release);
+  return {true, nullptr};
+}
+
+// Swap write -> read buffer
+VoidResult commitPattern(SequencerState& state) {
+  VoidResult res{};
+  CHECK_RESULT(checkIsEditing(state));
+
+  uint32_t writeIndex = 1 - state.store.readIndex.load(std::memory_order_relaxed);
+  state.store.readIndex.store(writeIndex, std::memory_order_release);
+  state.isEditing.store(false, std::memory_order_release);
+  return res;
+}
+
+VoidResult abortPatternEdit(SequencerState& state) {
+  if (!state.isEditing.load(std::memory_order_acquire))
+    return {false, "no editing session in progress"};
+
+  state.isEditing.store(false, std::memory_order_release);
   return {true, nullptr};
 }
 
@@ -741,6 +838,11 @@ void initSequencer(SequencerState& seq, InitSequencerContext ctx) {
   seq.numLanes = MAX_LANES;
 }
 
+void clearSequencerLaneEvents(SequencerLaneEvents& events) {
+  for (uint8_t lane = 0; lane < MAX_TRACKS; ++lane)
+    events.lanes[lane].count = 0;
+}
+
 // =================
 // Processing
 // =================
@@ -809,373 +911,8 @@ void runSequencer(SequencerState& state, SequencerBlockWindow block, SequencerLa
 }
 
 // =====================
-// Edit Session
+// Snapshot
 // =====================
-VoidResult beginPatternEdit(SequencerState& state, bool copy) {
-  if (state.isEditing.load(std::memory_order_acquire))
-    return {false, "edit session already in progress"};
-
-  PatternSnapshot& writeBuf = getWriteBuffer(state);
-
-  if (copy) {
-    uint32_t readIndex = state.store.readIndex.load(std::memory_order_relaxed);
-    writeBuf = state.store.buffers[readIndex];
-  } else {
-    writeBuf = PatternSnapshot{};
-  }
-
-  state.isEditing.store(true, std::memory_order_release);
-  return {true, nullptr};
-}
-
-// Swap write -> read buffer
-VoidResult commitPattern(SequencerState& state) {
-  VoidResult res{};
-  CHECK_RESULT(checkIsEditing(state));
-
-  uint32_t writeIndex = 1 - state.store.readIndex.load(std::memory_order_relaxed);
-  state.store.readIndex.store(writeIndex, std::memory_order_release);
-  state.isEditing.store(false, std::memory_order_release);
-  return res;
-}
-
-VoidResult abortPatternEdit(SequencerState& state) {
-  if (!state.isEditing.load(std::memory_order_acquire))
-    return {false, "no editing session in progress"};
-
-  state.isEditing.store(false, std::memory_order_release);
-  return {true, nullptr};
-}
-
-// =====================
-// (Lane) Pattern APIs
-// =====================
-VoidResult setPatternNumSteps(SequencerState& state, uint8_t lane, uint8_t numSteps) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane));
-
-  if (numSteps == 0 || numSteps > MAX_PATTERN_STEPS)
-    return {false, "numSteps out of range"};
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  if (numSteps < lp->numSteps) {
-    for (uint32_t i = numSteps; i < MAX_PATTERN_STEPS; ++i)
-      lp->steps[i] = StepEvent{};
-  }
-
-  lp->numSteps = numSteps;
-
-  return res;
-}
-
-VoidResult setPatternStepsPerBeat(SequencerState& state, uint8_t lane, uint8_t stepsPerBeat) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane));
-
-  if (stepsPerBeat == 0 || stepsPerBeat > MAX_STEPS_PER_BEAT)
-    return {false, "stepsPerBeat out of range"};
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->stepsPerBeat = stepsPerBeat;
-
-  return res;
-}
-
-VoidResult setActivePatternSlot(SequencerState& state, uint8_t lane, uint8_t slot) {
-  CHECK_RESULT(checkLaneBounds(lane));
-  CHECK_RESULT(checkPatternSlotBounds(slot));
-
-  PatternBank& bank = getWriteBuffer(state).lanes[lane];
-  if (!bank.slots[slot].occupied)
-    return {false, "defaultActivePattern points to empty slot"};
-
-  bank.activeSlot = slot;
-  return {true, nullptr};
-}
-
-// ======================
-// Step APIs
-// ======================
-VoidResult setStep(SequencerState& state, uint8_t lane, uint8_t step, const StepEvent& evt) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-  CHECK_RESULT(validateStepEvent(evt));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step] = evt;
-  return res;
-}
-
-VoidResult setStepActive(SequencerState& state, uint8_t lane, uint8_t step, bool active) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step].active = active;
-  return res;
-}
-
-VoidResult setStepNote(SequencerState& state, uint8_t lane, uint8_t step, uint8_t note) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-  CHECK_RESULT(validateNote(note));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step].note = note;
-  return res;
-}
-
-VoidResult setStepVelocity(SequencerState& state, uint8_t lane, uint8_t step, uint8_t velocity) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-  CHECK_RESULT(validateVelocity(velocity));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step].velocity = velocity;
-  return res;
-}
-
-VoidResult setStepNoteOn(SequencerState& state, uint8_t lane, uint8_t step, bool noteOn) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step].noteOn = noteOn;
-  return res;
-}
-
-VoidResult setStepGate(SequencerState& state, uint8_t lane, uint8_t step, float gate) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-  CHECK_RESULT(validateGate(gate));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step].gate = gate;
-  return res;
-}
-
-VoidResult setStepLegato(SequencerState& state, uint8_t lane, uint8_t step, bool legato) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step].legato = legato;
-  return res;
-}
-
-// ======================
-// P-Lock (step) APIs
-// ======================
-VoidResult
-setStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID, float value) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  StepEvent& s = lp->steps[step];
-
-  // Update existing lock for this paramID if present
-  for (uint8_t i = 0; i < s.numLocks; ++i) {
-    if (s.locks[i].paramID == paramID) {
-      s.locks[i].value = value;
-      return res;
-    }
-  }
-
-  // Add new lock
-  if (s.numLocks >= MAX_LOCKS_PER_STEP)
-    return {false, "step lock capacity full"};
-
-  s.locks[s.numLocks++] = {paramID, value};
-  return res;
-}
-
-VoidResult clearStepLock(SequencerState& state, uint8_t lane, uint8_t step, uint8_t paramID) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  StepEvent& s = lp->steps[step];
-
-  for (uint8_t i = 0; i < s.numLocks; ++i) {
-    if (s.locks[i].paramID == paramID) {
-      // Swap with last and decrement — order doesn't matter for locks
-      s.locks[i] = s.locks[--s.numLocks];
-      return res;
-    }
-  }
-
-  return res;
-}
-
-VoidResult clearStepLocks(SequencerState& state, uint8_t lane, uint8_t step) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step].numLocks = 0;
-  return res;
-}
-
-// ===================
-// Bulk Pattern APIs
-// ===================
-VoidResult replacePatternBank(SequencerState& state, uint8_t lane, const PatternBank& bank) {
-  CHECK_RESULT(checkLaneBounds(lane));
-  CHECK_RESULT(validatePatternBank(bank));
-
-  getWriteBuffer(state).lanes[lane] = bank;
-  return {true, nullptr};
-}
-
-VoidResult
-replacePattern(SequencerState& state, uint8_t lane, uint8_t slot, const LanePattern& pattern) {
-  CHECK_RESULT(checkLaneBounds(lane));
-  CHECK_RESULT(checkPatternSlotBounds(slot));
-  CHECK_RESULT(validateLanePattern(pattern));
-
-  PatternBank& bank = getWriteBuffer(state).lanes[lane];
-  bank.slots[slot].occupied = true;
-  bank.slots[slot].pattern = pattern;
-
-  if (bank.activeSlot == INVALID_PATTERN_SLOT)
-    bank.activeSlot = slot;
-
-  return {true, nullptr};
-}
-
-VoidResult
-setActivePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  if (count != lp->numSteps)
-    return {false, "table length must match numSteps"};
-
-  for (uint8_t i = 0; i < count; ++i) {
-    lp->steps[i].active = values[i] != 0;
-    lp->steps[i].noteOn = values[i] != 0;
-  }
-  return res;
-}
-
-VoidResult
-setNotePattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  if (count != lp->numSteps)
-    return {false, "table length must match numSteps"};
-
-  for (uint8_t i = 0; i < count; ++i) {
-    CHECK_RESULT(validateNote(values[i]));
-    lp->steps[i].note = values[i];
-  }
-
-  return res;
-}
-
-VoidResult
-setVelocityPattern(SequencerState& state, uint8_t lane, const uint8_t* values, uint8_t count) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  if (count != lp->numSteps)
-    return {false, "table length must match numSteps"};
-
-  for (uint8_t i = 0; i < count; ++i) {
-    CHECK_RESULT(validateVelocity(values[i]));
-    lp->steps[i].velocity = values[i];
-  }
-  return res;
-}
-
-VoidResult clearStep(SequencerState& state, uint8_t lane, uint8_t step) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane, step));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  lp->steps[step] = StepEvent{};
-  return res;
-}
-
-VoidResult clearPattern(SequencerState& state, uint8_t lane) {
-  VoidResult res{};
-  CHECK_RESULT(validateArgs(state, lane));
-
-  LanePattern* lp = getOrCreatePendingSelectedPattern(state, lane);
-  if (!lp)
-    return {false, "no pending selected pattern"};
-
-  resetLanePattern(lp);
-  return res;
-}
-
-VoidResult clearPatternBankSlot(SequencerState& state, uint8_t lane, uint8_t slot) {
-  CHECK_RESULT(checkLaneBounds(lane));
-  CHECK_RESULT(checkPatternSlotBounds(slot));
-
-  PatternBank& bank = getWriteBuffer(state).lanes[lane];
-  bank.slots[slot].occupied = false;
-  resetLanePattern(&bank.slots[slot].pattern);
-
-  if (bank.activeSlot == slot)
-    bank.activeSlot = INVALID_PATTERN_SLOT;
-
-  return {true, nullptr};
-}
-
 VoidResult validatePatternSnapshot(const PatternSnapshot& snapshot) {
   for (uint8_t lane = 0; lane < MAX_LANES; ++lane) {
     CHECK_RESULT(checkLaneBounds(lane));
@@ -1213,13 +950,7 @@ void resetStepEvent(StepEvent* step) {
   for (uint8_t i = 0; i < MAX_LOCKS_PER_STEP; ++i)
     step->locks[i] = ParamLock{};
 
-  step->numLocks = 0;
-  step->active = false;
-  step->noteOn = false;
-  step->legato = false;
-  step->gate = 0.5f;
-  step->note = 0;
-  step->velocity = 0;
+  *step = StepEvent{};
 }
 
 void resetLanePattern(LanePattern* pattern) {

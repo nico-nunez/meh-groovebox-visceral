@@ -150,6 +150,8 @@ inline constexpr const char* MixerTrackSettings = "MixerTrackSettings";
 inline constexpr const char* TrackSettings = "TrackSettings";
 inline constexpr const char* PatternSlots = "PatternSlots";
 inline constexpr const char* Pattern = "Pattern";
+inline constexpr const char* StepNote = "StepNote";
+inline constexpr const char* StepNotes = "StepNote[]";
 inline constexpr const char* Step = "Step";
 inline constexpr const char* StepLock = "StepLock";
 } // namespace doctype

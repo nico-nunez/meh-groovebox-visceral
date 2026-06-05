@@ -8,22 +8,10 @@
 
 #include "synth/params/ParamDefs.h"
 
-namespace {
-
-app::AppContext* makeContext() {
-  app::audio::DeviceInfo device{};
-  device.sampleRate = 48000;
-  device.bufferFrameSize = 64;
-  device.numChannels = 2;
-  return app::createAppContext(device);
-}
-
-} // namespace
-
 static void test_doc_apply_prepares_but_does_not_publish_until_audio_boundary() {
   TEST("doc_apply_prepares_but_does_not_publish_until_audio_boundary");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   const char* doc = "synth(1, SynthSettings { osc1 = { mixLevel = 0.25 } })";
@@ -38,13 +26,13 @@ static void test_doc_apply_prepares_but_does_not_publish_until_audio_boundary() 
   CHECK("pending cleared", !app->documents.pendingApply.ready.load());
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.25f);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_doc_apply_publishes_mixer_and_synth_together() {
   TEST("doc_apply_publishes_mixer_and_synth_together");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   const char* doc = "synth(1, SynthSettings { osc1 = { mixLevel = 0.5 } }) "
@@ -61,13 +49,13 @@ static void test_doc_apply_publishes_mixer_and_synth_together() {
   CHECK("synth published", app->tracks[0].engine.params[synth::param::OSC1_MIX_LEVEL] == 0.5f);
   CHECK("mixer published", app->mixer.current.tracks[0].gain == 0.25f);
 
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 static void test_second_doc_apply_rejected_while_pending_unpublished() {
   TEST("second_doc_apply_rejected_while_pending_unpublished");
 
-  app::AppContext* app = makeContext();
+  app::AppContext* app = test::makeAppContext();
   CHECK("context", app != nullptr);
 
   auto first =
@@ -86,7 +74,7 @@ static void test_second_doc_apply_rejected_while_pending_unpublished() {
   CHECK("pending still ready", app->documents.pendingApply.ready.load());
 
   test::publishPending(app);
-  app::destroyAppContext(app);
+  test::destroyAppContext(app);
 }
 
 void runDocAuthoringServiceAtomicApplyTests() {

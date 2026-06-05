@@ -153,7 +153,7 @@ SequencerPatternSnapshot makeSequencerPatternSnapshot(const app::sequencer::Sequ
     const app::sequencer::StepEvent& event = pattern.steps[step];
     if (event.active)
       snapshot.activeStepCount += 1;
-    if (event.noteOn)
+    if (event.noteCount > 0)
       snapshot.noteOnStepCount += 1;
     snapshot.paramLockCount += event.numLocks;
   }

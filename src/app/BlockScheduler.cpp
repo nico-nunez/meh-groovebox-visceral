@@ -36,7 +36,8 @@ void sortScheduledEvents(track::ScheduledEventBuffer& events) {
 void runBlockScheduler(AppContext* app, const TransportBlockInfo& blockInfo) {
   auto block = makeBlockWindow(blockInfo);
 
-  seq::SequencerLaneEvents evts{};
+  seq::SequencerLaneEvents& evts = app->blockScheduler.sequencerEvents;
+  seq::clearSequencerLaneEvents(evts);
   seq::runSequencer(app->sequencer, block, evts);
 
   for (uint8_t i = 0; i < app->sequencer.numLanes; ++i) {
@@ -44,7 +45,7 @@ void runBlockScheduler(AppContext* app, const TransportBlockInfo& blockInfo) {
     trackEvents.clear();
 
     const auto& lane = evts.lanes[i];
-    for (u_int16_t j = 0; j < lane.count; ++j) {
+    for (uint16_t j = 0; j < lane.count; ++j) {
       trackEvents.push(lane.events[j]);
     }
 

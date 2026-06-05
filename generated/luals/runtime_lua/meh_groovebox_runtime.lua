@@ -106,20 +106,10 @@ function midi.routes() end
 ---@class seq
 seq = seq or {}
 
----@param trackIndex? integer
----@return SeqTrack
-function seq.track(trackIndex) end
-
 function seq.listTracks() end
 
 ---@param trackIndex integer
 function seq.selectTrack(trackIndex) end
-
-function seq.edit() end
-
-function seq.new() end
-
-function seq.commit() end
 
 ---@class preset
 preset = preset or {}
@@ -193,86 +183,6 @@ function signal.clear() end
 mixer = mixer or {}
 
 function mixer.list() end
-
----@class SeqTrack
-SeqTrack = SeqTrack or {}
-
----@param stepIndex integer
----@return SeqStep
-function SeqTrack.step(stepIndex) end
-
----@param numSteps integer
-function SeqTrack.setNumSteps(numSteps) end
-
----@param stepsPerBeat integer
-function SeqTrack.setStepsPerBeat(stepsPerBeat) end
-
----@return RuntimePattern
-function SeqTrack.getPattern() end
-
----@param values table
-function SeqTrack.setPattern(values) end
-
----@param values table
-function SeqTrack.setNotes(values) end
-
----@param values table
-function SeqTrack.setVelocities(values) end
-
-function SeqTrack.resetPattern() end
-
----@return RuntimePatternBank
-function SeqTrack.getPatterns() end
-
----@param bank RuntimePatternBank
-function SeqTrack.replacePatterns(bank) end
-
----@param slot integer
----@param pattern RuntimePattern
-function SeqTrack.replacePattern(slot, pattern) end
-
----@param slot integer
-function SeqTrack.clearPatternSlot(slot) end
-
-function SeqTrack.clear() end
-
----@class SeqStep
-SeqStep = SeqStep or {}
-
----@return RuntimeStep
-function SeqStep.get() end
-
----@param event RuntimeStep
-function SeqStep.set(event) end
-
-function SeqStep.clear() end
-
----@param active boolean
-function SeqStep.setActive(active) end
-
----@param noteOn boolean
-function SeqStep.setNoteOn(noteOn) end
-
----@param note integer
-function SeqStep.setNote(note) end
-
----@param velocity integer
-function SeqStep.setVelocity(velocity) end
-
----@param gate number
-function SeqStep.setGate(gate) end
-
----@param legato boolean
-function SeqStep.setLegato(legato) end
-
----@param paramName string
----@param value number
-function SeqStep.setLock(paramName, value) end
-
----@param paramName string
-function SeqStep.clearLock(paramName) end
-
-function SeqStep.clearLocks() end
 
 ---@class RuntimeAmpEnvParams
 ---@field attack number

@@ -2,7 +2,6 @@
 
 #include "app/AppParams.h"
 #include "app/Constants.h"
-#include "app/Sequencer.h"
 #include "synth/params/ParamDefs.h"
 
 #include <cstring>
@@ -168,106 +167,12 @@ constexpr RuntimeLuaFunctionMetadata kMixerMethods[] = {
     fn(rtmethod::List),
 };
 
-constexpr RuntimeLuaArgMetadata kOptionalTrackArg[] = {
-    {
-        "trackIndex",
-        RuntimeLuaValueKind::Integer,
-        "",
-        true,
-        intBounds(1, app::MAX_TRACKS),
-    },
-};
 constexpr RuntimeLuaArgMetadata kSelectTrackArgs[] = {
     intArg("trackIndex", 1, app::MAX_TRACKS),
 };
 constexpr RuntimeLuaFunctionMetadata kSeqMethods[] = {
-    fn(rtmethod::Track, spanOf(kOptionalTrackArg), rttype::SeqTrack),
     fn(rtmethod::ListTracks),
     fn(rtmethod::SelectTrack, spanOf(kSelectTrackArgs)),
-    fn(rtmethod::Edit),
-    fn(rtmethod::New),
-    fn(rtmethod::Commit),
-};
-
-constexpr RuntimeLuaArgMetadata kStepIndexArg[] = {
-    intArg("stepIndex", 1, app::sequencer::MAX_PATTERN_STEPS),
-};
-constexpr RuntimeLuaArgMetadata kNumStepsArg[] = {
-    intArg("numSteps", 1, app::sequencer::MAX_PATTERN_STEPS),
-};
-constexpr RuntimeLuaArgMetadata kStepsPerBeatArg[] = {
-    intArg("stepsPerBeat", 1, app::sequencer::MAX_STEPS_PER_BEAT),
-};
-constexpr RuntimeLuaArgMetadata kValuesTableArg[] = {
-    arg("values", RuntimeLuaValueKind::Table),
-};
-constexpr RuntimeLuaArgMetadata kPatternBankArg[] = {
-    arg("bank", RuntimeLuaValueKind::Table, rttype::RuntimePatternBank),
-};
-constexpr RuntimeLuaArgMetadata kReplacePatternArgs[] = {
-    intArg("slot", 1, app::sequencer::PATTERNS_PER_LANE),
-    arg("pattern", RuntimeLuaValueKind::Table, rttype::RuntimePattern),
-};
-constexpr RuntimeLuaArgMetadata kPatternSlotArg[] = {
-    intArg("slot", 1, app::sequencer::PATTERNS_PER_LANE),
-};
-constexpr RuntimeLuaFunctionMetadata kSeqTrackMethods[] = {
-    fn(rtmethod::Step, spanOf(kStepIndexArg), rttype::SeqStep),
-    fn(rtmethod::SetNumSteps, spanOf(kNumStepsArg)),
-    fn(rtmethod::SetStepsPerBeat, spanOf(kStepsPerBeatArg)),
-    fn(rtmethod::GetPattern, {}, rttype::RuntimePattern),
-    fn(rtmethod::SetPattern, spanOf(kValuesTableArg)),
-    fn(rtmethod::SetNotes, spanOf(kValuesTableArg)),
-    fn(rtmethod::SetVelocities, spanOf(kValuesTableArg)),
-    fn(rtmethod::ResetPattern),
-    fn(rtmethod::GetPatterns, {}, rttype::RuntimePatternBank),
-    fn(rtmethod::ReplacePatterns, spanOf(kPatternBankArg)),
-    fn(rtmethod::ReplacePattern, spanOf(kReplacePatternArgs)),
-    fn(rtmethod::ClearPatternSlot, spanOf(kPatternSlotArg)),
-    fn(rtmethod::Clear),
-};
-
-constexpr RuntimeLuaArgMetadata kStepEventArg[] = {
-    arg("event", RuntimeLuaValueKind::Table, rttype::RuntimeStep),
-};
-constexpr RuntimeLuaArgMetadata kBoolActiveArg[] = {
-    arg("active", RuntimeLuaValueKind::Boolean),
-};
-constexpr RuntimeLuaArgMetadata kBoolNoteOnArg[] = {
-    arg("noteOn", RuntimeLuaValueKind::Boolean),
-};
-constexpr RuntimeLuaArgMetadata kNoteArg[] = {
-    intArg("note", 0, 127),
-};
-constexpr RuntimeLuaArgMetadata kVelocityArg[] = {
-    intArg("velocity", 0, 127),
-};
-constexpr RuntimeLuaArgMetadata kGateArg[] = {
-    arg("gate", RuntimeLuaValueKind::Number),
-};
-constexpr RuntimeLuaArgMetadata kLegatoArg[] = {
-    arg("legato", RuntimeLuaValueKind::Boolean),
-};
-constexpr RuntimeLuaArgMetadata kLockArgs[] = {
-    arg("paramName", RuntimeLuaValueKind::String),
-    arg("value", RuntimeLuaValueKind::Number),
-};
-constexpr RuntimeLuaArgMetadata kLockParamArg[] = {
-    arg("paramName", RuntimeLuaValueKind::String),
-};
-constexpr RuntimeLuaFunctionMetadata kSeqStepMethods[] = {
-    fn(rtmethod::Get, {}, rttype::RuntimeStep),
-    fn(rtmethod::Set, spanOf(kStepEventArg)),
-    fn(rtmethod::Clear),
-    fn(rtmethod::SetActive, spanOf(kBoolActiveArg)),
-    fn(rtmethod::SetNoteOn, spanOf(kBoolNoteOnArg)),
-    fn(rtmethod::SetNote, spanOf(kNoteArg)),
-    fn(rtmethod::SetVelocity, spanOf(kVelocityArg)),
-    fn(rtmethod::SetGate, spanOf(kGateArg)),
-    fn(rtmethod::SetLegato, spanOf(kLegatoArg)),
-    fn(rtmethod::SetLock, spanOf(kLockArgs)),
-    fn(rtmethod::ClearLock, spanOf(kLockParamArg)),
-    fn(rtmethod::ClearLocks),
 };
 
 constexpr RuntimeLuaTableMetadata kRuntimeTables[] = {
@@ -318,18 +223,7 @@ constexpr RuntimeLuaTableMetadata kRuntimeTables[] = {
      "Mixer commands and app parameter proxy."},
 };
 
-constexpr RuntimeLuaTableMetadata kRuntimeUserdataTypes[] = {
-    {rttype::SeqTrack,
-     RuntimeLuaSymbolKind::UserdataType,
-     RuntimeLuaStatus::Implemented,
-     spanOf(kSeqTrackMethods),
-     "Runtime sequencer track userdata."},
-    {rttype::SeqStep,
-     RuntimeLuaSymbolKind::UserdataType,
-     RuntimeLuaStatus::Implemented,
-     spanOf(kSeqStepMethods),
-     "Runtime sequencer step userdata."},
-};
+constexpr app::doc::DocMetadataSpan<RuntimeLuaTableMetadata> kNoRuntimeUserdataTypes{};
 
 constexpr RuntimeLuaSymbolMetadata kRuntimeGlobals[] = {
     {rtglobal::Panic,
@@ -474,7 +368,7 @@ app::doc::DocMetadataSpan<RuntimeLuaTableMetadata> runtimeLuaTables() {
 }
 
 app::doc::DocMetadataSpan<RuntimeLuaTableMetadata> runtimeLuaUserdataTypes() {
-  return spanOf(kRuntimeUserdataTypes);
+  return kNoRuntimeUserdataTypes;
 }
 
 const RuntimeLuaSymbolMetadata* findRuntimeLuaGlobal(const char* name) {

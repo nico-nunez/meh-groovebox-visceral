@@ -1,6 +1,7 @@
 #include "KeyProcessor.h"
 
 #include "app/AppContext.h"
+#include "app/FileWatchApply.h"
 #include "app/display/DisplayState.h"
 #include "app/display/DisplayView.h"
 
@@ -235,6 +236,8 @@ int startGLFWLoop(AppContext* ctx, hMidiSession midiSessionPtr) {
 
   while (!glfwWindowShouldClose(g_window)) {
     glfwPollEvents();
+
+    app::pollExternalSessionFileApply(ctx);
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();

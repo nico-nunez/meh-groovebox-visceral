@@ -92,6 +92,9 @@ struct AuthoredDocModel {
 };
 
 inline void resetAuthoredDocModel(AuthoredDocModel* model, DocID documentID, DocRevision revision) {
+  model->~AuthoredDocModel();
+  new (model) AuthoredDocModel;
+
   *model = AuthoredDocModel{};
   model->documentID = documentID;
   model->revision = revision;

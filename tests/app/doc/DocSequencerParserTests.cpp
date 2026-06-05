@@ -1,15 +1,10 @@
 #include "TestHelpers.h"
 #include "TestRunner.h"
 
-#include "app/Sequencer.h"
 #include "app/doc/DocTypes.h"
 #include "app/doc/metadata/DocMetadata.h"
 
 #include <cstdio>
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 namespace {
 
@@ -19,17 +14,14 @@ using test::parseWS;
 
 } // namespace
 
-// ---------------------------------------------------------------------------
-// Test cases
-// ---------------------------------------------------------------------------
-
 static void test_populated_patterns_with_explicit_active_slot() {
   TEST("populated_patterns_with_explicit_active_slot");
   auto* ws = getParseTestWorkspace();
-  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-                   "steps = { { active = true, note = 60, velocity = 100, gate = 0.8 } } } }, "
-                   "activeSlot = 1 })",
-                   ws);
+  auto r = parseWS(
+      "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
+      "steps = { { active = true, notes = { { note = 60, velocity = 100, gate = 0.8 } } } } } }, "
+      "activeSlot = 1 })",
+      ws);
   CHECK("ok", r.ok);
   CHECK("hasTrackState[0]", ws->model.sequencer.hasTrackState[0]);
   const auto& track = ws->model.sequencer.tracks[0];
@@ -44,9 +36,12 @@ static void test_populated_patterns_with_explicit_active_slot() {
   CHECK("stepsPerBeat == 4", pattern.stepsPerBeat == 4);
   CHECK("step patch present", pattern.hasStep[0]);
   CHECK("step active", step.hasActive && step.active);
-  CHECK("step note", step.hasNote && step.note == 60);
-  CHECK("step velocity", step.hasVelocity && step.velocity == 100);
-  CHECK("step gate", step.hasGate && step.gate == 0.8f);
+  CHECK("step has note count", step.hasNoteCount);
+  CHECK("step note count", step.noteCount == 1);
+  CHECK("step note patch", step.hasNotePatch[0]);
+  CHECK("step note", step.notes[0].hasNote && step.notes[0].note == 60);
+  CHECK("step velocity", step.notes[0].hasVelocity && step.notes[0].velocity == 100);
+  CHECK("step gate", step.notes[0].hasGate && step.notes[0].gate == 0.8f);
   CHECK("has activeSlot", track.hasActiveSlot);
   CHECK("activeSlot == 0", track.activeSlot == 0);
   CHECK("activeSlotSource == Explicit",
@@ -173,11 +168,11 @@ static void test_sparse_steps_table_allows_omitted_steps() {
   CHECK("no diagnostics", r.diagnostics.empty());
 }
 
-static void test_sparse_step_note_only_sets_note_presence() {
-  TEST("sparse_step_note_only_sets_note_presence");
+static void test_sparse_step_one_note_array_sets_note_patch() {
+  TEST("sparse_step_one_note_array_sets_note_patch");
   auto* ws = getParseTestWorkspace();
   auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
-                   "note = 64 } } } } })",
+                   "notes = { { note = 64, velocity = 90, gate = 0.75 } } } } } } })",
                    ws);
 
   const auto& track = ws->model.sequencer.tracks[0];
@@ -188,12 +183,35 @@ static void test_sparse_step_note_only_sets_note_presence() {
   CHECK("track present", ws->model.sequencer.hasTrackState[0]);
   CHECK("slot present", track.hasPatternSlot[0]);
   CHECK("step present", pattern.hasStep[0]);
-  CHECK("has note", step.hasNote);
-  CHECK("note value", step.note == 64);
+  CHECK("has note count", step.hasNoteCount);
+  CHECK("note count", step.noteCount == 1);
+  CHECK("has note patch", step.hasNotePatch[0]);
+  CHECK("has note", step.notes[0].hasNote);
+  CHECK("note value", step.notes[0].note == 64);
+  CHECK("has velocity", step.notes[0].hasVelocity);
+  CHECK("velocity value", step.notes[0].velocity == 90);
+  CHECK("has gate", step.notes[0].hasGate);
+  CHECK("gate value", step.notes[0].gate == 0.75f);
   CHECK("active omitted", !step.hasActive);
-  CHECK("velocity omitted", !step.hasVelocity);
-  CHECK("gate omitted", !step.hasGate);
   CHECK("locks omitted", step.locks.op == app::PatchObjectOp::None);
+  CHECK("no diagnostics", r.diagnostics.empty());
+}
+
+static void test_sparse_step_note_array_sets_tie_patch() {
+  TEST("sparse_step_note_array_sets_tie_patch");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
+                   "notes = { { note = 64, tie = true } } } } } } })",
+                   ws);
+
+  const auto& step = ws->model.sequencer.tracks[0].patternSlots[0].pattern.steps[0];
+
+  CHECK("ok", r.ok);
+  CHECK("has note count", step.hasNoteCount);
+  CHECK("note count", step.noteCount == 1);
+  CHECK("has note patch", step.hasNotePatch[0]);
+  CHECK("has tie", step.notes[0].hasTie);
+  CHECK("tie value", step.notes[0].tie);
   CHECK("no diagnostics", r.diagnostics.empty());
 }
 
@@ -339,9 +357,115 @@ static void test_runtime_apply_file_snake_case_is_not_registered_in_authored_par
   CHECK("diagnostic document.lua_eval_failed",
         hasDiagnostic(r.diagnostics, app::doc::docdiag::DocumentLuaEvalFailed));
 }
-// ---------------------------------------------------------------------------
-// Entry point (called from tests/main.cpp)
-// ---------------------------------------------------------------------------
+
+static void test_sparse_step_multi_note_array_sets_note_patches() {
+  TEST("sparse_step_multi_note_array_sets_note_patches");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
+                   "notes = { "
+                   "{ note = 60, velocity = 100, gate = 1.0 }, "
+                   "{ note = 64, velocity = 96, gate = 0.5 }, "
+                   "{ note = 67, velocity = 92, gate = 1.5 } "
+                   "} } } } } })",
+                   ws);
+
+  const auto& step = ws->model.sequencer.tracks[0].patternSlots[0].pattern.steps[0];
+
+  CHECK("ok", r.ok);
+  CHECK("has note count", step.hasNoteCount);
+  CHECK("note count", step.noteCount == 3);
+  CHECK("note 0 patch", step.hasNotePatch[0]);
+  CHECK("note 1 patch", step.hasNotePatch[1]);
+  CHECK("note 2 patch", step.hasNotePatch[2]);
+  CHECK("note 0", step.notes[0].note == 60);
+  CHECK("note 1", step.notes[1].note == 64);
+  CHECK("note 2", step.notes[2].note == 67);
+  CHECK("velocity 1", step.notes[1].velocity == 96);
+  CHECK("gate 2", step.notes[2].gate == 1.5f);
+  CHECK("no diagnostics", r.diagnostics.empty());
+}
+
+static void test_step_level_scalar_note_fields_reject_revision() {
+  TEST("step_level_scalar_note_fields_reject_revision");
+
+  const char* docs[] = {
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { noteOn = true } } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { note = 60 } } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { velocity = 100 } } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { gate = 1.0 } } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { legato = true } } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { tie = true } } } } })",
+  };
+
+  for (const char* doc : docs) {
+    auto* ws = getParseTestWorkspace();
+    auto r = parseWS(doc, ws);
+    CHECK("not ok", !r.ok);
+    CHECK("diagnostic sequencer.pattern.invalid_shape",
+          hasDiagnostic(r.diagnostics, app::doc::docdiag::SequencerPatternInvalidShape));
+  }
+}
+
+static void test_step_notes_must_be_array() {
+  TEST("step_notes_must_be_array");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
+                   "notes = { note = 60, velocity = 100, gate = 1.0 } } } } } })",
+                   ws);
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic sequencer.pattern.invalid_shape",
+        hasDiagnostic(r.diagnostics, app::doc::docdiag::SequencerPatternInvalidShape));
+}
+
+static void test_step_notes_entry_must_be_table() {
+  TEST("step_notes_entry_must_be_table");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { "
+                   "notes = { 60 } } } } } })",
+                   ws);
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic sequencer.pattern.invalid_shape",
+        hasDiagnostic(r.diagnostics, app::doc::docdiag::SequencerPatternInvalidShape));
+}
+
+static void test_step_notes_invalid_values_reject_revision() {
+  TEST("step_notes_invalid_values_reject_revision");
+
+  const char* docs[] = {
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { { note = 200 } } "
+      "} } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { { velocity = 200 "
+      "} } } } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { { gate = -1.0 } } "
+      "} } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { { noteOn = 1 } } "
+      "} } } } })",
+      "track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { { tie = 1 } } "
+      "} } } } })",
+  };
+
+  for (const char* doc : docs) {
+    auto* ws = getParseTestWorkspace();
+    auto r = parseWS(doc, ws);
+    CHECK("not ok", !r.ok);
+    CHECK("diagnostic sequencer.pattern.invalid_shape",
+          hasDiagnostic(r.diagnostics, app::doc::docdiag::SequencerPatternInvalidShape));
+  }
+}
+
+static void test_step_notes_capacity_rejects_revision() {
+  TEST("step_notes_capacity_rejects_revision");
+  auto* ws = getParseTestWorkspace();
+  auto r = parseWS("track(1, TrackSettings { patterns = { [1] = { steps = { [1] = { notes = { "
+                   "{ note = 60 }, { note = 61 }, { note = 62 }, { note = 63 }, "
+                   "{ note = 64 }, { note = 65 }, { note = 66 }, { note = 67 }, "
+                   "{ note = 68 } "
+                   "} } } } } })",
+                   ws);
+  CHECK("not ok", !r.ok);
+  CHECK("diagnostic sequencer.pattern.invalid_shape",
+        hasDiagnostic(r.diagnostics, app::doc::docdiag::SequencerPatternInvalidShape));
+}
 
 void runDocSequencerParserTests() {
   SUITE("DocSequencerParser");
@@ -356,7 +480,8 @@ void runDocSequencerParserTests() {
   test_pattern_slot_key_must_be_integer();
   test_pattern_slot_key_must_be_in_range();
   test_sparse_steps_table_allows_omitted_steps();
-  test_sparse_step_note_only_sets_note_presence();
+  test_sparse_step_one_note_array_sets_note_patch();
+  test_sparse_step_note_array_sets_tie_patch();
   test_malformed_step_rejects_pattern();
   test_track_index_must_be_integer();
   test_active_slot_must_be_integer();
@@ -371,4 +496,10 @@ void runDocSequencerParserTests() {
   test_empty_step_table_has_no_step_patch();
   test_runtime_apply_file_is_not_registered_in_authored_parser();
   test_runtime_apply_file_snake_case_is_not_registered_in_authored_parser();
+  test_sparse_step_multi_note_array_sets_note_patches();
+  test_step_level_scalar_note_fields_reject_revision();
+  test_step_notes_must_be_array();
+  test_step_notes_entry_must_be_table();
+  test_step_notes_invalid_values_reject_revision();
+  test_step_notes_capacity_rejects_revision();
 }

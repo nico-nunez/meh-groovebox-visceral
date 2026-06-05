@@ -2,6 +2,7 @@
 
 #include "app/Constants.h"
 #include "app/GrooveboxPatch.h"
+#include "app/Mixer.h"
 #include "app/Transport.h"
 #include "app/doc/DocDiagnostics.h"
 #include "app/doc/DocTypes.h"
@@ -31,6 +32,12 @@ struct PendingGrooveboxApply {
   std::atomic<bool> writeInFlight{false};
 };
 
+struct GrooveboxEditWorkspace {
+  synth::program::SynthProgram synthPrograms[MAX_TRACKS]{};
+  mixer::MixerSnapshot mixerSnapshot{};
+  sequencer::PatternSnapshot sequencerSnapshot{};
+};
+
 struct GrooveboxEditSession {
   doc::DocRevision revision = 0;
   const GrooveboxPatch* patch = nullptr;
@@ -48,6 +55,7 @@ void stageGrooveboxPatch(GrooveboxEditSession* session, const GrooveboxPatch* pa
 GrooveboxEditResult commitGrooveboxEdit(GrooveboxEditSession* session,
                                         AppContext* app,
                                         GrooveboxApplyTiming timing,
+                                        GrooveboxEditWorkspace* workspace,
                                         doc::DocDiagnostics* diagnostics);
 
 void publishPendingGrooveboxEditIfReady(AppContext* app,
@@ -55,8 +63,9 @@ void publishPendingGrooveboxEditIfReady(AppContext* app,
 
 inline GrooveboxEditResult commitGrooveboxEditImmediate(GrooveboxEditSession* session,
                                                         AppContext* app,
+                                                        GrooveboxEditWorkspace* workspace,
                                                         doc::DocDiagnostics* diagnostics) {
-  return commitGrooveboxEdit(session, app, GrooveboxApplyTiming::Immediate, diagnostics);
+  return commitGrooveboxEdit(session, app, GrooveboxApplyTiming::Immediate, workspace, diagnostics);
 }
 
 } // namespace app
