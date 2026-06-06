@@ -154,6 +154,7 @@ inline constexpr const char* StepNote = "StepNote";
 inline constexpr const char* StepNotes = "StepNote[]";
 inline constexpr const char* Step = "Step";
 inline constexpr const char* StepLock = "StepLock";
+inline constexpr const char* StepLocks = "StepLock[]";
 } // namespace doctype
 
 namespace docdiag {

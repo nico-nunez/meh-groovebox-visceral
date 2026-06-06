@@ -1,8 +1,8 @@
 #include "TestRunner.h"
 
 #include "app/AppParams.h"
-#include "app/doc/metadata/DocMetadata.h"
-#include "app/doc/metadata/DocMixerSettingsMetadata.h"
+#include "app/doc/DocMetadata.h"
+#include "app/doc/parser/MixerParamFields.h"
 
 #include <string>
 
@@ -129,8 +129,8 @@ static void test_authored_mixer_valuekind_for_bool() {
   CHECK("bool", authoredMixerValueKindForParamType(AppParamType::Bool) == DocLuaValueKind::Boolean);
 }
 
-void runDocMixerSettingsMetadataTests() {
-  SUITE("DocMixerSettingsMetadata");
+void runDocMixerParamFieldsTests() {
+  SUITE("DocMixerParamFieldsTests");
   test_mixer_param_fields_count_is_3();
   test_mixer_param_fields_not_empty();
   test_mixer_param_fields_gain_entry();

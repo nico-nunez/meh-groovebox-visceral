@@ -1,7 +1,7 @@
 #include "TestRunner.h"
 
-#include "app/doc/metadata/DocMetadata.h"
-#include "app/doc/metadata/DocSynthSettingsMetadata.h"
+#include "app/doc/DocMetadata.h"
+#include "app/doc/parser/SynthParamFields.h"
 #include "synth/params/ParamDefs.h"
 #include "synth/params/ParamUtils.h"
 
@@ -78,7 +78,7 @@ static void test_authored_synth_value_kinds_match_param_types() {
 
   for (const auto& field : app::doc::authoredSynthParamFields()) {
     const auto& def = synth::param::PARAM_DEFS[field.paramID];
-    const auto expected = app::doc::authoredSynthValueKindForParamType(def.type);
+    const auto expected = app::doc::synthParamTypeToLuaKind(def.type);
     CHECK((std::string("value kind ") + field.authoredPath).c_str(), field.valueKind == expected);
   }
 }
@@ -132,17 +132,17 @@ static void test_authored_synth_mapping_has_unique_authored_paths_and_params() {
 static void test_authored_synth_lookup_by_canonical_param() {
   TEST("authored_synth_lookup_by_canonical_param");
 
-  const auto* mixLevel = app::doc::findAuthoredSynthParamFieldByCanonicalParam("osc1.mixLevel");
-  const auto* master = app::doc::findAuthoredSynthParamFieldByCanonicalParam("master.gain");
-  const auto* lfo = app::doc::findAuthoredSynthParamFieldByCanonicalParam("lfo1.rate");
+  const auto* mixLevel = app::doc::findAuthoredSynthParamField("osc1.mixLevel");
+  const auto* master = app::doc::findAuthoredSynthParamField("master.gain");
+  const auto* lfo = app::doc::findAuthoredSynthParamField("lfo1.rate");
 
   CHECK("mixLevel found", mixLevel && strEq(mixLevel->authoredPath, "osc1.mixLevel"));
   CHECK("master found", master && strEq(master->authoredPath, "master.gain"));
   CHECK("lfo found", lfo && strEq(lfo->authoredPath, "lfo1.rate"));
 }
 
-void runDocSynthSettingsMetadataTests() {
-  SUITE("DocSynthSettingsMetadata");
+void runDocSynthParamFieldsTests() {
+  SUITE("DocSynthParamFieldsTests");
   test_authored_synth_mapping_has_first_slice_representatives();
   test_authored_synth_all_canonical_params_resolve();
   test_authored_synth_value_kinds_match_param_types();

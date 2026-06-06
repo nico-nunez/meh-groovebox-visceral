@@ -1,7 +1,7 @@
 #include "ParserHelpers.h"
 
 #include "app/doc/DocAuthoredModel.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 
 #include "lua.h"
 #include "synth/ModMatrix.h"

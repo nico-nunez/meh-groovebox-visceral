@@ -1,9 +1,9 @@
 #include "app/doc/DocGrooveboxPatchBuilder.h"
 
+#include "app/doc/DocMetadata.h"
 #include "app/doc/DocMixerPlanner.h"
 #include "app/doc/DocSequencerPlanner.h"
 #include "app/doc/DocSynthPlanner.h"
-#include "app/doc/metadata/DocMetadata.h"
 
 namespace app::doc {
 

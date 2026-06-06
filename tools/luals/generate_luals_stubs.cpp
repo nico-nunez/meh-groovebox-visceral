@@ -1,6 +1,5 @@
 #include "app/Constants.h"
-#include "app/Sequencer.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 #include "lua/metadata/LuaRuntimeMetadata.h"
 
 #include <algorithm>

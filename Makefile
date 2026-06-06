@@ -115,10 +115,10 @@ $(TEST_BUILD)/%.o: %.c
 LUALS_STUB_GENERATOR = $(BUILD_DIR)/generate_luals_stubs
 
 LUALS_STUB_GENERATOR_SOURCES = \
-	tools/luals/generate_luals_stubs.cpp \
-	src/app/doc/metadata/DocMetadata.cpp \
+	src/app/AppParams.cpp \
+	src/app/doc/DocMetadata.cpp \
 	src/lua/metadata/LuaRuntimeMetadata.cpp \
-	src/app/AppParams.cpp
+	tools/luals/generate_luals_stubs.cpp 
 
 $(LUALS_STUB_GENERATOR): $(LUALS_STUB_GENERATOR_SOURCES)
 	@mkdir -p $(dir $@)

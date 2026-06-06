@@ -3,8 +3,8 @@
 #include "app/Constants.h"
 #include "app/doc/DocSequencerModel.h"
 #include "app/doc/DocTypes.h"
-#include "app/doc/metadata/DocMixerSettingsMetadata.h"
-#include "app/doc/metadata/DocSynthSettingsMetadata.h"
+#include "app/doc/parser/MixerParamFields.h"
+#include "app/doc/parser/SynthParamFields.h"
 
 #include "synth/ModMatrix.h"
 #include "synth/SignalChain.h"

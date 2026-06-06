@@ -1,6 +1,6 @@
 #include "app/doc/DocSynthPlanner.h"
 
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 
 namespace app::doc {
 namespace {

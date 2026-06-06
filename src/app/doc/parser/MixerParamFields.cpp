@@ -1,4 +1,4 @@
-#include "DocMixerSettingsMetadata.h"
+#include "MixerParamFields.h"
 
 #include <cstring>
 

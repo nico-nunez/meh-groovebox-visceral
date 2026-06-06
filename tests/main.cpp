@@ -47,8 +47,8 @@ void runDocGrooveboxTargetBuilderTests();
 void runSequencerPlaybackTests();
 
 void runDocMetadataTests();
-void runDocSynthSettingsMetadataTests();
-void runDocMixerSettingsMetadataTests();
+void runDocSynthParamFieldsTests();
+void runDocMixerParamFieldsTests();
 void runMetadataVerificationTests();
 
 void runLuaLSStubGenerationTests();
@@ -84,8 +84,10 @@ int main(int argc, char* argv[]) {
   runSynthDisplayStateTests();
   runDisplayDashboardSnapshotTests();
 
+  runDocSynthParamFieldsTests();
   runDocSequencerParserTests();
   runDocSynthSettingsParserTests();
+  runDocMixerParamFieldsTests();
   runDocMixerSettingsParserTests();
 
   runDocSynthPlannerTests();
@@ -95,8 +97,6 @@ int main(int argc, char* argv[]) {
   runSequencerPlaybackTests();
 
   runDocMetadataTests();
-  runDocSynthSettingsMetadataTests();
-  runDocMixerSettingsMetadataTests();
   runMetadataVerificationTests();
 
   runLuaRuntimeMetadataTests();

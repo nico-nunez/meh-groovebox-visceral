@@ -2,7 +2,7 @@
 
 #include "app/AppContext.h"
 #include "app/Sequencer.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 
 #include "synth/program/SynthProgram.h"
 

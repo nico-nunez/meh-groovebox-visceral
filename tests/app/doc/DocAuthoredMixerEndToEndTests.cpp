@@ -6,7 +6,7 @@
 #include "app/Sequencer.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 #include "app/sessions/AudioSession.h"
 #include "synth/params/ParamDefs.h"
 

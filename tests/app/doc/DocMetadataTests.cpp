@@ -5,7 +5,7 @@
 #include "app/Constants.h"
 #include "app/doc/AuthoredDocParser.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 
 #include <cstddef>
 #include <cstring>

@@ -5,7 +5,7 @@
 #include "app/AppParams.h"
 #include "app/doc/DocAuthoredModel.h"
 #include "app/doc/DocAuthoringService.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 
 #include <algorithm>
 
@@ -15,7 +15,8 @@ using test::parseWorkspace;
 
 const char* kNonEmptyTrack1 =
     "track(1, TrackSettings { patterns = { [1] = { numSteps = 1, stepsPerBeat = 4, "
-    "steps = { { active = true, notes = { { note = 60, velocity = 100 } } } } } }, activeSlot = 1 })";
+    "steps = { { active = true, notes = { { note = 60, velocity = 100 } } } } } }, activeSlot = 1 "
+    "})";
 
 } // namespace
 

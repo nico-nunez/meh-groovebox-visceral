@@ -3,7 +3,7 @@
 
 #include "app/AppContext.h"
 #include "app/Constants.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 #include "lua/bindings/LuaBindings.h"
 #include "lua/metadata/LuaRuntimeMetadata.h"
 #include "synth/params/ParamDefs.h"

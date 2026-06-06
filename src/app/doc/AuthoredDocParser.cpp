@@ -3,7 +3,7 @@
 #include "app/doc/parser/ParserHelpers.h"
 
 #include "app/doc/DocAuthoredModel.h"
-#include "app/doc/metadata/DocMetadata.h"
+#include "app/doc/DocMetadata.h"
 
 #include <string>
 

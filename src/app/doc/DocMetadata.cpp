@@ -1,7 +1,6 @@
 #include "DocMetadata.h"
 
 #include "app/Constants.h"
-#include "app/Sequencer.h"
 
 #include <cstring>
 
@@ -64,7 +63,7 @@ constexpr DocFieldMetadata kSynthOscFields[] = {
     {"enabled", DocLuaValueKind::Boolean, false},
     {"bank", DocLuaValueKind::String, false},
     {"mixLevel", DocLuaValueKind::Number, false},
-    {"detune", DocLuaValueKind::Number, false},
+    {"detuneAmount", DocLuaValueKind::Number, false},
     {"octaveOffset", DocLuaValueKind::Integer, false},
     {"scanPos", DocLuaValueKind::Number, false},
     {"fmDepth", DocLuaValueKind::Number, false},
@@ -581,7 +580,7 @@ constexpr DocFieldMetadata kStepFields[] = {
         DocMetadataStatus::Implemented,
         {},
         {},
-        doctype::StepLock,
+        doctype::StepLocks,
         "At most MAX_LOCKS_PER_STEP entries.",
     },
 };
@@ -616,18 +615,18 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         "One note event inside a sequencer step.",
     },
     {
-        doctype::Step,
-        DocMetadataSurface::AuthoredDocument,
-        DocMetadataStatus::Implemented,
-        spanOf(kStepFields),
-        "Sequencer step event.",
-    },
-    {
         doctype::StepLock,
         DocMetadataSurface::AuthoredDocument,
         DocMetadataStatus::Implemented,
         spanOf(kStepLockFields),
         "Per-step synth parameter lock.",
+    },
+    {
+        doctype::Step,
+        DocMetadataSurface::AuthoredDocument,
+        DocMetadataStatus::Implemented,
+        spanOf(kStepFields),
+        "Sequencer step event.",
     },
     {
         doctype::SynthSettings,

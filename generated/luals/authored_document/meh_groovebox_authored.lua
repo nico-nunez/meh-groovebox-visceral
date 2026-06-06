@@ -29,14 +29,14 @@
 ---@field velocity? integer -- 0..127
 ---@field gate? number
 
----@class Step
----@field active? boolean
----@field notes? StepNote[]
----@field locks? StepLock
-
 ---@class StepLock
 ---@field param string
 ---@field value number
+
+---@class Step
+---@field active? boolean
+---@field notes? StepNote[]
+---@field locks? StepLock[]
 
 ---@class SynthSettings
 ---@field osc1? SynthOscSettings
@@ -67,7 +67,7 @@
 ---@field enabled? boolean
 ---@field bank? string
 ---@field mixLevel? number
----@field detune? number
+---@field detuneAmount? number
 ---@field octaveOffset? integer
 ---@field scanPos? number
 ---@field fmDepth? number
