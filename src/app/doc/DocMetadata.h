@@ -16,6 +16,11 @@ template <typename T> struct DocMetadataSpan {
   bool empty() const { return size == 0; }
 };
 
+enum class DocMetadataKind {
+  Struct,
+  Alias,
+};
+
 enum class DocMetadataSurface : uint8_t {
   AuthoredDocument,
   RuntimeFileApply,
@@ -62,9 +67,9 @@ struct DocFieldMetadata {
 
 struct DocTypeMetadata {
   const char* name = "";
-  DocMetadataSurface surface = DocMetadataSurface::AuthoredDocument;
-  DocMetadataStatus status = DocMetadataStatus::Implemented;
+  DocMetadataKind kind = DocMetadataKind::Struct;
   DocMetadataSpan<DocFieldMetadata> fields{};
+  const char* aliasTarget = "";
   const char* doc = "";
 };
 
@@ -132,10 +137,10 @@ inline constexpr const char* SynthPortaSettings = "SynthPortaSettings";
 inline constexpr const char* SynthUnisonSettings = "SynthUnisonSettings";
 inline constexpr const char* SynthPitchBendSettings = "SynthPitchBendSettings";
 inline constexpr const char* SynthModRouteEntry = "SynthModRouteEntry";
-inline constexpr const char* SynthModMatrixEntries = "SynthModRouteEntry[]";
+inline constexpr const char* SynthModRouteEntryTable = "SynthModRouteEntry[]";
 inline constexpr const char* SynthFMRouteEntry = "SynthFMRouteEntry";
-inline constexpr const char* SynthFMRouteEntries = "SynthFMRouteEntry[]";
-inline constexpr const char* SynthSignalChain = "string[]";
+inline constexpr const char* SynthFMRouteEntryTable = "SynthFMRouteEntry[]";
+inline constexpr const char* SynthSignalChainTable = "string[]";
 inline constexpr const char* SynthMasterSettings = "SynthMasterSettings";
 inline constexpr const char* SynthFXSettings = "SynthFXSettings";
 inline constexpr const char* SynthFXDistortionSettings = "SynthFXDistortionSettings";
@@ -151,10 +156,11 @@ inline constexpr const char* TrackSettings = "TrackSettings";
 inline constexpr const char* PatternSlots = "PatternSlots";
 inline constexpr const char* Pattern = "Pattern";
 inline constexpr const char* StepNote = "StepNote";
-inline constexpr const char* StepNotes = "StepNote[]";
+inline constexpr const char* StepNoteTable = "StepNote[]";
 inline constexpr const char* Step = "Step";
+inline constexpr const char* StepTable = "Step[]";
 inline constexpr const char* StepLock = "StepLock";
-inline constexpr const char* StepLocks = "StepLock[]";
+inline constexpr const char* StepLockTable = "StepLock[]";
 } // namespace doctype
 
 namespace docdiag {

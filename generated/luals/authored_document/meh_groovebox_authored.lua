@@ -15,12 +15,12 @@
 ---@field synth? SynthSettings
 ---@field mixer? MixerSettings
 
----@class PatternSlots
+---@alias PatternSlots table <integer, Pattern>
 
 ---@class Pattern
 ---@field numSteps integer -- 1..64
 ---@field stepsPerBeat integer -- 1..48
----@field steps Step
+---@field steps Step[]
 
 ---@class StepNote
 ---@field noteOn? boolean

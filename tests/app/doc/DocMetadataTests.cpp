@@ -124,7 +124,7 @@ static void test_step_fields_match_lua_pattern_parser() {
   CHECK("no step legato", step && findField(*step, "legato") == nullptr);
 
   const auto* notes = step ? findField(*step, "notes") : nullptr;
-  CHECK("notes element type", notes && strEq(notes->elementType, app::doc::doctype::StepNotes));
+  CHECK("notes element type", notes && strEq(notes->elementType, app::doc::doctype::StepNoteTable));
 }
 
 static void test_step_note_fields_match_lua_pattern_parser() {
@@ -272,8 +272,6 @@ static void test_synth_settings_metadata_is_implemented() {
 
   CHECK("TrackSettings synth field", track && findField(*track, "synth") != nullptr);
   CHECK("SynthSettings exists", synth != nullptr);
-  CHECK("SynthSettings implemented",
-        synth && synth->status == app::doc::DocMetadataStatus::Implemented);
   CHECK("SynthSettings has osc1", synth && findField(*synth, "osc1") != nullptr);
   CHECK("SynthSettings has ampEnv", synth && findField(*synth, "ampEnv") != nullptr);
   CHECK("SynthSettings has modEnv", synth && findField(*synth, "modEnv") != nullptr);
@@ -317,7 +315,6 @@ static void test_mixer_settings_type_is_implemented() {
   TEST("mixer_settings_type_is_implemented");
   const auto* t = app::doc::findAuthoredDocumentType(app::doc::doctype::MixerSettings);
   CHECK("found", t != nullptr);
-  CHECK("implemented", t && t->status == app::doc::DocMetadataStatus::Implemented);
   CHECK("has fields", t && !t->fields.empty());
 }
 

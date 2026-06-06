@@ -129,6 +129,11 @@ void emitHeader(std::string& out, const char* metaName) {
   appendLine(out);
 }
 
+void emitAlias(std::string& out, const app::doc::DocTypeMetadata& type) {
+  appendLine(out, std::string("---@alias ") + type.name + std::string(" ") + type.aliasTarget);
+  appendLine(out);
+}
+
 void emitDocumentClass(std::string& out, const app::doc::DocTypeMetadata& type) {
   appendLine(out, std::string("---@class ") + type.name);
   for (const auto& field : type.fields) {
@@ -226,8 +231,16 @@ RenderedFile renderAuthoredDocumentStub() {
   appendLine(out, "--- locks: at most " + std::to_string(app::sequencer::MAX_LOCKS_PER_STEP));
   appendLine(out);
 
-  for (const auto& type : app::doc::authoredDocumentTypes())
-    emitDocumentClass(out, type);
+  for (const auto& type : app::doc::authoredDocumentTypes()) {
+    switch (type.kind) {
+    case app::doc::DocMetadataKind::Struct:
+      emitDocumentClass(out, type);
+      break;
+    case app::doc::DocMetadataKind::Alias:
+      emitAlias(out, type);
+      break;
+    }
+  }
 
   for (const auto& ctor : app::doc::authoredDocumentConstructors()) {
     appendLine(out, std::string("---@param settings ") + ctor + "?");
