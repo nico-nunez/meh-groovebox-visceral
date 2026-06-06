@@ -128,8 +128,8 @@
       "retrigger": false,
       "tempoSync": false,
       "subdivision": "1/4",
-      "delayMs": 0.0,
-      "attackMs": 0.0
+      "delay": 0.0,
+      "attack": 0.0
     },
     "lfo2": {
       "bank": "sine",
@@ -138,8 +138,8 @@
       "retrigger": false,
       "tempoSync": false,
       "subdivision": "1/4",
-      "delayMs": 0.0,
-      "attackMs": 0.0
+      "delay": 0.0,
+      "attack": 0.0
     },
     "lfo3": {
       "bank": "sine",
@@ -148,8 +148,8 @@
       "retrigger": false,
       "tempoSync": false,
       "subdivision": "1/4",
-      "delayMs": 0.0,
-      "attackMs": 0.0
+      "delay": 0.0,
+      "attack": 0.0
     }
   },
   "modMatrix": [
