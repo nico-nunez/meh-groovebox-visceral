@@ -58,7 +58,6 @@ struct DocFieldMetadata {
   const char* name = "";
   DocLuaValueKind kind = DocLuaValueKind::Any;
   bool required = false;
-  DocMetadataStatus status = DocMetadataStatus::Implemented;
   DocIntegerBounds integerBounds{};
   DocNumberBounds numberBounds{};
   const char* elementType = "";
@@ -121,14 +120,24 @@ inline constexpr const char* SynthSettings = "SynthSettings";
 inline constexpr const char* MixerSettings = "MixerSettings";
 } // namespace docctor
 
+namespace docalias {
+inline constexpr const char* SynthOscBank =
+    "'sine' | 'saw' | 'square' | 'triange' | 'sine_to_saw' | 'sah'";
+inline constexpr const char* SynthSVFMode = "'hp' | 'lp' | 'bp' | 'notch'";
+inline constexpr const char* SynthNoiseType = "'white' | 'pink'";
+} // namespace docalias
+
 namespace doctype {
 inline constexpr const char* SynthSettings = "SynthSettings";
+inline constexpr const char* SynthOscBank = "SynthOscBank";
 inline constexpr const char* SynthOscSettings = "SynthOscSettings";
 inline constexpr const char* SynthLfoSettings = "SynthLfoSettings";
+inline constexpr const char* SynthNoiseType = "SynthNoiseType";
 inline constexpr const char* SynthNoiseSettings = "SynthNoiseSettings";
 inline constexpr const char* SynthAmpEnvSettings = "SynthAmpEnvSettings";
 inline constexpr const char* SynthModEnvSettings = "SynthModEnvSettings";
 inline constexpr const char* SynthFilterEnvSettings = "SynthFilterEnvSettings";
+inline constexpr const char* SynthSVFMode = "SynthSVFMode";
 inline constexpr const char* SynthSVFSettings = "SynthSVFSettings";
 inline constexpr const char* SynthLadderSettings = "SynthLadderSettings";
 inline constexpr const char* SynthSaturatorSettings = "SynthSaturatorSettings";

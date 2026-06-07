@@ -63,9 +63,11 @@
 ---@field master? SynthMasterSettings
 ---@field fx? SynthFXSettings
 
+---@alias SynthOscBank 'sine' | 'saw' | 'square' | 'triange' | 'sine_to_saw' | 'sah'
+
 ---@class SynthOscSettings
 ---@field enabled? boolean
----@field bank? string
+---@field bank? SynthOscBank
 ---@field mixLevel? number
 ---@field detuneAmount? number
 ---@field octaveOffset? integer
@@ -79,7 +81,7 @@
 ---@field fixedFreq? number
 
 ---@class SynthLfoSettings
----@field bank? string
+---@field bank? SynthOscBank
 ---@field rate? number
 ---@field amplitude? number
 ---@field retrigger? boolean
@@ -88,8 +90,10 @@
 ---@field subdivision? string
 ---@field tempoSync? boolean
 
+---@alias SynthNoiseType 'white' | 'pink'
+
 ---@class SynthNoiseSettings
----@field type? string
+---@field type? SynthNoiseType
 ---@field enabled? boolean
 ---@field mixLevel? number
 
@@ -120,8 +124,10 @@
 ---@field release? number
 ---@field releaseCurve? number
 
+---@alias SynthSVFMode 'hp' | 'lp' | 'bp' | 'notch'
+
 ---@class SynthSVFSettings
----@field mode? string
+---@field mode? 'hp' | 'lp' | 'bp' | 'notch'
 ---@field cutoff? number
 ---@field resonance? number
 ---@field enabled? boolean
