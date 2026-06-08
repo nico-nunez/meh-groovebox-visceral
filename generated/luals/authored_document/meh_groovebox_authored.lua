@@ -13,7 +13,7 @@
 
 ---@alias PatternSlots table <integer, Pattern>
 
----@alias SynthOscBank 'sine' | 'saw' | 'square' | 'triange' | 'sine_to_saw' | 'sah'
+---@alias SynthOscBank 'sine' | 'saw' | 'square' | 'triangle' | 'sine_to_saw' | 'sah'
 
 ---@alias SynthOscPhaseMode 'reset' | 'free' | 'random' | 'spread'
 

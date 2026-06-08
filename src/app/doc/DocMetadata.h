@@ -123,7 +123,7 @@ inline constexpr const char* MixerSettings = "MixerSettings";
 namespace docalias {
 inline constexpr const char* PatternSlots = "table <integer, Pattern>";
 inline constexpr const char* SynthOscBank =
-    "'sine' | 'saw' | 'square' | 'triange' | 'sine_to_saw' | 'sah'";
+    "'sine' | 'saw' | 'square' | 'triangle' | 'sine_to_saw' | 'sah'";
 inline constexpr const char* SynthOscPhaseMode = "'reset' | 'free' | 'random' | 'spread'";
 inline constexpr const char* SynthSVFMode = "'hp' | 'lp' | 'bp' | 'notch'";
 inline constexpr const char* SynthNoiseType = "'white' | 'pink'";
