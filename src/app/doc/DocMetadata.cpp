@@ -40,14 +40,7 @@ constexpr DocFunctionArgMetadata kMixerArgs[] = {
 
 constexpr DocFieldMetadata kSynthOscFields[] = {
     {"enabled", DocLuaValueKind::Boolean, false},
-    {
-        "bank",
-        DocLuaValueKind::String,
-        false,
-        {},
-        {},
-        doctype::SynthOscBank,
-    },
+    {"bank", DocLuaValueKind::String, false, {}, {}, doctype::SynthOscBank},
     {"mixLevel", DocLuaValueKind::Number, false},
     {"detuneAmount", DocLuaValueKind::Number, false},
     {"octaveOffset", DocLuaValueKind::Integer, false},
@@ -55,7 +48,7 @@ constexpr DocFieldMetadata kSynthOscFields[] = {
     {"fmDepth", DocLuaValueKind::Number, false},
     {"randomRange", DocLuaValueKind::Number, false},
     {"resetPhase", DocLuaValueKind::Number, false},
-    {"phaseMode", DocLuaValueKind::String, false},
+    {"phaseMode", DocLuaValueKind::String, false, {}, {}, doctype::SynthOscPhaseMode},
     {"ratio", DocLuaValueKind::Number, false},
     {"fixed", DocLuaValueKind::Boolean, false},
     {"fixedFreq", DocLuaValueKind::Number, false},
@@ -68,7 +61,7 @@ constexpr DocFieldMetadata kSynthLfoFields[] = {
     {"retrigger", DocLuaValueKind::Boolean, false},
     {"delay", DocLuaValueKind::Number, false},
     {"attack", DocLuaValueKind::Number, false},
-    {"subdivision", DocLuaValueKind::String, false},
+    {"subdivision", DocLuaValueKind::String, false, {}, {}, doctype::TempoSubdivision},
     {"tempoSync", DocLuaValueKind::Boolean, false},
 };
 
@@ -89,7 +82,7 @@ constexpr DocFieldMetadata kSynthEnvelopeFields[] = {
 };
 
 constexpr DocFieldMetadata kSynthSVFFields[] = {
-    {"mode", DocLuaValueKind::String, false, {}, {}, docalias::SynthSVFMode},
+    {"mode", DocLuaValueKind::String, false, {}, {}, doctype::SynthSVFMode},
     {"cutoff", DocLuaValueKind::Number, false},
     {"resonance", DocLuaValueKind::Number, false},
     {"enabled", DocLuaValueKind::Boolean, false},
@@ -136,14 +129,14 @@ constexpr DocFieldMetadata kSynthModRouteEntryFields[] = {
      true,
      {},
      {},
-     "",
+     doctype::SynthModSource,
      "Mod source name (e.g. \"lfo1\", \"velocity\", \"modenv\")."},
     {"dest",
      DocLuaValueKind::String,
      true,
      {},
      {},
-     "",
+     doctype::SynthModDestination,
      "Mod destination path (e.g. \"osc1.pitch\", \"svf.cutoff\")."},
     {"amount",
      DocLuaValueKind::Number,
@@ -160,14 +153,14 @@ constexpr DocFieldMetadata kSynthFMRouteEntryFields[] = {
      true,
      {},
      {},
-     "",
+     doctype::SynthFMSource,
      "Carrier oscillator name (\"osc1\"–\"osc4\")."},
     {"mod",
      DocLuaValueKind::String,
      true,
      {},
      {},
-     "",
+     doctype::SynthFMSource,
      "Modulator oscillator name (\"osc1\"–\"osc4\"). Must differ from carrier."},
     {"depth", DocLuaValueKind::Number, true, {}, {}, "", "FM depth. Range [0.0, 10.0]."},
 };
@@ -179,7 +172,7 @@ constexpr DocFieldMetadata kSynthMasterFields[] = {
 constexpr DocFieldMetadata kSynthFXDistortionFields[] = {
     {"drive", DocLuaValueKind::Number, false},
     {"mix", DocLuaValueKind::Number, false},
-    {"type", DocLuaValueKind::String, false},
+    {"type", DocLuaValueKind::String, false, {}, {}, doctype::SynthFXDistortionType},
     {"enabled", DocLuaValueKind::Boolean, false},
 };
 
@@ -202,7 +195,7 @@ constexpr DocFieldMetadata kSynthFXPhaserFields[] = {
 
 constexpr DocFieldMetadata kSynthFXDelayFields[] = {
     {"time", DocLuaValueKind::Number, false},
-    {"subdivision", DocLuaValueKind::String, false},
+    {"subdivision", DocLuaValueKind::String, false, {}, {}, doctype::TempoSubdivision},
     {"tempoSync", DocLuaValueKind::Boolean, false},
     {"feedback", DocLuaValueKind::Number, false},
     {"damping", DocLuaValueKind::Number, false},
@@ -363,7 +356,7 @@ constexpr DocFieldMetadata kStepLockFields[] = {
         true,
         {},
         {},
-        "",
+        "", // TODO:  figure out x-macro/meta way.
         "Synth parameter name from synth::param::PARAM_DEFS.",
     },
     {"value", DocLuaValueKind::Number, true},
@@ -393,20 +386,78 @@ constexpr DocFieldMetadata kStepFields[] = {
 };
 
 constexpr DocTypeMetadata kAuthoredTypes[] = {
+    // ==== Aliases ====
     {
-        doctype::TrackSettings,
-        DocMetadataKind::Struct,
-        spanOf(kTrackSettingsFields),
+        doctype::TempoSubdivision,
+        DocMetadataKind::Alias,
         {},
-        "Implemented sequencer track settings.",
+        docalias::TempoSubdivision,
+        "Tempo subdivision",
     },
     {
         doctype::PatternSlots,
         DocMetadataKind::Alias,
         {},
-        "table <integer, Pattern>",
+        docalias::PatternSlots,
         "One-based pattern slot table, 1..PATTERNS_PER_LANE.",
     },
+    {
+        doctype::SynthOscBank,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthOscBank,
+        "Oscillator bank type",
+    },
+    {
+        doctype::SynthOscPhaseMode,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthOscPhaseMode,
+        "Oscillator phase mode",
+    },
+    {
+        doctype::SynthNoiseType,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthNoiseType,
+        "Noise type",
+    },
+    {
+        doctype::SynthSVFMode,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthSVFMode,
+        "SVF mode type",
+    },
+    {
+        doctype::SynthModSource,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthModSource,
+        "Mod matrix route source.",
+    },
+    {
+        doctype::SynthModDestination,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthModDestination,
+        "Mod matrix route destination.",
+    },
+    {
+        doctype::SynthFMSource,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthFMSource,
+        "FM route source.",
+    },
+    {
+        doctype::SynthFXDistortionType,
+        DocMetadataKind::Alias,
+        {},
+        docalias::SynthFXDistortionType,
+        "FX distortion type",
+    },
+    // ==== Classes ====
     {
         doctype::Pattern,
         DocMetadataKind::Struct,
@@ -443,13 +494,6 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         "Patch-style authored synth settings.",
     },
     {
-        doctype::SynthOscBank,
-        DocMetadataKind::Alias,
-        {},
-        docalias::SynthOscBank,
-        "Oscillator bank type",
-    },
-    {
         doctype::SynthOscSettings,
         DocMetadataKind::Struct,
         spanOf(kSynthOscFields),
@@ -462,13 +506,6 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         spanOf(kSynthLfoFields),
         {},
         "LFO settings.",
-    },
-    {
-        doctype::SynthNoiseType,
-        DocMetadataKind::Alias,
-        {},
-        docalias::SynthNoiseType,
-        "Noise type",
     },
     {
         doctype::SynthNoiseSettings,
@@ -497,13 +534,6 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         spanOf(kSynthEnvelopeFields),
         {},
         "Filter envelope settings.",
-    },
-    {
-        doctype::SynthSVFMode,
-        DocMetadataKind::Alias,
-        {},
-        docalias::SynthSVFMode,
-        "SVF mode type",
     },
     {
         doctype::SynthSVFSettings,
@@ -630,6 +660,13 @@ constexpr DocTypeMetadata kAuthoredTypes[] = {
         spanOf(kMixerTrackSettingsFields),
         {},
         "Track-scoped mixer settings (gain, pan, mute).",
+    },
+    {
+        doctype::TrackSettings,
+        DocMetadataKind::Struct,
+        spanOf(kTrackSettingsFields),
+        {},
+        "Implemented sequencer track settings.",
     },
 };
 

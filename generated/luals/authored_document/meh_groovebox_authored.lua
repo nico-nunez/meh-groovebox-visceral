@@ -9,13 +9,25 @@
 --- stepsPerBeat: 1..48
 --- locks: at most 4
 
----@class TrackSettings
----@field patterns? PatternSlots
----@field activeSlot? integer -- 1..8
----@field synth? SynthSettings
----@field mixer? MixerSettings
+---@alias TempoSubdivision '1/1' | '1/2' | '1/4' | '1/8' | '1/16' | '1/32' | '1/64' | 'd1/2' | 'd1/4' | 'd1/8' | 'd1/16' | '1/2t' | '1/4t' | '1/8t' | '1/16t'
 
 ---@alias PatternSlots table <integer, Pattern>
+
+---@alias SynthOscBank 'sine' | 'saw' | 'square' | 'triange' | 'sine_to_saw' | 'sah'
+
+---@alias SynthOscPhaseMode 'reset' | 'free' | 'random' | 'spread'
+
+---@alias SynthNoiseType 'white' | 'pink'
+
+---@alias SynthSVFMode 'hp' | 'lp' | 'bp' | 'notch'
+
+---@alias SynthModSource 'ampEnv' | 'filterEnv' | 'modEnv' | 'lfo1' | 'lfo2' | 'lfo3' | 'velocity' | 'noise' | 'modWheel' | 'keyTrack'
+
+---@alias SynthModDestination 'svf.cutoff' | 'ladder.cutoff' | 'svf.resonance' | 'ladder.resonance' | 'osc1.pitch' | 'osc2.pitch' | 'osc3.pitch' | 'osc4.pitch' | 'osc1.mixLevel' | 'osc2.mixLevel' | 'osc3.mixLevel' | 'osc4.mixLevel' | 'osc1.scanPos' | 'osc2.scanPos' | 'osc3.scanPos' | 'osc4.scanPos' | 'osc1.fmDepth' | 'osc2.fmDepth' | 'osc3.fmDepth' | 'osc4.fmDepth' | 'lfo1.rate' | 'lfo2.rate' | 'lfo3.rate' | 'lfo1.amplitude' | 'lfo2.amplitude' | 'lfo3.amplitude'
+
+---@alias SynthFMSource 'none' | 'osc1' | 'osc2' | 'osc3' | 'osc4'
+
+---@alias SynthFXDistortionType 'soft' | 'hard'
 
 ---@class Pattern
 ---@field numSteps integer -- 1..64
@@ -63,8 +75,6 @@
 ---@field master? SynthMasterSettings
 ---@field fx? SynthFXSettings
 
----@alias SynthOscBank 'sine' | 'saw' | 'square' | 'triange' | 'sine_to_saw' | 'sah'
-
 ---@class SynthOscSettings
 ---@field enabled? boolean
 ---@field bank? SynthOscBank
@@ -75,7 +85,7 @@
 ---@field fmDepth? number
 ---@field randomRange? number
 ---@field resetPhase? number
----@field phaseMode? string
+---@field phaseMode? SynthOscPhaseMode
 ---@field ratio? number
 ---@field fixed? boolean
 ---@field fixedFreq? number
@@ -87,10 +97,8 @@
 ---@field retrigger? boolean
 ---@field delay? number
 ---@field attack? number
----@field subdivision? string
+---@field subdivision? TempoSubdivision
 ---@field tempoSync? boolean
-
----@alias SynthNoiseType 'white' | 'pink'
 
 ---@class SynthNoiseSettings
 ---@field type? SynthNoiseType
@@ -124,10 +132,8 @@
 ---@field release? number
 ---@field releaseCurve? number
 
----@alias SynthSVFMode 'hp' | 'lp' | 'bp' | 'notch'
-
 ---@class SynthSVFSettings
----@field mode? 'hp' | 'lp' | 'bp' | 'notch'
+---@field mode? SynthSVFMode
 ---@field cutoff? number
 ---@field resonance? number
 ---@field enabled? boolean
@@ -162,13 +168,13 @@
 ---@field range? number
 
 ---@class SynthModRouteEntry
----@field src string
----@field dest string
+---@field src SynthModSource
+---@field dest SynthModDestination
 ---@field amount number
 
 ---@class SynthFMRouteEntry
----@field carrier string
----@field mod string
+---@field carrier SynthFMSource
+---@field mod SynthFMSource
 ---@field depth number
 
 ---@class SynthMasterSettings
@@ -184,7 +190,7 @@
 ---@class SynthFXDistortionSettings
 ---@field drive? number
 ---@field mix? number
----@field type? string
+---@field type? SynthFXDistortionType
 ---@field enabled? boolean
 
 ---@class SynthFXChorusSettings
@@ -204,7 +210,7 @@
 
 ---@class SynthFXDelaySettings
 ---@field time? number
----@field subdivision? string
+---@field subdivision? TempoSubdivision
 ---@field tempoSync? boolean
 ---@field feedback? number
 ---@field damping? number
@@ -234,6 +240,12 @@
 ---@field gain? number
 ---@field pan? number
 ---@field mute? boolean
+
+---@class TrackSettings
+---@field patterns? PatternSlots
+---@field activeSlot? integer -- 1..8
+---@field synth? SynthSettings
+---@field mixer? MixerSettings
 
 ---@param settings TrackSettings?
 ---@return TrackSettings

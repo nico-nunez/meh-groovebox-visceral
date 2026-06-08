@@ -121,15 +121,38 @@ inline constexpr const char* MixerSettings = "MixerSettings";
 } // namespace docctor
 
 namespace docalias {
+inline constexpr const char* PatternSlots = "table <integer, Pattern>";
 inline constexpr const char* SynthOscBank =
     "'sine' | 'saw' | 'square' | 'triange' | 'sine_to_saw' | 'sah'";
+inline constexpr const char* SynthOscPhaseMode = "'reset' | 'free' | 'random' | 'spread'";
 inline constexpr const char* SynthSVFMode = "'hp' | 'lp' | 'bp' | 'notch'";
 inline constexpr const char* SynthNoiseType = "'white' | 'pink'";
+inline constexpr const char* TempoSubdivision =
+    "'1/1' | '1/2' | '1/4' | '1/8' | '1/16' | '1/32' | '1/64' | 'd1/2' | 'd1/4' | 'd1/8' | 'd1/16' "
+    "| '1/2t' | '1/4t' | '1/8t' | '1/16t'";
+
+inline constexpr const char* SynthModSource =
+    "'ampEnv' | 'filterEnv' | 'modEnv' | 'lfo1' | 'lfo2' | 'lfo3' | 'velocity' | 'noise' | "
+    "'modWheel' | 'keyTrack'";
+inline constexpr const char* SynthModDestination =
+    "'svf.cutoff' | 'ladder.cutoff' | 'svf.resonance' | 'ladder.resonance' | 'osc1.pitch' | "
+    "'osc2.pitch' | 'osc3.pitch' | 'osc4.pitch' | 'osc1.mixLevel' | 'osc2.mixLevel' | "
+    "'osc3.mixLevel' | 'osc4.mixLevel' | 'osc1.scanPos' | 'osc2.scanPos' | 'osc3.scanPos' | "
+    "'osc4.scanPos' | 'osc1.fmDepth' | 'osc2.fmDepth' | 'osc3.fmDepth' | 'osc4.fmDepth' | "
+    "'lfo1.rate' | 'lfo2.rate' | 'lfo3.rate' | 'lfo1.amplitude' | 'lfo2.amplitude' | "
+    "'lfo3.amplitude'";
+
+inline constexpr const char* SynthFMSource = "'none' | 'osc1' | 'osc2' | 'osc3' | 'osc4'";
+
+inline constexpr const char* SynthFXDistortionType = "'soft' | 'hard'";
 } // namespace docalias
 
 namespace doctype {
+inline constexpr const char* TempoSubdivision = "TempoSubdivision";
+
 inline constexpr const char* SynthSettings = "SynthSettings";
 inline constexpr const char* SynthOscBank = "SynthOscBank";
+inline constexpr const char* SynthOscPhaseMode = "SynthOscPhaseMode";
 inline constexpr const char* SynthOscSettings = "SynthOscSettings";
 inline constexpr const char* SynthLfoSettings = "SynthLfoSettings";
 inline constexpr const char* SynthNoiseType = "SynthNoiseType";
@@ -145,13 +168,17 @@ inline constexpr const char* SynthMonoSettings = "SynthMonoSettings";
 inline constexpr const char* SynthPortaSettings = "SynthPortaSettings";
 inline constexpr const char* SynthUnisonSettings = "SynthUnisonSettings";
 inline constexpr const char* SynthPitchBendSettings = "SynthPitchBendSettings";
+inline constexpr const char* SynthModSource = "SynthModSource";
+inline constexpr const char* SynthModDestination = "SynthModDestination";
 inline constexpr const char* SynthModRouteEntry = "SynthModRouteEntry";
 inline constexpr const char* SynthModRouteEntryTable = "SynthModRouteEntry[]";
+inline constexpr const char* SynthFMSource = "SynthFMSource";
 inline constexpr const char* SynthFMRouteEntry = "SynthFMRouteEntry";
 inline constexpr const char* SynthFMRouteEntryTable = "SynthFMRouteEntry[]";
 inline constexpr const char* SynthSignalChainTable = "string[]";
 inline constexpr const char* SynthMasterSettings = "SynthMasterSettings";
 inline constexpr const char* SynthFXSettings = "SynthFXSettings";
+inline constexpr const char* SynthFXDistortionType = "SynthFXDistortionType";
 inline constexpr const char* SynthFXDistortionSettings = "SynthFXDistortionSettings";
 inline constexpr const char* SynthFXChorusSettings = "SynthFXChorusSettings";
 inline constexpr const char* SynthFXPhaserSettings = "SynthFXPhaserSettings";
