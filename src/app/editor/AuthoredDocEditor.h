@@ -100,7 +100,7 @@ inline constexpr const char* authoredDocumentTemplate() {
          "      numSteps = 1,\n"
          "      stepsPerBeat = 4,\n"
          "      steps = {\n"
-         "        { active = true, note = 60, velocity = 100, gate = 0.8 }\n"
+         "        { active = true, notes = { {note = 60, velocity = 100, gate = 0.8 } } }\n"
          "      }\n"
          "    }\n"
          "  },\n"
