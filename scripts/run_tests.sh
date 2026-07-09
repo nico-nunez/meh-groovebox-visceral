@@ -14,13 +14,16 @@ done
 
 if [ "$INCREMENTAL_BUILD" = false ]; then
   make clean
+  ## rm -rf .zig-cache/
 fi
 
 BUILD_START=$(date +%s)
-make test || exit 1
+make -j10 test || exit 1
+## zig build test || exit 1
 BUILD_SECS=$(( $(date +%s) - BUILD_START ))
 
-make check-luals-stubs
+make -j10 check-luals-stubs
+## zig build check-luals-stubs
 clear
 scripts/check_luals_fixtures.sh
 ./test_runner --build-secs=$BUILD_SECS ${RUNNER_ARGS[@]+"${RUNNER_ARGS[@]}"}

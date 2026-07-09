@@ -8,9 +8,14 @@ inline constexpr uint32_t DEFAULT_SAMPLE_RATE = 48000;
 inline constexpr uint32_t DEFAULT_FRAMES = 512;
 inline constexpr uint16_t DEFAULT_CHANNELS = 2;
 
+inline constexpr uint32_t MAX_SAMPLE_RATE_OPTIONS = 6;
+inline constexpr uint32_t MAX_FRAME_SIZE_OPTIONS = 6;
+
 struct DeviceInfo {
   uint32_t sampleRate;
+  uint32_t sampleRateOptions[MAX_SAMPLE_RATE_OPTIONS];
   uint32_t bufferFrameSize;
+  uint32_t bufferFrameSizeOptions[MAX_FRAME_SIZE_OPTIONS];
   uint16_t numChannels;
 };
 

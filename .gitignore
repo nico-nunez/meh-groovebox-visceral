@@ -19,6 +19,8 @@ build/
 bin/
 obj/
 out/
+.zig-cache/
+zig-out/
 
 # Generated audio files
 *.wav

@@ -11,6 +11,7 @@ done
 
 if [ "$INCREMENTAL_BUILD" = false ]; then
   make clean
+  ## rm -rf .zig-cache
 fi
 
-make && clear && ./main
+make -j10 && clear && ./main

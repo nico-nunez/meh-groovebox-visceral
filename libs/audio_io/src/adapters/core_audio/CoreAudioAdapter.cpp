@@ -3,6 +3,7 @@
 #include "audio_io/AudioIOTypes.h"
 #include "shared/AudioSession.h"
 
+#include <alloca.h>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -43,6 +44,22 @@ OSStatus getAudioDeviceSampleRate(AudioDeviceID deviceID, DeviceInfo& info) {
 
   OSStatus status =
       AudioObjectGetPropertyData(deviceID, &rateAddr, 0, nullptr, &size, &nominalRate);
+
+  rateAddr.mSelector = kAudioDevicePropertyAvailableNominalSampleRates;
+  status = AudioObjectGetPropertyDataSize(deviceID, &rateAddr, 0, nullptr, &size);
+
+  const size_t rangeCount = size / sizeof(AudioValueRange);
+  auto* ranges = (AudioValueRange*)alloca(size);
+
+  status = AudioObjectGetPropertyData(deviceID, &rateAddr, 0, nullptr, &size, ranges);
+  if (status == noErr) {
+    printf("Supported sample rates:\n");
+    for (size_t i = 0; i < rangeCount; i++) {
+      printf("- %.0f\n", ranges[i].mMaximum);
+    }
+  } else {
+    printf("Error getting available sample rates: %d\n", status);
+  }
 
   if (status == noErr) {
     info.sampleRate = static_cast<uint32_t>(nominalRate);
