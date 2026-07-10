@@ -2,6 +2,8 @@
 
 An in-progress standalone groovebox for macOS: a code-driven performance instrument built around a shared clock, pattern-based sequencing, and deep synth engines per part.
 
+Latest release: [v0.0.1](https://github.com/nico-nunez/meh-groovebox-visceral/releases/tag/v0.0.1)
+
 This repo started from a standalone synth app. That synth engine still forms the core sound source, but the project goal is now a live-performance groovebox rather than a single playable synth.
 
 ## What This Project Is Becoming
