@@ -14,7 +14,7 @@ struct LuaLSRunResult {
   std::vector<LuaLSDiagnostic> diagnostics{};
 };
 
-const char* authoredLuaLSLibraryRoot();
+std::string authoredLuaLSLibraryRoot();
 
 std::string findLuaLanguageServerBinary();
 std::vector<LuaLSDiagnostic> parseLuaLSPrettyOutput(const std::string& output);

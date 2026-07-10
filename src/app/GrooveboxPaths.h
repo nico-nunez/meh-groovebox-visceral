@@ -11,7 +11,10 @@ struct GrooveboxPaths {
   std::filesystem::path lualsConfigFile{};
   std::filesystem::path generatedDir{};
   std::filesystem::path authoredStubDir{};
+  std::filesystem::path demoFile{};
 };
+
+std::filesystem::path defaultConfigDir();
 
 GrooveboxPaths resolveGrooveboxPaths(int argc, char* argv[]);
 

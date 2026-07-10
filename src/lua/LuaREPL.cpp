@@ -198,6 +198,8 @@ void runLuaREPL(app::AppContext* appCtx) {
   snprintf(histPath, sizeof(histPath), "%s/.meh_synth_history", home ? home : ".");
   linenoiseHistoryLoad(histPath);
 
+  printf("Type help() to get started.\n");
+
   std::string buffer;
   char* line;
 

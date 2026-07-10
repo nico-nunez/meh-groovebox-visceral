@@ -754,6 +754,7 @@ int l_help(lua_State* L) {
            "  preset   preset.load/save/init/list\n"
            "  fx       fx.set/list/clear\n"
            "  signal   signal.set/list/clear\n"
+           "  midi     midi.sticky/unsticky/channel/unchannel/routes\n"
            "\n"
            "Functions:\n"
            "  get(\"group.param\")  -- print param value\n"
@@ -763,7 +764,7 @@ int l_help(lua_State* L) {
            "  clear()            -- clear terminal\n"
            "  quit()             -- exit\n"
            "\n"
-           "help(\"topic\") for detail on: params mod fm preset fx signal\n");
+           "help(\"topic\") for detail on: params mod fm preset fx signal midi\n");
     return CMD_SUCCESS;
   }
 
@@ -824,8 +825,19 @@ int l_help(lua_State* L) {
            "Processor names: \"svf\" \"ladder\" \"saturator\"\n"
            "Example: signal.set(\"ladder\", \"saturator\")\n");
 
+  } else if (strcmp(topic, "midi") == 0) {
+    printf("midi.sticky(track)      -- pin all MIDI input to track (1-based)\n"
+           "midi.unsticky()         -- back to following the selected track\n"
+           "midi.channel(ch, track) -- route MIDI channel ch (1-16) to track\n"
+           "midi.unchannel(ch)      -- channel ch back to selected/sticky track\n"
+           "midi.routes()           -- print current sticky + channel routing\n"
+           "\n"
+           "By default MIDI follows whichever track is selected. Sticky and\n"
+           "per-channel routing both override that; channel routing wins per\n"
+           "channel over the sticky track.\n");
+
   } else {
-    printf("Unknown topic: %s\nTopics: params mod fm preset fx signal\n", topic);
+    printf("Unknown topic: %s\nTopics: params mod fm preset fx signal midi\n", topic);
   }
 
   return CMD_SUCCESS;

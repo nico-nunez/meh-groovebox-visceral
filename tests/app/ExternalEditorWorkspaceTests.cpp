@@ -49,60 +49,47 @@ static void test_external_editor_workspace_json_escape() {
   CHECK("slashes quotes newline escaped", escaped == "a\\\\b\\\"c\\n");
 }
 
-static void test_external_editor_workspace_missing_stubs_is_nonfatal() {
-  TEST("external_editor_workspace_missing_stubs_is_nonfatal");
+static void test_external_editor_workspace_writes_authored_stub_from_embedded_metadata() {
+  TEST("external_editor_workspace_writes_authored_stub_from_embedded_metadata");
 
-  const std::filesystem::path root = testRoot("groovebox-missing-stubs-test");
+  const std::filesystem::path root = testRoot("groovebox-write-stub-test");
   std::filesystem::remove_all(root);
 
-  app::GrooveboxPaths paths = makeTestPaths(root);
-  const std::filesystem::path projectRoot = root / "missing-project";
+  const app::GrooveboxPaths paths = makeTestPaths(root);
 
-  const app::ExternalEditorWorkspaceSetupResult result =
-      app::ensureExternalEditorWorkspace(paths, projectRoot);
+  const app::ExternalEditorWorkspaceSetupResult result = app::ensureExternalEditorWorkspace(paths);
 
-  CHECK("source missing", !result.authoredStubSourceFound);
-  CHECK("copy skipped", !result.authoredStubsCopied);
-  CHECK("config not written", !result.lualsConfigWritten);
-  CHECK("message present", !result.message.empty());
+  CHECK("stub written", result.authoredStubsWritten);
+  CHECK("config written", result.lualsConfigWritten);
+  CHECK("message empty on success", result.message.empty());
+
+  const std::string stub = readFile(paths.authoredStubDir / "meh_groovebox_authored.lua");
+  CHECK("stub has authored function", stub.find("function track") != std::string::npos);
+  CHECK("stub excludes applyFile", stub.find("applyFile") == std::string::npos);
+
+  const std::string luarc = readFile(paths.lualsConfigFile);
+  CHECK("luarc references authored", luarc.find("authored_document") != std::string::npos);
 
   std::filesystem::remove_all(root);
 }
 
-static void test_external_editor_workspace_copies_authored_stubs_only() {
-  TEST("external_editor_workspace_copies_authored_stubs_only");
+static void test_external_editor_workspace_overwrites_stale_stub() {
+  TEST("external_editor_workspace_overwrites_stale_stub");
 
-  const std::filesystem::path root = testRoot("groovebox-copy-stubs-test");
+  const std::filesystem::path root = testRoot("groovebox-overwrite-stub-test");
   std::filesystem::remove_all(root);
 
-  const std::filesystem::path projectRoot = root / "project";
-  const std::filesystem::path authoredSrc =
-      projectRoot / "generated" / "luals" / "authored_document";
-  const std::filesystem::path runtimeSrc = projectRoot / "generated" / "luals" / "runtime_lua";
+  const app::GrooveboxPaths paths = makeTestPaths(root);
+  CHECK("write stale file",
+        writeFile(paths.authoredStubDir / "meh_groovebox_authored.lua", "-- stale\n"));
 
-  CHECK("write authored stub",
-        writeFile(authoredSrc / "meh_groovebox_authored.lua", "track = nil\n"));
-  CHECK("write runtime stub",
-        writeFile(runtimeSrc / "meh_groovebox_runtime.lua", "applyFile = nil\n"));
+  const app::ExternalEditorWorkspaceSetupResult result = app::ensureExternalEditorWorkspace(paths);
 
-  app::GrooveboxPaths paths = makeTestPaths(root);
-  CHECK("write stale file", writeFile(paths.authoredStubDir / "stale.lua", "stale\n"));
-
-  const app::ExternalEditorWorkspaceSetupResult result =
-      app::ensureExternalEditorWorkspace(paths, projectRoot);
-
-  CHECK("source found", result.authoredStubSourceFound);
-  CHECK("copy ok", result.authoredStubsCopied);
-  CHECK("config written", result.lualsConfigWritten);
-  CHECK("authored copied", fileExists(paths.authoredStubDir / "meh_groovebox_authored.lua"));
-  CHECK("stale removed", !fileExists(paths.authoredStubDir / "stale.lua"));
-  CHECK("runtime not copied",
-        !fileExists(paths.generatedDir / "runtime_lua" / "meh_groovebox_runtime.lua"));
-
-  const std::string luarc = readFile(paths.lualsConfigFile);
-  CHECK("luarc references authored", luarc.find("authored_document") != std::string::npos);
-  CHECK("luarc excludes runtime", luarc.find("runtime_lua") == std::string::npos);
-  CHECK("luarc excludes applyFile", luarc.find("applyFile") == std::string::npos);
+  CHECK("stub written", result.authoredStubsWritten);
+  CHECK("stale content replaced",
+        fileExists(paths.authoredStubDir / "meh_groovebox_authored.lua") &&
+            readFile(paths.authoredStubDir / "meh_groovebox_authored.lua").find("-- stale") ==
+                std::string::npos);
 
   std::filesystem::remove_all(root);
 }
@@ -110,6 +97,6 @@ static void test_external_editor_workspace_copies_authored_stubs_only() {
 void runExternalEditorWorkspaceTests() {
   SUITE("ExternalEditorWorkspace");
   test_external_editor_workspace_json_escape();
-  test_external_editor_workspace_missing_stubs_is_nonfatal();
-  test_external_editor_workspace_copies_authored_stubs_only();
+  test_external_editor_workspace_writes_authored_stub_from_embedded_metadata();
+  test_external_editor_workspace_overwrites_stale_stub();
 }

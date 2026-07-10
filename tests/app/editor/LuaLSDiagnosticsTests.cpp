@@ -57,7 +57,7 @@ static void test_authored_luals_library_root_is_authored_only() {
 
   const std::string root = app::editor::authoredLuaLSLibraryRoot();
 
-  CHECK("authored root", root.find("generated/luals/authored_document") != std::string::npos);
+  CHECK("authored root", root.find("generated/authored_document") != std::string::npos);
   CHECK("not runtime root", root.find("runtime_lua") == std::string::npos);
 }
 

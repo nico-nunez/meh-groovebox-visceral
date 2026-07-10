@@ -74,6 +74,8 @@ Requirements:
 
 On startup the app connects to the default audio device, initializes MIDI, and opens the Lua-driven terminal control surface.
 
+See [`QUICKSTART.md`](QUICKSTART.md) for a guided tour: view switching, the editor, the built-in demo patch, the `help()` REPL command, and external-editor autocomplete setup.
+
 ## Project Layout
 
 - [`engine/`](engine/README.md): reusable synth engine library (also available as a [standalone repo](https://github.com/nico-nunez/meh-synth-engine))
@@ -81,6 +83,7 @@ On startup the app connects to the default audio device, initializes MIDI, and o
 - [`src/lua/`](src/lua): Lua REPL and command bindings
 - [`presets/`](presets): factory presets and preset authoring notes
 - [`_docs_/architecture/`](_docs_/architecture): groovebox architecture and roadmap docs
+- [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md): license terms for statically linked third-party libraries (Dear ImGui, GLFW, Lua, linenoise)
 
 ## Notes
 

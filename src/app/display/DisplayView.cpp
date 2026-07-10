@@ -161,7 +161,7 @@ void drawKeyboardMIDIHelpSection() {
 
 void drawEditorView(AppContext& app) {
   drawEditorSelector(app.editor);
-  drawFileControls(app.editor);
+  drawFileControls(app);
 
   if (app.editor.internalEditor)
     drawEditorDisplayView(app);

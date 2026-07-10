@@ -238,7 +238,14 @@ void drawEditorSelector(EditorRuntime& editor) {
   ImGui::PopStyleVar();
 }
 
-void drawFileControls(EditorRuntime& editor) {
+void drawFileControls(AppContext& app) {
+  EditorRuntime& editor = app.editor;
+
+  if (!gScratch.initialized) {
+    forceScratchPath(editor.authoredEditor.buffer.filePath);
+    gScratch.initialized = true;
+  }
+
   ImGui::SeparatorText("Current File");
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
 
@@ -271,6 +278,16 @@ void drawFileControls(EditorRuntime& editor) {
   if (ImGui::Button("Save As")) {
     saveDocumentAs(editor.authoredEditor, gScratch.pathBuffer);
     forceScratchPath(editor.authoredEditor.buffer.filePath);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Load Demo")) {
+    // Loads into the buffer without adopting the demo file as the current
+    // path, so a later "Save" can't clobber the bundled example asset.
+    if (loadDocument(editor.authoredEditor, app.grooveboxPaths.demoFile.c_str())) {
+      editor.authoredEditor.buffer.filePath.clear();
+      editor.authoredEditor.buffer.dirty = true;
+      forceScratchPath(editor.authoredEditor.buffer.filePath);
+    }
   }
   ImGui::SameLine();
   if (ImGui::Button("Reload")) {

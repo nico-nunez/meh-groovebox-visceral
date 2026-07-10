@@ -1,5 +1,4 @@
-#include "app/Constants.h"
-#include "app/doc/DocMetadata.h"
+#include "app/doc/DocLuaLSStub.h"
 #include "lua/metadata/LuaRuntimeMetadata.h"
 
 #include <algorithm>
@@ -56,29 +55,6 @@ bool parseArgs(int argc, char** argv, Args& out) {
   return !out.outDir.empty();
 }
 
-std::string luaType(app::doc::DocLuaValueKind kind, const char* typeName) {
-  if (typeName && typeName[0] != '\0')
-    return typeName;
-
-  switch (kind) {
-  case app::doc::DocLuaValueKind::Boolean:
-    return "boolean";
-  case app::doc::DocLuaValueKind::Integer:
-    return "integer";
-  case app::doc::DocLuaValueKind::Number:
-    return "number";
-  case app::doc::DocLuaValueKind::String:
-    return "string";
-  case app::doc::DocLuaValueKind::Table:
-    return "table";
-  case app::doc::DocLuaValueKind::Function:
-    return "function";
-  case app::doc::DocLuaValueKind::Any:
-    return "any";
-  }
-  return "any";
-}
-
 std::string runtimeLuaType(lua::RuntimeLuaValueKind kind, const char* typeName) {
   if (typeName && typeName[0] != '\0')
     return typeName;
@@ -104,73 +80,10 @@ std::string runtimeLuaType(lua::RuntimeLuaValueKind kind, const char* typeName) 
   return "any";
 }
 
-std::string boundsComment(const app::doc::DocIntegerBounds& bounds) {
-  if (!bounds.hasMin && !bounds.hasMax)
-    return "";
-
-  std::ostringstream out;
-  out << " -- ";
-  if (bounds.hasMin)
-    out << bounds.min;
-  else
-    out << "-inf";
-  out << "..";
-  if (bounds.hasMax)
-    out << bounds.max;
-  else
-    out << "inf";
-  return out.str();
-}
-
 void emitHeader(std::string& out, const char* metaName) {
   appendLine(out, "--- @generated from C++ metadata. Do not edit.");
   appendLine(out, "--- Source of truth: C++ metadata descriptors.");
   appendLine(out, std::string("---@meta ") + metaName);
-  appendLine(out);
-}
-
-void emitAlias(std::string& out, const app::doc::DocTypeMetadata& type) {
-  appendLine(out, std::string("---@alias ") + type.name + std::string(" ") + type.aliasTarget);
-  appendLine(out);
-}
-
-void emitDocumentClass(std::string& out, const app::doc::DocTypeMetadata& type) {
-  appendLine(out, std::string("---@class ") + type.name);
-  for (const auto& field : type.fields) {
-    std::string line = "---@field ";
-    line += field.name;
-    if (!field.required)
-      line += "?";
-    line += " ";
-    line += luaType(field.kind, field.elementType);
-    line += boundsComment(field.integerBounds);
-    appendLine(out, line);
-  }
-  appendLine(out);
-}
-
-void emitDocumentFunction(std::string& out, const app::doc::DocFunctionMetadata& fn) {
-  for (const auto& arg : fn.args) {
-    std::string line = "---@param ";
-    line += arg.name;
-    line += " ";
-    line += luaType(arg.kind, arg.typeName);
-    line += boundsComment(arg.integerBounds);
-    appendLine(out, line);
-  }
-  if (fn.returnsTypeName && fn.returnsTypeName[0] != '\0')
-    appendLine(out, std::string("---@return ") + fn.returnsTypeName);
-
-  std::string signature = "function ";
-  signature += fn.name;
-  signature += "(";
-  for (std::size_t i = 0; i < fn.args.size; ++i) {
-    if (i != 0)
-      signature += ", ";
-    signature += fn.args.data[i].name;
-  }
-  signature += ") end";
-  appendLine(out, signature);
   appendLine(out);
 }
 
@@ -221,46 +134,8 @@ void requireNotContains(const std::string& file, const std::string& needle, cons
 }
 
 RenderedFile renderAuthoredDocumentStub() {
-  std::string out;
-  emitHeader(out, "meh_groovebox_authored");
-  appendLine(out, "--- Bounds:");
-  appendLine(out, "--- trackNumber: 1.." + std::to_string(app::MAX_TRACKS));
-  appendLine(out, "--- activeSlot: 1.." + std::to_string(app::sequencer::PATTERNS_PER_LANE));
-  appendLine(out, "--- numSteps: 1.." + std::to_string(app::sequencer::MAX_PATTERN_STEPS));
-  appendLine(out, "--- stepsPerBeat: 1.." + std::to_string(app::sequencer::MAX_STEPS_PER_BEAT));
-  appendLine(out, "--- locks: at most " + std::to_string(app::sequencer::MAX_LOCKS_PER_STEP));
-  appendLine(out);
-
-  for (const auto& type : app::doc::authoredDocumentTypes()) {
-    switch (type.kind) {
-    case app::doc::DocMetadataKind::Struct:
-      emitDocumentClass(out, type);
-      break;
-    case app::doc::DocMetadataKind::Alias:
-      emitAlias(out, type);
-      break;
-    }
-  }
-
-  for (const auto& ctor : app::doc::authoredDocumentConstructors()) {
-    appendLine(out, std::string("---@param settings ") + ctor + "?");
-    appendLine(out, std::string("---@return ") + ctor);
-    appendLine(out, std::string("function ") + ctor + "(settings) end");
-    appendLine(out);
-  }
-
-  for (const auto& fn : app::doc::authoredDocumentFunctions())
-    emitDocumentFunction(out, fn);
-
-  requireContains(out, "function track", "document track");
-  requireContains(out, "function TrackSettings", "TrackSettings");
-  requireContains(out, "function SynthSettings", "SynthSettings");
-  requireContains(out, "function MixerSettings", "MixerSettings");
-  requireNotContains(out, "applyFile", "applyFile");
-  requireNotContains(out, "apply_file", "apply_file");
-  requireNotContains(out, "transport", "transport");
-
-  return {"authored_document/meh_groovebox_authored.lua", out};
+  return {"authored_document/meh_groovebox_authored.lua",
+          app::doc::renderAuthoredDocumentLuaLSStub()};
 }
 
 void emitRuntimeTable(std::string& out, const lua::RuntimeLuaTableMetadata& table) {

@@ -1,5 +1,7 @@
 #include "app/ExternalEditorWorkspace.h"
 
+#include "app/doc/DocLuaLSStub.h"
+
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -8,38 +10,27 @@
 namespace app {
 namespace {
 
-std::filesystem::path authoredStubSourceDir(const std::filesystem::path& projectRoot) {
-  return projectRoot / "generated" / "luals" / "authored_document";
-}
-
-bool refreshDirectoryCopy(const std::filesystem::path& src,
-                          const std::filesystem::path& dst,
-                          std::string* message) {
-  if (!std::filesystem::exists(src) || !std::filesystem::is_directory(src)) {
-    if (message)
-      *message = "authored LuaLS stubs not found: " + src.string();
-    return false;
-  }
-
+bool writeAuthoredStub(const GrooveboxPaths& paths, std::string* message) {
   std::error_code ec{};
-  std::filesystem::remove_all(dst, ec);
-  if (ec) {
-    if (message)
-      *message = "failed to remove stale authored stubs: " + ec.message();
-    return false;
-  }
-
-  std::filesystem::create_directories(dst.parent_path(), ec);
+  std::filesystem::create_directories(paths.authoredStubDir, ec);
   if (ec) {
     if (message)
       *message = "failed to create generated dir: " + ec.message();
     return false;
   }
 
-  std::filesystem::copy(src, dst, std::filesystem::copy_options::recursive, ec);
-  if (ec) {
+  const std::filesystem::path stubPath = paths.authoredStubDir / "meh_groovebox_authored.lua";
+  std::ofstream out(stubPath, std::ios::binary);
+  if (!out) {
     if (message)
-      *message = "failed to copy authored LuaLS stubs: " + ec.message();
+      *message = "failed to open authored LuaLS stub for writing: " + stubPath.string();
+    return false;
+  }
+
+  out << doc::renderAuthoredDocumentLuaLSStub();
+  if (!out) {
+    if (message)
+      *message = "failed while writing authored LuaLS stub";
     return false;
   }
 
@@ -121,19 +112,12 @@ std::string escapeJsonStringForExternalEditorWorkspace(const std::string& value)
   return out;
 }
 
-ExternalEditorWorkspaceSetupResult
-ensureExternalEditorWorkspace(const GrooveboxPaths& paths,
-                              const std::filesystem::path& projectRoot) {
+ExternalEditorWorkspaceSetupResult ensureExternalEditorWorkspace(const GrooveboxPaths& paths) {
   ExternalEditorWorkspaceSetupResult result{};
-  const std::filesystem::path src = authoredStubSourceDir(projectRoot);
 
-  result.authoredStubSourceFound =
-      std::filesystem::exists(src) && std::filesystem::is_directory(src);
-  result.authoredStubsCopied = refreshDirectoryCopy(src, paths.authoredStubDir, &result.message);
-
-  if (!result.authoredStubsCopied) {
+  result.authoredStubsWritten = writeAuthoredStub(paths, &result.message);
+  if (!result.authoredStubsWritten) {
     std::printf("[editor] %s\n", result.message.c_str());
-    std::printf("[editor] run `make luals-stubs` to generate authored stubs\n");
     return result;
   }
 

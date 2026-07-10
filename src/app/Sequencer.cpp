@@ -229,6 +229,7 @@ VoidResult addPendingNoteOff(LaneState& laneState, uint8_t note, double beat) {
       return {true, nullptr};
     }
   }
+  assert(true);
   return {false, "pending note-off capacity exceeded"};
 }
 
@@ -254,11 +255,6 @@ bool stepHasActivePitch(const StepEvent& step, uint8_t note) {
       return true;
   }
   return false;
-}
-
-void addOrAssertPendingNoteOff(LaneState& laneState, uint8_t note, double noteOffBeat) {
-  const auto added = addPendingNoteOff(laneState, note, noteOffBeat);
-  assert(added.ok && "pending note-off capacity exceeded");
 }
 
 void extendPendingNoteOff(PendingNoteOff* pending, double noteOffBeat) {
@@ -389,7 +385,7 @@ void fireStep(uint32_t i,
     laneOut.push(makeNoteOnEvent(note.note, note.velocity, stepOffset));
 
     const double noteOffBeat = stepNoteOffBeat(note, absStepBeat, stepLengthBeats);
-    addOrAssertPendingNoteOff(laneState, note.note, noteOffBeat);
+    addPendingNoteOff(laneState, note.note, noteOffBeat);
   }
 
   fireExactBoundaryNonStepPitchReleases(laneState, laneOut, step, absStepBeat, stepOffset);
@@ -417,6 +413,7 @@ VoidResult checkIsEditing(const SequencerState& state) {
   const char* errMsg =
       isEditing ? nullptr : "no active edit session; call seq.copyPattern or seq.newPattern first";
 
+  assert(errMsg == nullptr);
   return {isEditing, errMsg};
 }
 
@@ -623,6 +620,7 @@ VoidResult commitPattern(SequencerState& state) {
   uint32_t writeIndex = 1 - state.store.readIndex.load(std::memory_order_relaxed);
   state.store.readIndex.store(writeIndex, std::memory_order_release);
   state.isEditing.store(false, std::memory_order_release);
+  assert(res.ok);
   return res;
 }
 
@@ -941,9 +939,7 @@ void abortSequencerSnapshotSwap(SequencerState& state) {
 void publishPendingSequencerSnapshotIfReady(SequencerState& state) {
   if (!state.isEditing.load(std::memory_order_acquire))
     return;
-
-  auto commit = commitPattern(state);
-  assert(commit.ok);
+  commitPattern(state);
 }
 
 void resetStepEvent(StepEvent* step) {

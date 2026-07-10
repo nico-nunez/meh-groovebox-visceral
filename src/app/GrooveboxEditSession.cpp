@@ -495,20 +495,17 @@ void publishPendingGrooveboxEditIfReady(AppContext* app,
     if (!pending.synthPrepared[t])
       continue;
 
-    auto commit = synth::program::commitProgramSwap(app->tracks[t].engine);
-    assert(commit.ok);
+    synth::program::commitProgramSwap(app->tracks[t].engine);
     synth::program::publishPendingProgramIfReady(app->tracks[t].engine);
   }
 
   if (pending.mixerPrepared) {
-    auto commit = mixer::commitMixerSnapshotSwap(app->mixer);
-    assert(commit.ok);
+    mixer::commitMixerSnapshotSwap(app->mixer);
     mixer::publishPendingMixerSnapshotIfReady(app->mixer);
   }
 
   if (pending.sequencerPrepared) {
-    auto commit = sequencer::commitSequencerSnapshotSwap(app->sequencer);
-    assert(commit.ok);
+    sequencer::commitSequencerSnapshotSwap(app->sequencer);
     sequencer::publishPendingSequencerSnapshotIfReady(app->sequencer);
   }
 

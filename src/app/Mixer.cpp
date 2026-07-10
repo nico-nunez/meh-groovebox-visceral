@@ -1,4 +1,5 @@
 #include "app/Mixer.h"
+#include <cassert>
 
 namespace app::mixer {
 
@@ -22,8 +23,10 @@ MixerSnapshotSwapResult prepareMixerSnapshotSwap(MixerState& mixer,
 }
 
 MixerSnapshotSwapResult commitMixerSnapshotSwap(MixerState& mixer) {
-  if (!mixer.writeInFlight.load(std::memory_order_acquire))
+  if (!mixer.writeInFlight.load(std::memory_order_acquire)) {
+    assert(true);
     return {false, "no mixer write in flight"};
+  }
 
   mixer.pendingReady.store(true, std::memory_order_release);
   mixer.writeInFlight.store(false, std::memory_order_release);

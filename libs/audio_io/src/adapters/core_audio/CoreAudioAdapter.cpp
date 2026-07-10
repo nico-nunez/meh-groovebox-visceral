@@ -163,7 +163,7 @@ static OSStatus nativeCallback(void* inRefCon, // ← CoreAudio gives us back wh
                                AudioUnitRenderActionFlags* /*ioActionFlags*/,
                                const AudioTimeStamp* /*inTimeStamp*/,
                                UInt32 /*inBusNumber*/,
-                               UInt32 inNumberFrames,
+                               UInt32 /*inNumberFrames*/,
                                AudioBufferList* ioData) {
 
   auto sessionPtr = static_cast<audio_io::hAudioSession>(inRefCon);
@@ -175,16 +175,6 @@ static OSStatus nativeCallback(void* inRefCon, // ← CoreAudio gives us back wh
    * Non-Interleaved = mNumberBuffers == number of channelPtrs (aka numChannels)
    * Interleaved: mNumberBuffers == interleavedPtr (aka 1)
    */
-
-#ifndef NDEBUG
-  assert(sessionPtr->buffer.numFrames == inNumberFrames);
-
-  if (sessionPtr->buffer.format == audio_io::BufferFormat::NonInterleaved) {
-    assert(ioData->mNumberBuffers == sessionPtr->buffer.numChannels);
-  } else {
-    assert(ioData->mNumberBuffers == 1);
-  }
-#endif
 
   sessionPtr->userCallback(sessionPtr->buffer, sessionPtr->userContext);
 

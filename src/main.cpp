@@ -13,7 +13,6 @@
 
 #include <csignal>
 #include <cstdio>
-#include <filesystem>
 #include <functional>
 #include <thread>
 
@@ -22,7 +21,7 @@
 // ==============
 int main(int argc, char* argv[]) {
   app::GrooveboxPaths paths = app::resolveGrooveboxPaths(argc, argv);
-  app::ensureExternalEditorWorkspace(paths, std::filesystem::current_path());
+  app::ensureExternalEditorWorkspace(paths);
   printf("session: %s\n", paths.sessionFile.c_str());
 
   auto deviceInfo = app::audio::queryDefaultDevice();

@@ -1,5 +1,7 @@
 #include "app/editor/LuaLSDiagnostics.h"
 
+#include "app/GrooveboxPaths.h"
+
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -118,8 +120,8 @@ WorkerState gWorker{};
 
 } // namespace
 
-const char* authoredLuaLSLibraryRoot() {
-  return "generated/luals/authored_document";
+std::string authoredLuaLSLibraryRoot() {
+  return (app::defaultConfigDir() / "generated" / "authored_document").string();
 }
 
 std::string findLuaLanguageServerBinary() {
@@ -128,7 +130,6 @@ std::string findLuaLanguageServerBinary() {
     return env;
 
   const char* candidates[] = {
-      "/Users/nico/.local/share/nvim/mason/bin/lua-language-server",
       "/opt/homebrew/bin/lua-language-server",
       "/usr/local/bin/lua-language-server",
   };
@@ -190,7 +191,7 @@ LuaLSRunResult runLuaLSDiagnosticsForText(const std::string& text) {
 
   const std::filesystem::path bufferPath = workspace / kFixtureFileName;
   const std::filesystem::path configPath = workspace / ".luarc.json";
-  const std::filesystem::path libraryRoot = std::filesystem::absolute(authoredLuaLSLibraryRoot());
+  const std::filesystem::path libraryRoot = authoredLuaLSLibraryRoot();
 
   if (!writeTextFile(bufferPath, text)) {
     result.message = "LuaLS workspace write failed";

@@ -8,7 +8,7 @@ struct EditorRuntime;
 namespace app::display {
 
 void drawEditorSelector(EditorRuntime& editor);
-void drawFileControls(EditorRuntime& editor);
+void drawFileControls(AppContext& app);
 void drawEditorDisplayView(AppContext& app);
 
 } // namespace app::display

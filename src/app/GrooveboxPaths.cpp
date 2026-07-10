@@ -1,6 +1,7 @@
 #include "app/GrooveboxPaths.h"
 
 #include "app/editor/AuthoredDocEditor.h"
+#include "app/editor/DemoDocumentTemplate.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -8,7 +9,6 @@
 #include <string>
 
 namespace app {
-namespace {
 
 std::filesystem::path defaultConfigDir() {
   const char* home = std::getenv("HOME");
@@ -17,6 +17,8 @@ std::filesystem::path defaultConfigDir() {
 
   return std::filesystem::path(home) / ".config" / "groovebox";
 }
+
+namespace {
 
 std::string readFirstLine(const std::filesystem::path& path) {
   std::ifstream in(path);
@@ -69,6 +71,7 @@ GrooveboxPaths resolveGrooveboxPaths(int argc, char* argv[]) {
   paths.lualsConfigFile = paths.configDir / ".luarc.json";
   paths.generatedDir = paths.configDir / "generated";
   paths.authoredStubDir = paths.generatedDir / "authored_document";
+  paths.demoFile = paths.configDir / "demo_session.lua";
 
   std::error_code ec{};
   std::filesystem::create_directories(paths.configDir, ec);
@@ -76,6 +79,11 @@ GrooveboxPaths resolveGrooveboxPaths(int argc, char* argv[]) {
   paths.sessionFile = resolveSessionFile(paths, argc, argv);
   ensureSessionFileExists(paths.sessionFile);
   writeTextFile(paths.lastSessionFile, paths.sessionFile.string() + "\n");
+
+  // Rewritten every launch (unlike the session file): this is a bundled
+  // read-only example, not user data, so a newer binary should always
+  // refresh it rather than leave a stale copy from an older version.
+  writeTextFile(paths.demoFile, app::editor::demoDocumentTemplate());
 
   return paths;
 }
